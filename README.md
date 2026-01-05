@@ -4,7 +4,7 @@
 
 # Polymarket API client
 
-
+[![Documentation](https://docs.rs/polymarket-api/badge.svg)](https://docs.rs/polymarket-api)
 
 ## Installation
 

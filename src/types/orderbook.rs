@@ -11,6 +11,12 @@ pub struct Orderbook {
     pub asset_id: TokenId,
     #[serde(with = "TimestampVisitor")]
     pub timestamp: OffsetDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_order_size: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tick_size: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub neg_risk: Option<bool>,
     pub hash: String,
     pub bids: Book,
     pub asks: Book,
