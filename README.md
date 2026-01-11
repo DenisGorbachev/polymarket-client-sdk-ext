@@ -4,7 +4,12 @@
 
 # Polymarket API client
 
+[![Build](https://github.com/DenisGorbachev/polymarket-api/actions/workflows/ci.yml/badge.svg)](https://github.com/DenisGorbachev/polymarket-api)
 [![Documentation](https://docs.rs/polymarket-api/badge.svg)](https://docs.rs/polymarket-api)
+
+<!-- crate documentation start -->
+
+<!-- crate documentation end -->
 
 ## Installation
 

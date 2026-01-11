@@ -1,13 +1,30 @@
 [package]
 name = "polymarket-api"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 description = "Polymarket API client"
 license = "Apache-2.0 OR MIT"
 homepage = "https://github.com/DenisGorbachev/polymarket-api"
 repository = "https://github.com/DenisGorbachev/polymarket-api"
 keywords = ["polymarket", "api"]
 categories = ["api-bindings"]
+exclude = [
+    ".*",
+    "*.local.*",
+    "doc/dev",
+    "specs",
+    "README.ts",
+    "AGENTS*.md",
+    "CLAUDE*.md",
+    "deno.json",
+    "commitlint.config.mjs",
+    "lefthook.yml",
+    "mise.toml",
+    "rumdl.toml",
+    "rustfmt.toml",
+    "yolobox"
+]
 
 [package.metadata.details]
 title = "Polymarket API client"
@@ -33,6 +50,7 @@ serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.132" }
 #standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 stub-macro = "0.2.1"
+#errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
@@ -46,7 +64,7 @@ serde_json = "1.0.129"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
 
 [package.metadata.cargo-machete]
-ignored = ["stub_macro", "stub-macro"]
+ignored = ["stub-macro"]
 
 [features]
 debug = []

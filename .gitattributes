@@ -1,0 +1,4 @@
+# The following lines require `ours` merge driver
+# To define `ours` merge driver, run `git config --global merge.ours.driver true`
+README.md merge=ours
+AGENTS.md merge=ours
