@@ -2596,37 +2596,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "polymarket-api"
-version = "0.1.0"
-dependencies = [
- "alloy",
- "async-stream",
- "chrono",
- "derive-getters",
- "derive-new",
- "derive_more 2.1.1",
- "env_logger",
- "errgonomic",
- "fmt-derive",
- "futures",
- "indexmap 2.13.0",
- "polymarket-client-sdk",
- "pretty_assertions",
- "reqwest",
- "rust_decimal",
- "rustc-hash",
- "serde",
- "serde_json",
- "stub-macro",
- "subtype",
- "thiserror 2.0.17",
- "time",
- "tokio",
- "url",
- "url-macro",
-]
-
-[[package]]
 name = "polymarket-client-sdk"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2659,6 +2628,37 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
+]
+
+[[package]]
+name = "polymarket-client-sdk-ext"
+version = "0.1.0"
+dependencies = [
+ "alloy",
+ "async-stream",
+ "chrono",
+ "derive-getters",
+ "derive-new",
+ "derive_more 2.1.1",
+ "env_logger",
+ "errgonomic",
+ "fmt-derive",
+ "futures",
+ "indexmap 2.13.0",
+ "polymarket-client-sdk",
+ "pretty_assertions",
+ "reqwest",
+ "rust_decimal",
+ "rustc-hash",
+ "serde",
+ "serde_json",
+ "stub-macro",
+ "subtype",
+ "thiserror 2.0.17",
+ "time",
+ "tokio",
+ "url",
+ "url-macro",
 ]
 
 [[package]]

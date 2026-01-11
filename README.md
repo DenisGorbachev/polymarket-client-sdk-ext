@@ -4,8 +4,7 @@
 
 # Polymarket API client
 
-[![Build](https://github.com/DenisGorbachev/polymarket-api/actions/workflows/ci.yml/badge.svg)](https://github.com/DenisGorbachev/polymarket-api)
-[![Documentation](https://docs.rs/polymarket-api/badge.svg)](https://docs.rs/polymarket-api)
+[![Build](https://github.com/DenisGorbachev/polymarket-client-sdk-ext/actions/workflows/ci.yml/badge.svg)](https://github.com/DenisGorbachev/polymarket-client-sdk-ext)
 
 <!-- crate documentation start -->
 
@@ -14,12 +13,12 @@
 ## Installation
 
 ```shell
-cargo add polymarket-api
+cargo add polymarket-client-sdk-ext
 ```
 
 ## Gratitude
 
-Like the project? [⭐ Star this repo](https://github.com/DenisGorbachev/polymarket-api) on GitHub!
+Like the project? [⭐ Star this repo](https://github.com/DenisGorbachev/polymarket-client-sdk-ext) on GitHub!
 
 ## License
 

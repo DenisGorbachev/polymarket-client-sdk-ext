@@ -1,5 +1,5 @@
 use futures::{StreamExt, TryStreamExt};
-use polymarket_api::{Market, RestClientOld, TokenId};
+use polymarket_client_sdk_ext::{Market, RestClientOld, TokenId};
 use std::future::ready;
 use tokio::pin;
 

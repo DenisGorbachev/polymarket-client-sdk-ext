@@ -1,12 +1,12 @@
 [package]
-name = "polymarket-api"
+name = "polymarket-client-sdk-ext"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85.0"
 description = "Polymarket API client"
 license = "Apache-2.0 OR MIT"
-homepage = "https://github.com/DenisGorbachev/polymarket-api"
-repository = "https://github.com/DenisGorbachev/polymarket-api"
+homepage = "https://github.com/DenisGorbachev/polymarket-client-sdk-ext"
+repository = "https://github.com/DenisGorbachev/polymarket-client-sdk-ext"
 keywords = ["polymarket", "api"]
 categories = ["api-bindings"]
 exclude = [

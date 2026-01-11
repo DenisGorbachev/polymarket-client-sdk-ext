@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use polymarket_api::{Market, NEXT_CURSOR_START, RestClientOld};
+use polymarket_client_sdk_ext::{Market, NEXT_CURSOR_START, RestClientOld};
 use std::env;
 use std::fs::File;
 use std::io::Write;
