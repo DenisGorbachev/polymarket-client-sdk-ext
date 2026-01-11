@@ -1,14 +1,12 @@
+use crate::{Market, RestClientOld, TokenId};
 use futures::{StreamExt, TryStreamExt};
-use polymarket_client_sdk_ext::{Market, RestClientOld, TokenId};
 use std::future::ready;
 use tokio::pin;
 
-mod common;
-
 // TODO: Migrate to GammaClient + get markets that are guaranteed to be active
+// TODO: This test is slow because finding a market with `enable_order_book = true` takes a lot of time (paging through markets)
 #[tokio::test]
 async fn test_orderbooks() {
-    env_logger::init();
     let client = RestClientOld::default();
     let markets_stream_raw = client.get_markets_stream();
     let markets_stream_filtered = markets_stream_raw.try_filter_map(|markets| {

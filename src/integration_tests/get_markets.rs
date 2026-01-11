@@ -1,18 +1,15 @@
+use crate::{Market, NEXT_CURSOR_START, RestClientOld};
 use futures::StreamExt;
-use polymarket_client_sdk_ext::{Market, NEXT_CURSOR_START, RestClientOld};
 use std::env;
 use std::fs::File;
 use std::io::Write;
 use std::str::FromStr;
 use tokio::pin;
 
-mod common;
-
 pub const MAX_PAGES_DEFAULT: &str = "4";
 
 #[tokio::test]
 async fn test_markets() {
-    env_logger::init();
     let next_cursor = env::var("NEXT_CURSOR").unwrap_or(NEXT_CURSOR_START.into());
     let max_pages_string = env::var("MAX_PAGES").unwrap_or(MAX_PAGES_DEFAULT.into());
     let markets_filename = env::var("MARKETS_FILENAME").ok();

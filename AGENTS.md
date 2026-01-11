@@ -1530,7 +1530,6 @@ url = { version = "2.5.2", features = ["serde"] }
 url-macro = { version = "0.2.3" }
 
 [dev-dependencies]
-env_logger = "0.11.5"
 pretty_assertions = "1.4.1"
 serde_json = "1.0.129"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
@@ -1552,10 +1551,19 @@ pub use types::*;
 mod functions;
 
 pub use functions::*;
+
 mod ext;
+
 pub use ext::*;
+
 mod errors;
+
 pub use errors::*;
+
 mod constants;
+
 pub use constants::*;
+
+#[cfg(test)]
+mod integration_tests;
 ```

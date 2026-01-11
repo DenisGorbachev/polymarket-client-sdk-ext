@@ -34,10 +34,21 @@ run = "rumdl check"
 run = "cargo machete --with-metadata"
 
 [tasks."test"]
+# `depends` intentionally doesn't include "test:code:integration" or "test:code:slow" (such tests should be run only by agent or CI)
 depends = ["test:code", "test:docs"]
 
 [tasks."test:code"]
 run = "cargo nextest run --all-features --no-tests warn"
+
+[tasks."test:code:integration"]
+# see also: "agent:test:code:integration"
+# `--test-threads 1` because integration tests must be run sequentially
+run = "mise run test:code -- --ignore-default-filter --max-fail 1 --test-threads 1 'integration_tests::'"
+
+[tasks."test:code:slow"]
+# see also: "agent:test:code:slow"
+# `--test-threads` is omitted because slow tests may be run in parallel
+run = "mise run test:code -- --ignore-default-filter --max-fail 1 'slow_tests::'"
 
 [tasks."test:docs"]
 run = "cargo test --doc --all-features --no-fail-fast --quiet"
@@ -145,9 +156,19 @@ quiet = true
 depends = ["fix", "agent:test"]
 
 [tasks."agent:test"]
-depends = ["agent:test:code", "test:docs"]
+depends = ["agent:test:code", "agent:test:code:integration", "agent:test:code:slow", "test:docs"]
 
 [tasks."agent:test:code"]
 # don't include `--fail-fast` because it's better to let the agent see all failures
 # reduce output to save tokens
 run = "mise run test:code -- --cargo-quiet --hide-progress-bar --status-level fail --final-status-level flaky"
+
+[tasks."agent:test:code:integration"]
+# see also: "test:code:integration"
+# `--test-threads 1` because integration tests must be run sequentially
+run = "mise run agent:test:code -- --ignore-default-filter --max-fail 1 --test-threads 1 'integration_tests::'"
+
+[tasks."agent:test:code:slow"]
+# see also: "test:code:slow"
+# `--test-threads` is omitted because slow tests may be run in parallel
+run = "mise run agent:test:code -- --ignore-default-filter --max-fail 1 'slow_tests::'"
