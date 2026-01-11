@@ -1,5 +1,5 @@
 use futures::{StreamExt, TryStreamExt};
-use polymarket_api::{Market, RestClient, TokenId};
+use polymarket_api::{Market, RestClientOld, TokenId};
 use std::future::ready;
 use tokio::pin;
 
@@ -9,7 +9,7 @@ mod common;
 #[tokio::test]
 async fn test_orderbooks() {
     env_logger::init();
-    let client = RestClient::default();
+    let client = RestClientOld::default();
     let markets_stream_raw = client.get_markets_stream();
     let markets_stream_filtered = markets_stream_raw.try_filter_map(|markets| {
         let markets = markets
@@ -30,6 +30,6 @@ async fn test_orderbooks() {
         .iter()
         .flat_map(|market| market.tokens.token_ids_vec())
         .collect::<Vec<TokenId>>();
-    let orderbooks = client.get_orderbooks(&token_ids).await.unwrap();
+    let orderbooks = client.get_orderbook_summaries(&token_ids).await.unwrap();
     assert_eq!(orderbooks.len(), markets.len() * 2);
 }

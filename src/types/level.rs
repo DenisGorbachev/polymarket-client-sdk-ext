@@ -1,21 +1,36 @@
 use crate::{Amount, Price};
 use derive_more::{From, Into};
+use polymarket_client_sdk::clob::types::response::OrderSummary;
 use serde::{Deserialize, Serialize};
 
 #[derive(From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct OrderSummary {
+pub struct Level {
     pub price: Price,
     pub size: Amount,
 }
 
-impl OrderSummary {}
+impl Level {}
 
-impl From<(&Price, &Amount)> for OrderSummary {
+impl From<(&Price, &Amount)> for Level {
     fn from((price, size): (&Price, &Amount)) -> Self {
         Self {
             price: *price,
             size: *size,
+        }
+    }
+}
+
+impl From<OrderSummary> for Level {
+    fn from(summary: OrderSummary) -> Self {
+        let OrderSummary {
+            price,
+            size,
+            ..
+        } = summary;
+        Self {
+            price,
+            size,
         }
     }
 }

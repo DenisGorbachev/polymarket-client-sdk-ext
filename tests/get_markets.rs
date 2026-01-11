@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use polymarket_api::{Market, RestClient, NEXT_CURSOR_START};
+use polymarket_api::{Market, RestClientOld, NEXT_CURSOR_START};
 use std::env;
 use std::fs::File;
 use std::io::Write;
@@ -17,7 +17,7 @@ async fn test_markets() {
     let max_pages_string = env::var("MAX_PAGES").unwrap_or(MAX_PAGES_DEFAULT.into());
     let markets_filename = env::var("MARKETS_FILENAME").ok();
     let max_pages = usize::from_str(&max_pages_string).unwrap();
-    let client = RestClient::default();
+    let client = RestClientOld::default();
     let markets_stream = client.get_markets_stream_at_cursor(next_cursor);
     let markets_stream = markets_stream.take(max_pages);
     pin!(markets_stream);

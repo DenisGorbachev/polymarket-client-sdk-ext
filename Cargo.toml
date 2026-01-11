@@ -16,25 +16,28 @@ summary = ""
 announcement = ""
 
 [dependencies]
-alloy = { version = "1.2.1", default-features = false, features = ["std", "serde"] }
+alloy = { version = "1.4.0", default-features = false, features = ["std", "serde"] }
 async-stream = { version = "0.3.6" }
+chrono = "0.4.42"
 derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
-derive_more = { version = "1.0.0", features = ["full"] }
+derive_more = { version = "2.1.1", features = ["full"] }
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
-indexmap = { version = "2.6.0" }
-reqwest = { version = "0.12.8", features = ["json"] }
+indexmap = { version = "2.6.0", features = ["serde"] }
+polymarket-client-sdk = { version = "0.3.3", features = ["gamma", "data", "tracing"] }
+reqwest = { version = "0.13.1", features = ["json"] }
 rust_decimal = { version = "1.36.0", features = ["serde"] }
 rustc-hash = { version = "2.0.0" }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.132" }
 #standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
-stub-macro = "0.1.6"
+stub-macro = "0.2.1"
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
+thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
 url = { version = "2.5.2", features = ["serde"] }
-url-macro = { version = "0.1.9" }
+url-macro = { version = "0.2.3" }
 
 [dev-dependencies]
 env_logger = "0.11.5"

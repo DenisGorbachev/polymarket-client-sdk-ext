@@ -1,6 +1,6 @@
-mod client;
+mod rest_client_old;
 
-pub use client::*;
+pub use rest_client_old::*;
 
 mod market;
 
@@ -42,9 +42,9 @@ mod orderbook;
 
 pub use orderbook::*;
 
-mod order_summary;
+mod level;
 
-pub use order_summary::*;
+pub use level::*;
 
 mod condition_id;
 
@@ -58,9 +58,9 @@ mod token_id;
 
 pub use token_id::*;
 
-mod book;
+mod book_side;
 
-pub use book::*;
+pub use book_side::*;
 
 mod price;
 
@@ -75,13 +75,25 @@ mod rewards_raw;
 
 pub use market_raw::*;
 pub use rewards_raw::*;
+
 mod side;
+
 pub use side::*;
+
 mod order_type;
+
 pub use order_type::*;
+
 mod book_params;
+
 pub use book_params::*;
+
 mod fee;
+
 pub use fee::*;
+
 mod total;
+
 pub use total::*;
+mod neg_risk;
+pub use neg_risk::*;

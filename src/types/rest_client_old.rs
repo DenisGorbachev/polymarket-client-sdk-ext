@@ -1,8 +1,9 @@
-use crate::{get_page_stream, BookParams, Market, MarketRaw, NextCursor, Orderbook, Payload, TokenId, NEXT_CURSOR_START, REST_BASE_URL};
+use crate::{get_page_stream, BookParams, Market, MarketRaw, NextCursor, Payload, TokenId, NEXT_CURSOR_START, REST_BASE_URL};
 use derive_getters::Getters;
 use derive_more::{From, Into};
 use derive_new::new;
 use futures::Stream;
+use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
 use reqwest::Response;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -10,11 +11,11 @@ use std::fmt::Debug;
 use url::Url;
 
 #[derive(new, Getters, From, Into, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
-pub struct RestClient {
+pub struct RestClientOld {
     base_url: Url,
 }
 
-impl RestClient {
+impl RestClientOld {
     pub fn url(&self, path: &str) -> Url {
         let mut url = self.base_url.clone();
         url.set_path(path);
@@ -44,7 +45,7 @@ impl RestClient {
         })
     }
 
-    pub async fn get_orderbooks(&self, token_ids: impl IntoIterator<Item = &TokenId>) -> reqwest::Result<Vec<Orderbook>> {
+    pub async fn get_orderbook_summaries(&self, token_ids: impl IntoIterator<Item = &TokenId>) -> reqwest::Result<Vec<OrderBookSummaryResponse>> {
         let url = self.url("/books");
         let params = token_ids
             .into_iter()
@@ -99,7 +100,7 @@ impl RestClient {
     }
 }
 
-impl Default for RestClient {
+impl Default for RestClientOld {
     fn default() -> Self {
         Self {
             base_url: REST_BASE_URL.clone(),
