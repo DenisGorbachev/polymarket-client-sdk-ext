@@ -1,4 +1,4 @@
-use crate::{serialize_as_decimal, Side, TokenId};
+use crate::{Side, TokenId, serialize_as_decimal};
 use derive_more::{From, Into};
 use derive_new::new;
 use serde::{Deserialize, Serialize};

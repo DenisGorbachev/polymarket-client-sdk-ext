@@ -14,10 +14,6 @@ where
         D: serde::Deserializer<'de>,
     {
         let s: String = serde::Deserialize::deserialize(deserializer)?;
-        if s.is_empty() {
-            Ok(None)
-        } else {
-            T::from_str(&s).map(Some).map_err(serde::de::Error::custom)
-        }
+        if s.is_empty() { Ok(None) } else { T::from_str(&s).map(Some).map_err(serde::de::Error::custom) }
     }
 }

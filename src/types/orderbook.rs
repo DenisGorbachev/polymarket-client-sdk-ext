@@ -1,4 +1,4 @@
-use crate::{from_chrono_date_time, BidAskCrossError, BookSide, ConditionId, TimestampVisitor, TokenId, UintAsString};
+use crate::{BidAskCrossError, BookSide, ConditionId, TimestampVisitor, TokenId, UintAsString, from_chrono_date_time};
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
 use rust_decimal::Decimal;

@@ -1,12 +1,12 @@
-use crate::{get_page_stream, BookParams, Market, MarketRaw, NextCursor, Payload, TokenId, NEXT_CURSOR_START, REST_BASE_URL};
+use crate::{BookParams, Market, MarketRaw, NEXT_CURSOR_START, NextCursor, Payload, REST_BASE_URL, TokenId, get_page_stream};
 use derive_getters::Getters;
 use derive_more::{From, Into};
 use derive_new::new;
 use futures::Stream;
 use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
 use reqwest::Response;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::fmt::Debug;
 use url::Url;
 

@@ -1,8 +1,8 @@
-use crate::{NextCursor, Payload, NEXT_CURSOR_STOP};
+use crate::{NEXT_CURSOR_STOP, NextCursor, Payload};
 use futures::Stream;
 use serde::de::DeserializeOwned;
 use std::future::Future;
-use std::pin::{pin, Pin};
+use std::pin::{Pin, pin};
 use std::task::Poll::*;
 use std::task::{Context, Poll};
 use url::Url;

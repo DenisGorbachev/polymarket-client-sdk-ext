@@ -1,4 +1,4 @@
-use crate::{NextCursor, NextCursorRef, Payload, NEXT_CURSOR_STOP};
+use crate::{NEXT_CURSOR_STOP, NextCursor, NextCursorRef, Payload};
 use async_stream::stream;
 use futures::Stream;
 use std::fmt::Debug;
