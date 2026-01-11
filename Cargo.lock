@@ -1520,6 +1520,17 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "errgonomic"
 version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74783b07876d4201b54ef63b9b1b188716d22c27ceb3e34bfa09bbd827ebcdd4"
+dependencies = [
+ "cfg-if",
+ "tempfile",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "errgonomic"
+version = "0.4.0"
 source = "git+https://github.com/DenisGorbachev/errgonomic#13547086ee2a60355f97d019f740ecbf34ec38e1"
 dependencies = [
  "cfg-if",
@@ -2606,6 +2617,7 @@ dependencies = [
  "derive-new",
  "derive_more 2.1.1",
  "env_logger",
+ "errgonomic 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fmt-derive",
  "futures",
  "indexmap 2.13.0",
@@ -3786,7 +3798,7 @@ version = "0.1.0"
 source = "git+https://github.com/DenisGorbachev/subtype#b0e33ef6780503d7f87b460840f7eb4261e43f0d"
 dependencies = [
  "derive_more 1.0.0",
- "errgonomic",
+ "errgonomic 0.4.0 (git+https://github.com/DenisGorbachev/errgonomic)",
  "pretty-type-name",
  "standard-traits",
 ]

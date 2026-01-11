@@ -41,37 +41,40 @@ impl BookSide {
     }
 }
 
-// TODO: Remove `clippy::infallible_try_from` after fixing the error handling
-#[allow(clippy::infallible_try_from)]
 impl TryFrom<Vec<OrderSummary>> for BookSide {
-    type Error = TryFromVecOrderSummaryForBookSideError;
+    type Error = ConvertVecOrderSummaryToBookSideError;
 
-    fn try_from(_summaries: Vec<OrderSummary>) -> Result<Self, Self::Error> {
-        // TODO: Return errors for OrderSummaries at a price level that already exists and has a different amount
-        todo!()
+    fn try_from(summaries: Vec<OrderSummary>) -> Result<Self, Self::Error> {
+        use ConvertVecOrderSummaryToBookSideError::*;
+        let map = IndexMap::with_capacity_and_hasher(summaries.len(), FxBuildHasher);
+        let result = summaries.into_iter().try_fold(map, |mut map, summary| {
+            let OrderSummary {
+                price,
+                size,
+                ..
+            } = summary;
+            match map.get(&price) {
+                Some(existing_size) if *existing_size != size => Err(PriceLevelConflicts {
+                    price,
+                    existing_size: *existing_size,
+                    incoming_size: size,
+                }),
+                Some(_) => Ok(map),
+                None => {
+                    map.insert(price, size);
+                    Ok(map)
+                }
+            }
+        });
+        match result {
+            Ok(map) => Ok(Self(map)),
+            Err(error) => Err(error),
+        }
     }
 }
 
-#[derive(Error, Debug)]
-pub enum TryFromVecOrderSummaryForBookSideError {}
-
-// impl Serialize for BookSide {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: Serializer,
-//     {
-//         let order_summaries: Vec<Level> = self.iter().map(Level::from).collect();
-//         order_summaries.serialize(serializer)
-//     }
-// }
-//
-// impl<'de> Deserialize<'de> for BookSide {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-//     where
-//         D: Deserializer<'de>,
-//     {
-//         let order_summaries: Vec<Level> = Vec::deserialize(deserializer)?;
-//         let map = order_summaries.into_iter().map(Level::into).collect();
-//         Ok(Self(map))
-//     }
-// }
+#[derive(Error, Debug, Copy, Clone, Eq, PartialEq)]
+pub enum ConvertVecOrderSummaryToBookSideError {
+    #[error("price level '{price}' conflicts with sizes '{existing_size}' and '{incoming_size}'")]
+    PriceLevelConflicts { price: Price, existing_size: Amount, incoming_size: Amount },
+}

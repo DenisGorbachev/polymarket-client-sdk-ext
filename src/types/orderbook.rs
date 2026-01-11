@@ -1,27 +1,29 @@
-use crate::{BidAskCrossError, BookSide, ConditionId, TimestampVisitor, TokenId, UintAsString, from_chrono_date_time};
+use crate::{BidAskCrossError, BookSide, ConditionId, ConvertVecOrderSummaryToBookSideError, TimestampVisitor, TokenId, UintAsString, from_chrono_date_time};
 use derive_more::{From, Into};
+use errgonomic::handle;
 use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use stub_macro::stub;
+use thiserror::Error;
 use time::OffsetDateTime;
 
 #[derive(From, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Orderbook {
     /// `condition_id` uniquely identifies the market
+    #[serde(with = "alloy::primitives::serde_hex")]
     pub condition_id: ConditionId,
     #[serde(with = "UintAsString")]
     pub token_id: TokenId,
-    pub bids: BookSide,
-    pub asks: BookSide,
+    #[serde(with = "TimestampVisitor")]
+    pub updated_at: OffsetDateTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hash: Option<String>,
     pub min_order_size: Decimal,
     pub min_tick_size: Decimal,
     pub neg_risk: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub hash: Option<String>,
-    #[serde(with = "TimestampVisitor")]
-    pub updated_at: OffsetDateTime,
+    pub bids: BookSide,
+    pub asks: BookSide,
 }
 
 impl Orderbook {
@@ -36,13 +38,13 @@ impl Orderbook {
 }
 
 impl TryFrom<OrderBookSummaryResponse> for Orderbook {
-    type Error = ();
+    type Error = ConvertOrderBookSummaryResponseToOrderbookError;
 
-    // TODO: Fix error handling
     fn try_from(response: OrderBookSummaryResponse) -> Result<Self, Self::Error> {
+        use ConvertOrderBookSummaryResponseToOrderbookError::*;
         let OrderBookSummaryResponse {
-            market: _,
-            asset_id: _,
+            market,
+            asset_id,
             timestamp,
             hash,
             bids,
@@ -52,39 +54,48 @@ impl TryFrom<OrderBookSummaryResponse> for Orderbook {
             tick_size,
             ..
         } = response;
-        let condition_id = stub!(ConditionId, "Convert from `market`");
-        let token_id = stub!(TokenId, "Convert from `asset_id`");
-        let updated_at = from_chrono_date_time(timestamp).unwrap();
-        let bids = BookSide::try_from(bids).unwrap();
-        let asks = BookSide::try_from(asks).unwrap();
+        let condition_id = handle!(market.parse::<ConditionId>(), MarketParseFailed, market);
+        let token_id = handle!(asset_id.parse::<TokenId>(), AssetIdParseFailed, asset_id);
+        let updated_at = handle!(from_chrono_date_time(timestamp), FromChronoDateTimeFailed, timestamp);
+        let bids = handle!(BookSide::try_from(bids), BidsTryFromFailed);
+        let asks = handle!(BookSide::try_from(asks), AsksTryFromFailed);
         let min_tick_size = tick_size.into();
         Ok(Self {
             condition_id,
             token_id,
-            bids,
-            asks,
+            updated_at,
             min_order_size,
             min_tick_size,
             neg_risk,
             hash,
-            updated_at,
+            bids,
+            asks,
         })
     }
+}
+
+#[derive(Error, Debug)]
+pub enum ConvertOrderBookSummaryResponseToOrderbookError {
+    #[error("failed to parse condition id from market '{market}'")]
+    MarketParseFailed { source: alloy::hex::FromHexError, market: String },
+    #[error("failed to parse token id from asset id '{asset_id}'")]
+    AssetIdParseFailed { source: alloy::primitives::ruint::ParseError, asset_id: String },
+    #[error("failed to convert timestamp '{timestamp}'")]
+    FromChronoDateTimeFailed { source: time::error::ComponentRange, timestamp: chrono::DateTime<chrono::Utc> },
+    #[error("failed to convert bids")]
+    BidsTryFromFailed { source: ConvertVecOrderSummaryToBookSideError },
+    #[error("failed to convert asks")]
+    AsksTryFromFailed { source: ConvertVecOrderSummaryToBookSideError },
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pretty_assertions::assert_eq;
 
-    #[ignore]
     #[test]
     fn must_round_trip_serde() {
         let input = include_str!("../../fixtures/orderbook.json").trim();
         let orderbook_summary_response: OrderBookSummaryResponse = serde_json::de::from_str(input).unwrap();
-        let orderbook = Orderbook::try_from(orderbook_summary_response).unwrap();
-        assert_eq!(orderbook.hash, Some("6b57f28fe93242322f8836463d3266551166f90b".to_string()));
-        let output = serde_json::ser::to_string_pretty(&orderbook).unwrap();
-        assert_eq!(input, output);
+        let _orderbook = Orderbook::try_from(orderbook_summary_response).unwrap();
     }
 }

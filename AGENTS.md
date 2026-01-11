@@ -1511,6 +1511,7 @@ chrono = "0.4.42"
 derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
+errgonomic = "0.4.0"
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
 indexmap = { version = "2.6.0", features = ["serde"] }
@@ -1536,7 +1537,7 @@ serde_json = "1.0.129"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
 
 [package.metadata.cargo-machete]
-ignored = ["stub-macro"]
+ignored = ["stub-macro", "pretty_assertions"]
 
 [features]
 debug = []
