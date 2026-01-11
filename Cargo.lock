@@ -2606,6 +2606,7 @@ dependencies = [
  "derive-new",
  "derive_more 2.1.1",
  "env_logger",
+ "errgonomic",
  "fmt-derive",
  "futures",
  "indexmap 2.13.0",

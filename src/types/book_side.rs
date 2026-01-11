@@ -55,6 +55,12 @@ impl TryFrom<Vec<OrderSummary>> for BookSide {
 #[derive(Error, Debug)]
 pub enum TryFromVecOrderSummaryForBookSideError {}
 
+impl From<BookSide> for Vec<OrderSummary> {
+    fn from(_value: BookSide) -> Self {
+        todo!()
+    }
+}
+
 // impl Serialize for BookSide {
 //     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 //     where
