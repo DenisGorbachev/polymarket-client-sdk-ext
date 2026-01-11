@@ -124,7 +124,6 @@ impl From<Orderbook> for OrderBookSummaryResponse {
 mod tests {
     use super::*;
 
-    #[ignore]
     #[test]
     fn must_round_trip_serde() {
         let input = include_str!("../../fixtures/orderbook.json").trim();

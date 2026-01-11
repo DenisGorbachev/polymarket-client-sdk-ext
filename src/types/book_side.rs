@@ -80,8 +80,10 @@ pub enum ConvertVecOrderSummaryToBookSideError {
 }
 
 impl From<BookSide> for Vec<OrderSummary> {
-    fn from(_value: BookSide) -> Self {
-        // TODO: Implement via OrderSummary::builder() (uses `bon` crate)
-        todo!()
+    fn from(value: BookSide) -> Self {
+        let BookSide(map) = value;
+        map.into_iter()
+            .map(|(price, size)| OrderSummary::builder().price(price).size(size).build())
+            .collect()
     }
 }

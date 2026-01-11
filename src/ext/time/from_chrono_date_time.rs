@@ -10,6 +10,17 @@ pub fn from_chrono_date_time<Tz: TimeZone>(datetime: DateTime<Tz>) -> Result<Off
     OffsetDateTime::from_unix_timestamp_nanos(unix_nanos)
 }
 
-pub fn into_chrono_date_time(_offset_date_time: OffsetDateTime) -> DateTime<Utc> {
-    todo!()
+pub fn into_chrono_date_time(offset_date_time: OffsetDateTime) -> DateTime<Utc> {
+    let unix_nanos = offset_date_time.unix_timestamp_nanos();
+    let unix_nanos = match i64::try_from(unix_nanos) {
+        Ok(value) => value,
+        Err(_) => {
+            if unix_nanos.is_negative() {
+                i64::MIN
+            } else {
+                i64::MAX
+            }
+        }
+    };
+    DateTime::from_timestamp_nanos(unix_nanos)
 }
