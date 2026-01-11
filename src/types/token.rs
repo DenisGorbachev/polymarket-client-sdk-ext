@@ -10,9 +10,10 @@ pub struct Token {
     pub token_id: TokenId,
     /// Examples: `"Yes"`, `"No"`
     pub outcome: String,
-    /// In nominal units of the quote currency (e.g. in USD)
+    /// Amount of nominal units of the quote currency (e.g. USDC)
     /// Examples: `0.5845`
     pub price: Amount,
+    /// Examples: `true`, `false`
     pub winner: bool,
 }
 

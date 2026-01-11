@@ -5,8 +5,6 @@ use fmt_derive::Display;
 use serde::{Deserialize, Serialize};
 
 /// IMPORTANT: Do not assume that `self.left.outcome == "Yes"` or `self.right.outcome == "No"`
-/// Some values of this struct may be regarded as invalid (for example: `self.left.winner == true && self.right.winner == true`). However, it's better to handle such values in the strategy code instead of deserialization code, because they require special actions
-/// See also: [`Tokens::winner`]
 #[derive(new, From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
 pub struct Tokens {
     pub left: Token,
@@ -14,7 +12,7 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    /// The docs don't specify whether `self.left.winner` and `self.right.winner` can be `true` at the same time
+    /// `self.left.winner` and `self.right.winner` can be `true` at the same time if `market.is_50_50_outcome == true`
     pub fn winner(&self) -> Option<Option<&Token>> {
         match (self.left.winner, self.right.winner) {
             (true, true) => None,
