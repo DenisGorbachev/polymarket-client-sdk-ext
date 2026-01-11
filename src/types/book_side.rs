@@ -78,3 +78,9 @@ pub enum ConvertVecOrderSummaryToBookSideError {
     #[error("price level '{price}' conflicts with sizes '{existing_size}' and '{incoming_size}'")]
     PriceLevelConflicts { price: Price, existing_size: Amount, incoming_size: Amount },
 }
+
+impl From<BookSide> for Vec<OrderSummary> {
+    fn from(_value: BookSide) -> Self {
+        todo!()
+    }
+}

@@ -39,7 +39,7 @@ chrono = "0.4.42"
 derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
-errgonomic = "0.4.0"
+errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
 indexmap = { version = "2.6.0", features = ["serde"] }
@@ -51,7 +51,6 @@ serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.132" }
 #standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 stub-macro = "0.2.1"
-#errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
