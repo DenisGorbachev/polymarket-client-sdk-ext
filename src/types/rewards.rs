@@ -31,3 +31,19 @@ impl From<RewardsRaw> for Rewards {
         }
     }
 }
+
+impl From<Rewards> for RewardsRaw {
+    fn from(value: Rewards) -> Self {
+        let Rewards {
+            rates,
+            min_size,
+            max_spread,
+        } = value;
+        let rates = rates.into_iter().map(Into::into).collect();
+        RewardsRaw::builder()
+            .rates(rates)
+            .min_size(min_size)
+            .max_spread(max_spread)
+            .build()
+    }
+}

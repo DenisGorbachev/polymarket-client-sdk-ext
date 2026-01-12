@@ -35,6 +35,12 @@ impl NegRisk {
     }
 }
 
+impl From<NegRisk> for (bool, String, String) {
+    fn from(value: NegRisk) -> Self {
+        (true, value.question_id.to_string(), value.event_id.to_string())
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum TryFromNegRiskTripleError {
     #[error("expected neg_risk_market_id to be empty, but it was not: '{neg_risk_market_id}'")]

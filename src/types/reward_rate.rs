@@ -27,3 +27,16 @@ impl From<RewardRateRaw> for RewardRate {
         }
     }
 }
+
+impl From<RewardRate> for RewardRateRaw {
+    fn from(value: RewardRate) -> Self {
+        let RewardRate {
+            asset_address,
+            rewards_daily_rate,
+        } = value;
+        RewardRateRaw::builder()
+            .asset_address(asset_address)
+            .rewards_daily_rate(rewards_daily_rate)
+            .build()
+    }
+}

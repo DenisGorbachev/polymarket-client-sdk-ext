@@ -1,6 +1,7 @@
 use crate::{Token, TokenId};
 use derive_more::{From, Into};
 use derive_new::new;
+use errgonomic::{handle, handle_bool, handle_opt};
 use polymarket_client_sdk::clob::types::response::Token as TokenRaw;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -32,15 +33,81 @@ impl Tokens {
     }
 }
 
-// TODO: Fix error handling
-#[allow(clippy::infallible_try_from)]
 impl TryFrom<Vec<TokenRaw>> for Tokens {
-    type Error = TryFromVecTokenRawForTokens;
+    type Error = ConvertVecTokenRawToTokensError;
 
-    fn try_from(_value: Vec<TokenRaw>) -> Result<Self, Self::Error> {
-        todo!()
+    fn try_from(tokens: Vec<TokenRaw>) -> Result<Self, Self::Error> {
+        use ConvertVecTokenRawToTokensError::*;
+        let tokens_len = tokens.len();
+        handle_bool!(tokens_len != 2, TokensLengthInvalid, tokens_len);
+        let mut tokens_iter = tokens.into_iter();
+        let left = handle_opt!(tokens_iter.next(), TokensLengthInvalid, tokens_len);
+        let right = handle_opt!(tokens_iter.next(), TokensLengthInvalid, tokens_len);
+        let TokenRaw {
+            token_id,
+            outcome,
+            price,
+            winner,
+            ..
+        } = left;
+        let token_id = handle!(
+            token_id.parse::<TokenId>(),
+            TokenIdParseFailed,
+            token_id,
+            token_index: 0usize
+        );
+        let left = Token::new(token_id, outcome, price, winner);
+        let TokenRaw {
+            token_id,
+            outcome,
+            price,
+            winner,
+            ..
+        } = right;
+        let token_id = handle!(
+            token_id.parse::<TokenId>(),
+            TokenIdParseFailed,
+            token_id,
+            token_index: 1usize
+        );
+        let right = Token::new(token_id, outcome, price, winner);
+        Ok(Self {
+            left,
+            right,
+        })
+    }
+}
+
+impl From<Tokens> for Vec<TokenRaw> {
+    fn from(tokens: Tokens) -> Self {
+        let Tokens {
+            left,
+            right,
+        } = tokens;
+        [left, right]
+            .into_iter()
+            .map(|token| {
+                let Token {
+                    token_id,
+                    outcome,
+                    price,
+                    winner,
+                } = token;
+                TokenRaw::builder()
+                    .token_id(token_id.to_string())
+                    .outcome(outcome)
+                    .price(price)
+                    .winner(winner)
+                    .build()
+            })
+            .collect()
     }
 }
 
 #[derive(Error, Debug)]
-pub enum TryFromVecTokenRawForTokens {}
+pub enum ConvertVecTokenRawToTokensError {
+    #[error("expected 2 tokens, got '{tokens_len}'")]
+    TokensLengthInvalid { tokens_len: usize },
+    #[error("failed to parse token_id '{token_id}' at index '{token_index}'")]
+    TokenIdParseFailed { source: alloy::primitives::ruint::ParseError, token_id: String, token_index: usize },
+}
