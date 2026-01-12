@@ -1,9 +1,9 @@
-use crate::{BookParams, Market, MarketRaw, NEXT_CURSOR_START, NextCursor, Payload, REST_BASE_URL, TokenId, get_page_stream};
+use crate::{BookParams, Market, NEXT_CURSOR_START, NextCursor, Payload, REST_BASE_URL, TokenId, get_page_stream};
 use derive_getters::Getters;
 use derive_more::{From, Into};
 use derive_new::new;
 use futures::Stream;
-use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
+use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
 use reqwest::Response;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -23,7 +23,7 @@ impl RestClientOld {
     }
 
     pub async fn get_markets(&self, next_cursor: NextCursor) -> reqwest::Result<Payload<Market>> {
-        let result = Self::get_payload::<MarketRaw>(self.url("/markets"), next_cursor).await;
+        let result = Self::get_payload::<MarketResponse>(self.url("/markets"), next_cursor).await;
         result.map(|payload| {
             let Payload {
                 limit,

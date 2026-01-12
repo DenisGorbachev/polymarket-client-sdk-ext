@@ -26,7 +26,7 @@ async fn test_orderbooks() {
     assert!(!markets.is_empty(), "expecting markets.len() > 0, otherwise we're not really testing the orderbooks");
     let token_ids = markets
         .iter()
-        .flat_map(|market| market.tokens.token_ids_vec())
+        .flat_map(|market| market.tokens.token_ids_array())
         .collect::<Vec<TokenId>>();
     let orderbooks = client.get_orderbook_summaries(&token_ids).await.unwrap();
     assert_eq!(orderbooks.len(), markets.len() * 2);

@@ -1,11 +1,11 @@
-use crate::{Amount, ConditionId, MarketRaw, QuestionId, Rewards, TokenId, Tokens};
+use crate::{Amount, ConditionId, NegRisk, QuestionId, Rewards, TokenId, Tokens, from_chrono_date_time};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
+use polymarket_client_sdk::clob::types::response::MarketResponse;
 use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 
-/// NOTE: [`MarketRaw`] contains more fields (e.g. `neg_risk*`, `accepting_order_timestamp`)
-#[derive(From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
+#[derive(From, Into, Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Market {
     pub question: String,
@@ -20,17 +20,22 @@ pub struct Market {
     pub archived: bool,
     pub enable_order_book: bool,
     pub accepting_orders: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub accepting_order_timestamp: Option<OffsetDateTime>,
     pub minimum_order_size: Amount,
     pub minimum_tick_size: Amount,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub end_date_iso: Option<OffsetDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub game_start_time: Option<OffsetDateTime>,
     pub seconds_delay: Duration,
-    pub fpmm: Option<Address>,
+    pub fpmm: Address,
     pub maker_base_fee: Amount,
     pub taker_base_fee: Amount,
     pub rewards: Rewards,
     pub tokens: Tokens,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub neg_risk: Option<NegRisk>,
     pub is_50_50_outcome: bool,
     pub notifications_enabled: bool,
     pub tags: Vec<String>,
@@ -45,50 +50,65 @@ impl Market {
         self.tokens.token_ids_tuple()
     }
 
-    pub fn token_ids_vec(&self) -> Vec<TokenId> {
-        self.tokens.token_ids_vec()
+    pub fn token_ids_array(&self) -> [TokenId; 2] {
+        self.tokens.token_ids_array()
     }
 }
 
-impl TryFrom<MarketRaw> for Market {
+/// NOTE: Some markets have an invalid `neg_risk_market_id` (e.g. "0x12309") because they were created by Polymarket just for testing
+// TODO: Fix error handling
+impl TryFrom<MarketResponse> for Market {
     type Error = ();
 
-    fn try_from(value: MarketRaw) -> Result<Self, Self::Error> {
-        let MarketRaw {
-            question,
-            description,
-            market_slug,
-            icon,
-            image,
-            condition_id,
-            question_id,
+    fn try_from(market: MarketResponse) -> Result<Self, Self::Error> {
+        let MarketResponse {
+            enable_order_book,
             active,
             closed,
             archived,
-            enable_order_book,
             accepting_orders,
             accepting_order_timestamp,
             minimum_order_size,
             minimum_tick_size,
+            condition_id,
+            question_id,
+            question,
+            description,
+            market_slug,
             end_date_iso,
             game_start_time,
             seconds_delay,
             fpmm,
             maker_base_fee,
             taker_base_fee,
-            neg_risk: _,
-            neg_risk_market_id: _,
-            neg_risk_request_id: _,
-            rewards,
-            tokens,
-            is_50_50_outcome,
             notifications_enabled,
+            neg_risk,
+            neg_risk_market_id,
+            neg_risk_request_id,
+            icon,
+            image,
+            rewards,
+            is_50_50_outcome,
+            tokens,
             tags,
-        } = value;
-        let condition_id = condition_id.ok_or(())?;
-        let question_id = question_id.ok_or(())?;
-        let rewards = rewards.try_into()?;
-        let tags = tags.unwrap_or_default();
+            ..
+        } = market;
+        let condition_id = condition_id.parse::<ConditionId>().unwrap();
+        let question_id = question_id.parse::<QuestionId>().unwrap();
+        let rewards = rewards.into();
+        let neg_risk = NegRisk::try_from_neg_risk_triple(neg_risk, neg_risk_market_id, neg_risk_request_id).unwrap();
+        let accepting_order_timestamp = accepting_order_timestamp
+            .map(from_chrono_date_time)
+            .transpose()
+            .unwrap();
+        let end_date_iso = end_date_iso.map(from_chrono_date_time).transpose().unwrap();
+        let game_start_time = game_start_time
+            .map(from_chrono_date_time)
+            .transpose()
+            .unwrap();
+        let seconds_delay = Duration::seconds(seconds_delay as i64);
+        let fpmm = fpmm.parse::<Address>().unwrap();
+        let tokens = Tokens::try_from(tokens).unwrap();
         Ok(Self {
             question,
             description,
@@ -113,9 +133,32 @@ impl TryFrom<MarketRaw> for Market {
             taker_base_fee,
             rewards,
             tokens,
+            neg_risk,
             is_50_50_outcome,
             notifications_enabled,
             tags,
         })
+    }
+}
+
+impl From<Market> for MarketResponse {
+    fn from(_value: Market) -> Self {
+        todo!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[ignore]
+    #[test]
+    fn must_round_trip() {
+        let input = include_str!("../../fixtures/market.json");
+        let market_response: MarketResponse = serde_json::de::from_str(input).unwrap();
+        let market = Market::try_from(market_response.clone()).unwrap();
+        assert_eq!(market.question, "Will Donald Trump win the 2024 US Presidential Election?");
+        let market_response_round_trip = MarketResponse::from(market);
+        assert_eq!(market_response_round_trip, market_response);
     }
 }

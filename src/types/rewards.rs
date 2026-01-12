@@ -1,32 +1,33 @@
-use crate::{Amount, RewardsRate, RewardsRaw};
+use crate::{Amount, RewardRate};
 use derive_more::{From, Into};
 use derive_new::new;
+use polymarket_client_sdk::clob::types::response::Rewards as RewardsRaw;
 use serde::{Deserialize, Serialize};
 
+/// Using our own `Rewards` to gain `Eq` and `Hash`
 #[derive(new, From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Rewards {
-    pub rates: Vec<RewardsRate>,
+    pub rates: Vec<RewardRate>,
     pub min_size: Amount,
     pub max_spread: Amount,
 }
 
 impl Rewards {}
 
-impl TryFrom<RewardsRaw> for Rewards {
-    type Error = ();
-
-    fn try_from(value: RewardsRaw) -> Result<Self, Self::Error> {
+impl From<RewardsRaw> for Rewards {
+    fn from(value: RewardsRaw) -> Self {
         let RewardsRaw {
             rates,
             min_size,
             max_spread,
+            ..
         } = value;
-        let rates = rates.unwrap_or_default();
-        Ok(Self {
+        let rates = rates.into_iter().map(From::from).collect();
+        Self {
             rates,
             min_size,
             max_spread,
-        })
+        }
     }
 }

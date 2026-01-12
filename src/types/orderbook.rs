@@ -102,9 +102,9 @@ impl From<Orderbook> for OrderBookSummaryResponse {
             hash,
             updated_at,
         } = orderbook;
-        let market = condition_id.to_string(); // stub!(String, "convert from condition_id");
-        let asset_id = token_id.to_string(); // stub!(String, "convert from token_id");
-        let timestamp = into_chrono_date_time(updated_at);
+        let market = condition_id.to_string();
+        let asset_id = token_id.to_string();
+        let timestamp = into_chrono_date_time(updated_at).expect("timestamp should convert an error because it has been converted timestamp in the TryFrom impl");
         let tick_size = TickSize::try_from(min_tick_size).expect("min_tick_size should convert to tick_size without an error because it has been converted from tick_size in the TryFrom impl");
         OrderBookSummaryResponse::builder()
             .market(market)
@@ -125,7 +125,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn must_round_trip_serde() {
+    fn must_round_trip() {
         let input = include_str!("../../fixtures/orderbook.json").trim();
         let orderbook_summary_response = serde_json::de::from_str::<OrderBookSummaryResponse>(input).unwrap();
         let orderbook = Orderbook::try_from(orderbook_summary_response.clone()).unwrap();

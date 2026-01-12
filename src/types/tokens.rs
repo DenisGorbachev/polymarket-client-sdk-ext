@@ -1,8 +1,9 @@
 use crate::{Token, TokenId};
-use derive_more::{Error, From, Into};
+use derive_more::{From, Into};
 use derive_new::new;
-use fmt_derive::Display;
+use polymarket_client_sdk::clob::types::response::Token as TokenRaw;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// IMPORTANT: Do not assume that `self.left.outcome == "Yes"` or `self.right.outcome == "No"`
 #[derive(new, From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
@@ -26,10 +27,20 @@ impl Tokens {
         (self.left.token_id, self.right.token_id)
     }
 
-    pub fn token_ids_vec(&self) -> Vec<TokenId> {
-        vec![self.left.token_id, self.right.token_id]
+    pub fn token_ids_array(&self) -> [TokenId; 2] {
+        [self.left.token_id, self.right.token_id]
     }
 }
 
-#[derive(Error, Display, From, Eq, PartialEq, Hash, Clone, Copy, Debug)]
-pub enum TokensValidationError {}
+// TODO: Fix error handling
+#[allow(clippy::infallible_try_from)]
+impl TryFrom<Vec<TokenRaw>> for Tokens {
+    type Error = TryFromVecTokenRawForTokens;
+
+    fn try_from(_value: Vec<TokenRaw>) -> Result<Self, Self::Error> {
+        todo!()
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum TryFromVecTokenRawForTokens {}

@@ -22,9 +22,9 @@ mod rewards;
 
 pub use rewards::*;
 
-mod rewards_rate;
+mod reward_rate;
 
-pub use rewards_rate::*;
+pub use reward_rate::*;
 
 mod payload;
 
@@ -70,12 +70,6 @@ mod bid_ask_cross_error;
 
 pub use bid_ask_cross_error::*;
 
-mod market_raw;
-mod rewards_raw;
-
-pub use market_raw::*;
-pub use rewards_raw::*;
-
 mod side;
 
 pub use side::*;
@@ -95,7 +89,11 @@ pub use fee::*;
 mod total;
 
 pub use total::*;
+
 mod neg_risk;
+
 pub use neg_risk::*;
+
 mod event_id;
+
 pub use event_id::*;

@@ -1,2 +1,3 @@
-// TODO: Determine a more specific type
-pub type EventId = String;
+use alloy::primitives::B256;
+
+pub type EventId = B256;

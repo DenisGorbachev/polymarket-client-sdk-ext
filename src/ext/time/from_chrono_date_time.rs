@@ -1,4 +1,5 @@
 use chrono::{DateTime, TimeZone, Utc};
+use std::num::TryFromIntError;
 use time::OffsetDateTime;
 
 /// The offset of the returned `OffsetDateTime` is always `UTC`
@@ -10,17 +11,7 @@ pub fn from_chrono_date_time<Tz: TimeZone>(datetime: DateTime<Tz>) -> Result<Off
     OffsetDateTime::from_unix_timestamp_nanos(unix_nanos)
 }
 
-pub fn into_chrono_date_time(offset_date_time: OffsetDateTime) -> DateTime<Utc> {
+pub fn into_chrono_date_time(offset_date_time: OffsetDateTime) -> Result<DateTime<Utc>, TryFromIntError> {
     let unix_nanos = offset_date_time.unix_timestamp_nanos();
-    let unix_nanos = match i64::try_from(unix_nanos) {
-        Ok(value) => value,
-        Err(_) => {
-            if unix_nanos.is_negative() {
-                i64::MIN
-            } else {
-                i64::MAX
-            }
-        }
-    };
-    DateTime::from_timestamp_nanos(unix_nanos)
+    i64::try_from(unix_nanos).map(DateTime::from_timestamp_nanos)
 }
