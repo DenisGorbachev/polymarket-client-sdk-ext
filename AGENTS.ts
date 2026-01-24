@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --no-lock
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-run --no-lock
 
 import {parseArgs} from "jsr:@std/cli@1.0.13"
 import {stringify} from "jsr:@libs/xml@7.0.3"
@@ -6,7 +6,7 @@ import remarkHeadingShift from "npm:remark-heading-shift@1.1.2"
 import remarkParse from "npm:remark-parse@11.0.0"
 import remarkStringify from "npm:remark-stringify@11.0.0"
 import {unified} from "npm:unified@11.0.5"
-import {extname} from "jsr:@std/path@1.1.4"
+import {dirname, extname, join} from "jsr:@std/path@1.1.4"
 
 const args = parseArgs(Deno.args, {
   string: ["output"],
@@ -90,10 +90,88 @@ const renderXmlFile = (path: string, contents: string) =>
 
 const includeFile = async (path: string) => {
   const contents = await Deno.readTextFile(resolvePath(path))
+  return await renderFileContents(path, contents)
+}
+
+const renderFileContents = async (path: string, contents: string, pathToRender: string = path) => {
   if (isMarkdownPath(path)) {
     return await shiftHeadings(contents)
   }
-  return renderCodeFile(path, contents)
+  return renderCodeFile(pathToRender, contents)
+}
+
+type CargoMetadata = {
+  packages: CargoPackage[]
+  resolve: CargoResolve | null
+}
+
+type CargoResolve = {
+  root: string | null
+  nodes: CargoNode[]
+}
+
+type CargoNode = {
+  id: string
+  deps: CargoDependency[]
+}
+
+type CargoDependency = {
+  name: string
+  pkg: string
+}
+
+type CargoPackage = {
+  id: string
+  name: string
+  version: string
+  manifest_path: string
+}
+
+const loadCargoMetadata = (() => {
+  let cached: Promise<CargoMetadata> | null = null
+  const decoder = new TextDecoder()
+  return () => {
+    if (!cached) {
+      cached = (async () => {
+        const command = new Deno.Command("cargo", {
+          args: ["metadata", "--format-version=1"],
+          stdout: "piped",
+          stderr: "piped",
+        })
+        const output = await command.output()
+        if (!output.success) {
+          const stderr = decoder.decode(output.stderr).trim()
+          throw new Error(`cargo metadata failed${stderr ? `: ${stderr}` : ""}`)
+        }
+        return JSON.parse(decoder.decode(output.stdout)) as CargoMetadata
+      })()
+    }
+    return cached
+  }
+})()
+
+const includeCargoDependencyFile = async (dependencyName: string, path: string) => {
+  const metadata = await loadCargoMetadata()
+  const resolve = metadata.resolve
+  if (!resolve?.root) {
+    throw new Error("cargo metadata did not include a resolve root")
+  }
+  const rootNode = resolve.nodes.find((node) => node.id === resolve.root)
+  if (!rootNode) {
+    throw new Error(`cargo metadata did not include the root node: '${resolve.root}'`)
+  }
+  const dependency = rootNode.deps.find((dep) => dep.name === dependencyName)
+  if (!dependency) {
+    throw new Error(`cargo dependency not found: '${dependencyName}'`)
+  }
+  const cargoPackage = metadata.packages.find((pkg) => pkg.id === dependency.pkg)
+  if (!cargoPackage) {
+    throw new Error(`cargo package not found for dependency: '${dependencyName}'`)
+  }
+  const crateRoot = dirname(cargoPackage.manifest_path)
+  const fullPath = join(crateRoot, path)
+  const contents = await Deno.readTextFile(fullPath)
+  return await renderFileContents(path, contents, `${dependencyName}/${path}`)
 }
 
 const includeFileIfExists = async (path: string) => {
@@ -111,7 +189,7 @@ const parts = (await Promise.all([
   includeFileIfExists(".agents/project.md"),
   includeFileIfExists(".agents/knowledge.md"),
   includeFileIfExists(".agents/gotchas.md"),
-  includeFile(".agents/error-handling.md"),
+  includeCargoDependencyFile("errgonomic", "DOCS.md"),
   Promise.resolve("## Project files"),
   includeFile("Cargo.toml"),
   includeFileIfExists("src/main.rs"),

@@ -7,11 +7,15 @@ You are a senior Rust software architect. You write high-quality, production-rea
 * Please write a high quality, general purpose solution. Implement a solution that works correctly for all valid inputs, not just the test cases. Do not hard-code values or create solutions that only work for specific test inputs. Instead, implement the actual logic that solves the problem generally.
 * Focus on understanding the problem requirements and implementing the correct algorithm. Tests are there to verify correctness, not to define the solution. Provide a principled implementation that follows best practices and software design principles.
 * If the task is unreasonable or infeasible, or if any of the tests are incorrect, please tell me. The solution should be robust, maintainable, and extendable.
+* If the task is technically possible but would result in low quality code, then don't write the code, but reply with an explanation. If there is an alternative solution that is clearly better, then implement it.
+  * Examples
+    * A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
+    * A task to write a trait impl that only returns an error - in this case you should not write the trait impl but reply with "trait X can't be implemented for Foo because ..."
 
 ## Workflow
 
-* Before starting to work on the task: run `mise run agent:docs:list` and read the docs that are relevant to current task (if present)
-* After completing the task: always run `mise run agent:on:stop` (this command runs the lints and tests)
+* Before starting the task: run `mise run agent:docs:list` and read the docs that are relevant to current task (if present)
+* After finishing the task: run `mise run agent:on:stop` (this command runs the lints and tests)
 * Don't edit the files in the following top-level dirs: `specs`, `.agents`
 * Don't write the tests unless I ask you explicitly
 
@@ -38,23 +42,39 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 ## Types
 
+* Always use the most specific types (enforce semantic difference through syntactic difference):
+  * Use types from existing crates
+    * Use types from `url` crate instead of `String` for URL-related values
+    * Use types from `time` crate instead of `String` or `u64` for datetime-related values
+    * Use types from `phonenumber` crate instead of `String` for phone-related values
+    * Use types from `email_address` crate instead of `String` for email-related values
+    * Use types from `core::num` module that are prefixed with `NonZero` for values that must be non-zero
+  * Search for other existing crates if you need specific types
+  * If you can't find existing crates, define newtypes using macros from `subtype` crate
 * Every `struct`, `enum`, `union` must be in a separate file (except for error types that implement `Error`)
   * Error types that implement `Error` must be in the same files as the functions that return them
 * Prefer attaching the types as child modules to src/types.rs
-* Always use the most specific types
-  * Use types from existing crates
-    * Use types from `url` crate instead of `String` for URL-related values
-    * Use types from `time` crate instead of `String` for datetime-related values
-    * Use types from `phonenumber` crate instead of `String` for phone-related values
-    * Use types from `email_address` crate instead of `String` for email-related values
-  * Search for other existing crates if you need specific types
-  * If you can't find existing crates, define newtypes using macros from `subtype` crate
-* Use `NonZero`-prefixed types from `core::num` for values that must be non-zero
 
 ## Data flow
 
 * Don't hardcode the values (accept arguments instead)
-* Use `let` instead of `const`
+* Choose carefully between accepting a parameter VS defining a constant:
+  * Definitions:
+    * Parameters are execution details (the user may want to change them)
+    * Constants are implementation details (the user would never want to change them)
+  * Examples:
+    * Parameters:
+      * Cache TTL
+      * Config path
+    * Constants:
+      * Table name
+      * Keyspace name
+  * Recommendations:
+    * When in doubt, prefer accepting a parameter instead of defining a constant
+
+## Conversions
+
+* Implement `From` or `TryFrom` for conversions between types (instead of converting in-place)
 
 ## Struct derives
 
@@ -86,6 +106,10 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 * Use setters that take `&mut self` instead of setters that take `self` and return `Self` (because passing a `foo: &mut Foo` is better than passing `foo: Foo` and returning `Foo` through the call stack)
 
+## Constructors
+
+* If the type constructor doesn't have side effects, then use the name `new`, else use the name `create`
+
 ## Newtypes
 
 * The macro calls that begin with `subtype` (for example, `subtype!` and `subtype_string!`) expand to newtypes
@@ -96,6 +120,9 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 ## Code style
 
+* Implement proper error handling instead of `unwrap` or `expect` in production code
+  * Use `unwrap` or `expect` in tests
+  * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
 * The file names must match the names of the primary item in this file (for example: a file with `struct User` must be in `user.rs`)
 * Don't use `mod.rs`, use module files with submodules in the folder with the same name (for example: `user.rs` with submodules in `user` folder)
 * Put the trait implementations in the same file as the target struct (for example: put `impl TryFrom<...> for User` in the same file as `struct User`, which is `user.rs`)

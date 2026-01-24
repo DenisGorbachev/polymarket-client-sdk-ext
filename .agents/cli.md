@@ -116,3 +116,12 @@ Subcommand example:
 
 - Name: `DbDownloadSubcommand`
 - File: `src/cli/db_command/db_download_command.rs` (same file as its parent `DbDownloadCommand`)
+
+### Proxy command-like struct
+
+A [command-like struct](#command-like-struct) that has a `subcommand` field and calls `run` on each subcommand.
+
+Proxy command example:
+
+- Name: `DbCommand`
+- File: `src/command/db_command.rs` (attached to `src/command.rs`)
