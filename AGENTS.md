@@ -1515,7 +1515,7 @@ errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic", features = 
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
 indexmap = { version = "2.6.0", features = ["serde"] }
-polymarket-client-sdk = { version = "0.3.3", features = ["gamma", "data", "tracing"] }
+polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"] }
 reqwest = { version = "0.13.1", features = ["json"] }
 rust_decimal = { version = "1.36.0", features = ["serde"] }
 rustc-hash = { version = "2.0.0" }

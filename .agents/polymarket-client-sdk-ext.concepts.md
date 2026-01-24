@@ -87,3 +87,7 @@ Notes:
 ## Extension type
 
 A type that carries the same data as the type from [foundational crate](#foundational-crate).
+
+## Polymarket CLOB read method
+
+A method that reads the data from a Polymarket CLOB API.

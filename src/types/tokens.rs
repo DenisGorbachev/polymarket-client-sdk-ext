@@ -1,7 +1,7 @@
 use crate::{Token, TokenId};
 use derive_more::{From, Into};
 use derive_new::new;
-use errgonomic::{handle, handle_bool, handle_opt};
+use errgonomic::{handle_bool, handle_opt};
 use polymarket_client_sdk::clob::types::response::Token as TokenRaw;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -50,12 +50,6 @@ impl TryFrom<Vec<TokenRaw>> for Tokens {
             winner,
             ..
         } = left;
-        let token_id = handle!(
-            token_id.parse::<TokenId>(),
-            TokenIdParseFailed,
-            token_id,
-            token_index: 0usize
-        );
         let left = Token::new(token_id, outcome, price, winner);
         let TokenRaw {
             token_id,
@@ -64,12 +58,6 @@ impl TryFrom<Vec<TokenRaw>> for Tokens {
             winner,
             ..
         } = right;
-        let token_id = handle!(
-            token_id.parse::<TokenId>(),
-            TokenIdParseFailed,
-            token_id,
-            token_index: 1usize
-        );
         let right = Token::new(token_id, outcome, price, winner);
         Ok(Self {
             left,
@@ -94,7 +82,7 @@ impl From<Tokens> for Vec<TokenRaw> {
                     winner,
                 } = token;
                 TokenRaw::builder()
-                    .token_id(token_id.to_string())
+                    .token_id(token_id)
                     .outcome(outcome)
                     .price(price)
                     .winner(winner)
@@ -108,6 +96,4 @@ impl From<Tokens> for Vec<TokenRaw> {
 pub enum ConvertVecTokenRawToTokensError {
     #[error("expected 2 tokens, got '{tokens_len}'")]
     TokensLengthInvalid { tokens_len: usize },
-    #[error("failed to parse token_id '{token_id}' at index '{token_index}'")]
-    TokenIdParseFailed { source: alloy::primitives::ruint::ParseError, token_id: String, token_index: usize },
 }

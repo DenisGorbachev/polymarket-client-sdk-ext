@@ -55,8 +55,8 @@ impl TryFrom<OrderBookSummaryResponse> for Orderbook {
             tick_size,
             ..
         } = response;
-        let condition_id = handle!(market.parse::<ConditionId>(), MarketParseFailed, market);
-        let token_id = handle!(asset_id.parse::<TokenId>(), AssetIdParseFailed, asset_id);
+        let condition_id = market;
+        let token_id = asset_id;
         let updated_at = handle!(from_chrono_date_time(timestamp), FromChronoDateTimeFailed, timestamp);
         let bids = handle!(BookSide::try_from(bids), BidsTryFromFailed);
         let asks = handle!(BookSide::try_from(asks), AsksTryFromFailed);
@@ -77,10 +77,6 @@ impl TryFrom<OrderBookSummaryResponse> for Orderbook {
 
 #[derive(Error, Debug)]
 pub enum ConvertOrderBookSummaryResponseToOrderbookError {
-    #[error("failed to parse condition id from market '{market}'")]
-    MarketParseFailed { source: alloy::hex::FromHexError, market: String },
-    #[error("failed to parse token id from asset id '{asset_id}'")]
-    AssetIdParseFailed { source: alloy::primitives::ruint::ParseError, asset_id: String },
     #[error("failed to convert timestamp '{timestamp}'")]
     FromChronoDateTimeFailed { source: time::error::ComponentRange, timestamp: chrono::DateTime<chrono::Utc> },
     #[error("failed to convert bids")]
@@ -102,8 +98,8 @@ impl From<Orderbook> for OrderBookSummaryResponse {
             hash,
             updated_at,
         } = orderbook;
-        let market = condition_id.to_string();
-        let asset_id = token_id.to_string();
+        let market = condition_id;
+        let asset_id = token_id;
         let timestamp = into_chrono_date_time(updated_at).expect("timestamp should convert an error because it has been converted timestamp in the TryFrom impl");
         let tick_size = TickSize::try_from(min_tick_size).expect("min_tick_size should convert to tick_size without an error because it has been converted from tick_size in the TryFrom impl");
         OrderBookSummaryResponse::builder()

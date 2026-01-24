@@ -15,8 +15,10 @@ pub struct Market {
     pub market_slug: String,
     pub icon: String,
     pub image: String,
-    pub condition_id: ConditionId,
-    pub question_id: QuestionId,
+    // TODO: Find out the circumstances under which this field can be None
+    pub condition_id: Option<ConditionId>,
+    // TODO: Find out the circumstances under which this field can be None
+    pub question_id: Option<QuestionId>,
     pub active: bool,
     pub closed: bool,
     pub archived: bool,
@@ -31,8 +33,7 @@ pub struct Market {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_start_time: Option<OffsetDateTime>,
     pub seconds_delay: Duration,
-    /// This field can be equal to [`Address::ZERO`]
-    pub fpmm: Address,
+    pub fpmm: Option<Address>,
     pub maker_base_fee: Amount,
     pub taker_base_fee: Amount,
     pub rewards: Rewards,
@@ -96,8 +97,6 @@ impl TryFrom<MarketResponse> for Market {
             tags,
             ..
         } = market;
-        let condition_id = handle!(condition_id.parse::<ConditionId>(), ConditionIdParseFailed, condition_id);
-        let question_id = handle!(question_id.parse::<QuestionId>(), QuestionIdParseFailed, question_id);
         let rewards = rewards.into();
         let accepting_order_timestamp = handle!(
             accepting_order_timestamp
@@ -109,11 +108,6 @@ impl TryFrom<MarketResponse> for Market {
         let game_start_time = handle!(game_start_time.map(from_chrono_date_time).transpose(), GameStartTimeFromChronoDateTimeFailed);
         let seconds_delay = handle!(i64::try_from(seconds_delay), SecondsDelayTryFromFailed, seconds_delay);
         let seconds_delay = Duration::seconds(seconds_delay);
-        let fpmm = if fpmm.is_empty() {
-            Address::ZERO
-        } else {
-            handle!(fpmm.parse::<Address>(), FpmmParseFailed, fpmm)
-        };
         let neg_risk = handle!(NegRisk::try_from_neg_risk_triple(neg_risk, neg_risk_market_id, neg_risk_request_id), NegRiskTryFromTripleFailed);
         let tokens = handle!(Tokens::try_from(tokens), TokensTryFromFailed);
         Ok(Self {
@@ -150,10 +144,6 @@ impl TryFrom<MarketResponse> for Market {
 
 #[derive(Error, Debug)]
 pub enum ConvertMarketResponseToMarketError {
-    #[error("failed to parse condition_id '{condition_id}'")]
-    ConditionIdParseFailed { source: alloy::hex::FromHexError, condition_id: String },
-    #[error("failed to parse question_id '{question_id}'")]
-    QuestionIdParseFailed { source: alloy::hex::FromHexError, question_id: String },
     #[error("failed to convert accepting_order_timestamp")]
     AcceptingOrderTimestampFromChronoDateTimeFailed { source: time::error::ComponentRange },
     #[error("failed to convert end_date_iso")]
@@ -162,8 +152,6 @@ pub enum ConvertMarketResponseToMarketError {
     GameStartTimeFromChronoDateTimeFailed { source: time::error::ComponentRange },
     #[error("failed to convert seconds_delay '{seconds_delay}'")]
     SecondsDelayTryFromFailed { source: core::num::TryFromIntError, seconds_delay: u64 },
-    #[error("failed to parse fpmm '{fpmm}'")]
-    FpmmParseFailed { source: alloy::hex::FromHexError, fpmm: String },
     #[error("failed to convert neg_risk fields")]
     NegRiskTryFromTripleFailed { source: TryFromNegRiskTripleError },
     #[error("failed to convert tokens")]
@@ -201,17 +189,14 @@ impl From<Market> for MarketResponse {
             notifications_enabled,
             tags,
         } = market;
-        let condition_id = condition_id.to_string();
-        let question_id = question_id.to_string();
         let accepting_order_timestamp = accepting_order_timestamp.map(|timestamp| into_chrono_date_time(timestamp).expect("accepting_order_timestamp should convert because it originated from TryFrom"));
         let end_date_iso = end_date_iso.map(|timestamp| into_chrono_date_time(timestamp).expect("end_date_iso should convert because it originated from TryFrom"));
         let game_start_time = game_start_time.map(|timestamp| into_chrono_date_time(timestamp).expect("game_start_time should convert because it originated from TryFrom"));
         let seconds_delay = seconds_delay.whole_seconds();
         let seconds_delay = u64::try_from(seconds_delay).map_or(0, |value| value);
-        let fpmm = if fpmm == Address::ZERO { String::new() } else { fpmm.to_string() };
         let (neg_risk, neg_risk_market_id, neg_risk_request_id) = neg_risk
             .map(Into::into)
-            .unwrap_or_else(|| (false, String::new(), String::new()));
+            .unwrap_or_else(|| (false, None, None));
         let rewards: RewardsRaw = rewards.into();
         let tokens: Vec<TokenRaw> = tokens.into();
         MarketResponse::builder()
@@ -223,21 +208,21 @@ impl From<Market> for MarketResponse {
             .maybe_accepting_order_timestamp(accepting_order_timestamp)
             .minimum_order_size(minimum_order_size)
             .minimum_tick_size(minimum_tick_size)
-            .condition_id(condition_id)
-            .question_id(question_id)
+            .maybe_condition_id(condition_id)
+            .maybe_question_id(question_id)
             .question(question)
             .description(description)
             .market_slug(market_slug)
             .maybe_end_date_iso(end_date_iso)
             .maybe_game_start_time(game_start_time)
             .seconds_delay(seconds_delay)
-            .fpmm(fpmm)
+            .maybe_fpmm(fpmm)
             .maker_base_fee(maker_base_fee)
             .taker_base_fee(taker_base_fee)
             .notifications_enabled(notifications_enabled)
             .neg_risk(neg_risk)
-            .neg_risk_market_id(neg_risk_market_id)
-            .neg_risk_request_id(neg_risk_request_id)
+            .maybe_neg_risk_market_id(neg_risk_market_id)
+            .maybe_neg_risk_request_id(neg_risk_request_id)
             .icon(icon)
             .image(image)
             .rewards(rewards)
