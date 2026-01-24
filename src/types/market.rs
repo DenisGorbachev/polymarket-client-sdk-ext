@@ -258,7 +258,7 @@ mod tests {
     }
 
     fn get_market_response_stream() -> impl Stream<Item = MarketResponse> {
-        // TODO
+        // TODO: Implement it as external data stream (see the concepts in documentation)
         stream::empty()
     }
 }
