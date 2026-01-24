@@ -1657,7 +1657,7 @@ announcement = ""
 [dependencies]
 alloy = { version = "1.4.0", default-features = false, features = ["std", "serde"] }
 async-stream = { version = "0.3.6" }
-chrono = "0.4.42"
+chrono = "0.4.43"
 derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
@@ -1665,7 +1665,7 @@ errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic", features = 
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
 indexmap = { version = "2.6.0", features = ["serde"] }
-polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"] }
+polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"], git = "https://github.com/DenisGorbachev/rs-clob-client" }
 reqwest = { version = "0.13.1", features = ["json"] }
 rust_decimal = { version = "1.36.0", features = ["serde"] }
 rustc-hash = { version = "2.0.0" }
@@ -1680,6 +1680,7 @@ url = { version = "2.5.2", features = ["serde"] }
 url-macro = { version = "0.2.3" }
 
 [dev-dependencies]
+async-jsonl = "0.4.0"
 pretty_assertions = "1.4.1"
 serde_json = "1.0.129"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
@@ -1716,4 +1717,9 @@ pub use constants::*;
 
 #[cfg(test)]
 mod integration_tests;
+
+#[cfg(test)]
+mod test_helpers;
+#[cfg(test)]
+pub use test_helpers::*;
 ```

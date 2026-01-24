@@ -15,9 +15,9 @@ pub struct Market {
     pub market_slug: String,
     pub icon: String,
     pub image: String,
-    // TODO: Find out the circumstances under which this field can be None
+    /// Optional condition id provided by the API.
     pub condition_id: Option<ConditionId>,
-    // TODO: Find out the circumstances under which this field can be None
+    /// Optional question id provided by the API.
     pub question_id: Option<QuestionId>,
     pub active: bool,
     pub closed: bool,
@@ -236,9 +236,16 @@ impl From<Market> for MarketResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::assert_round_trip_own;
-    use futures::{Stream, stream};
+    use crate::{NEXT_CURSOR_STOP, REFRESH_TEST_CACHE_ENV, assert_round_trip_own, parse_boolish_env_var, progress_report_line, to_tmp_path};
+    use async_jsonl::{Jsonl, JsonlDeserialize};
+    use async_stream::stream;
+    use futures::{Stream, StreamExt};
+    use polymarket_client_sdk::clob::Client;
+    use std::io;
+    use std::path::{Path, PathBuf};
     use std::process::ExitCode;
+    use tokio::fs::{self, File};
+    use tokio::io::AsyncWriteExt;
 
     #[test]
     fn must_round_trip_fixture() {
@@ -250,7 +257,6 @@ mod tests {
         assert_eq!(market_response_round_trip, market_response);
     }
 
-    #[ignore]
     #[tokio::test]
     async fn must_round_trip_data() -> ExitCode {
         let inputs = get_market_response_stream();
@@ -258,7 +264,219 @@ mod tests {
     }
 
     fn get_market_response_stream() -> impl Stream<Item = MarketResponse> {
-        // TODO: Implement it as external data stream (see the concepts in documentation)
-        stream::empty()
+        let cache_path = market_response_cache_path();
+        let stream = stream! {
+            use GetMarketResponseStreamError::*;
+            let refresh_requested = match parse_boolish_env_var(REFRESH_TEST_CACHE_ENV) {
+                Ok(Some(value)) => value,
+                Ok(None) => false,
+                Err(source) => {
+                    yield Err(ParseRefreshEnvVarFailed {
+                        source,
+                        var: REFRESH_TEST_CACHE_ENV.to_string(),
+                    });
+                    return;
+                }
+            };
+            if refresh_requested {
+                let stream = refresh_market_response_cache(&cache_path);
+                futures::pin_mut!(stream);
+                while let Some(market) = stream.next().await {
+                    yield Ok(market);
+                }
+            } else if cache_path.exists() {
+                let reader = match Jsonl::from_path(&cache_path).await {
+                    Ok(reader) => reader,
+                    Err(_source) => {
+                        yield Err(OpenCacheFailed {
+                            cache_path: cache_path.clone(),
+                        });
+                        return;
+                    }
+                };
+                let stream = reader.deserialize::<MarketResponse>();
+                futures::pin_mut!(stream);
+                while let Some(result) = stream.next().await {
+                    match result {
+                        Ok(market) => yield Ok(market),
+                        Err(_source) => {
+                            yield Err(ParseCacheFailed {
+                                cache_path: cache_path.clone(),
+                            });
+                            return;
+                        }
+                    }
+                }
+            } else {
+                yield Err(CacheMissing {
+                    cache_path: cache_path.clone(),
+                });
+            }
+        };
+        stream.map(|result| match result {
+            Ok(market) => market,
+            Err(error) => panic!("{error}"),
+        })
+    }
+
+    const DEFAULT_MARKET_RESPONSE_CACHE_PATH: &str = "cache.local/market_response.all.jsonl";
+
+    fn market_response_cache_path() -> PathBuf {
+        PathBuf::from(DEFAULT_MARKET_RESPONSE_CACHE_PATH)
+    }
+
+    fn refresh_market_response_cache(cache_path: &Path) -> impl Stream<Item = MarketResponse> {
+        let cache_path = cache_path.to_path_buf();
+        let stream = stream! {
+            use RefreshMarketResponseCacheError::*;
+            let cache_dir = cache_path.parent().unwrap_or_else(|| Path::new(".")).to_path_buf();
+            if let Err(source) = fs::create_dir_all(&cache_dir).await {
+                yield Err(CreateCacheDirFailed {
+                    source,
+                    cache_dir,
+                });
+                return;
+            }
+            let temp_path = to_tmp_path(&cache_path);
+            match fs::remove_file(&temp_path).await {
+                Ok(()) => (),
+                Err(source) if source.kind() == io::ErrorKind::NotFound => (),
+                Err(source) => {
+                    yield Err(RemoveTempFileFailed {
+                        source,
+                        temp_path,
+                    });
+                    return;
+                }
+            }
+            let mut file = match File::create(&temp_path).await {
+                Ok(file) => file,
+                Err(source) => {
+                    yield Err(CreateTempFileFailed {
+                        source,
+                        temp_path,
+                    });
+                    return;
+                }
+            };
+            let client = Client::default();
+            let mut downloaded: u64 = 0;
+            let mut next_cursor: Option<String> = None;
+
+            loop {
+                let page = match client.markets(next_cursor.clone()).await {
+                    Ok(page) => page,
+                    Err(source) => {
+                        yield Err(FetchMarketsFailed {
+                            source,
+                            next_cursor,
+                        });
+                        return;
+                    }
+                };
+                let page_next_cursor = page.next_cursor.clone();
+                for market in page.data {
+                    let line = match serde_json::to_string(&market) {
+                        Ok(line) => line,
+                        Err(source) => {
+                            yield Err(SerializeMarketFailed {
+                                source,
+                                market: Box::new(market),
+                            });
+                            return;
+                        }
+                    };
+                    if let Err(source) = file.write_all(line.as_bytes()).await {
+                        yield Err(WriteTempFileFailed {
+                            source,
+                            temp_path,
+                        });
+                        return;
+                    }
+                    if let Err(source) = file.write_all(b"\n").await {
+                        yield Err(WriteTempFileFailed {
+                            source,
+                            temp_path,
+                        });
+                        return;
+                    }
+                    downloaded = downloaded.saturating_add(1);
+                    if downloaded.is_multiple_of(100) {
+                        eprintln!("{}", progress_report_line("Downloading objects", downloaded, None));
+                    }
+                    yield Ok(market);
+                }
+                if page_next_cursor == NEXT_CURSOR_STOP {
+                    break;
+                }
+                next_cursor = Some(page_next_cursor);
+            }
+            if !downloaded.is_multiple_of(100) {
+                eprintln!("{}", progress_report_line("Downloading objects", downloaded, None));
+            }
+            if let Err(source) = file.flush().await {
+                yield Err(FlushTempFileFailed {
+                    source,
+                    temp_path,
+                });
+                return;
+            }
+            if let Err(source) = file.sync_all().await {
+                yield Err(SyncTempFileFailed {
+                    source,
+                    temp_path,
+                });
+                return;
+            }
+            drop(file);
+            if let Err(source) = fs::rename(&temp_path, &cache_path).await {
+                yield Err(PersistTempFileFailed {
+                    source,
+                    temp_path,
+                    cache_path,
+                });
+                return;
+            }
+        };
+        stream.map(|result| match result {
+            Ok(market) => market,
+            Err(error) => panic!("{error}"),
+        })
+    }
+
+    #[allow(clippy::enum_variant_names)]
+    #[derive(Error, Debug)]
+    pub enum RefreshMarketResponseCacheError {
+        #[error("failed to create cache directory '{cache_dir}'")]
+        CreateCacheDirFailed { source: io::Error, cache_dir: PathBuf },
+        #[error("failed to remove temp cache file '{temp_path}'")]
+        RemoveTempFileFailed { source: io::Error, temp_path: PathBuf },
+        #[error("failed to create temp cache file '{temp_path}'")]
+        CreateTempFileFailed { source: io::Error, temp_path: PathBuf },
+        #[error("failed to fetch markets page")]
+        FetchMarketsFailed { source: polymarket_client_sdk::error::Error, next_cursor: Option<String> },
+        #[error("failed to serialize market response")]
+        SerializeMarketFailed { source: serde_json::Error, market: Box<MarketResponse> },
+        #[error("failed to write temp cache file '{temp_path}'")]
+        WriteTempFileFailed { source: io::Error, temp_path: PathBuf },
+        #[error("failed to flush temp cache file '{temp_path}'")]
+        FlushTempFileFailed { source: io::Error, temp_path: PathBuf },
+        #[error("failed to sync temp cache file '{temp_path}'")]
+        SyncTempFileFailed { source: io::Error, temp_path: PathBuf },
+        #[error("failed to persist temp cache file '{temp_path}' to '{cache_path}'")]
+        PersistTempFileFailed { source: io::Error, temp_path: PathBuf, cache_path: PathBuf },
+    }
+
+    #[allow(clippy::enum_variant_names)]
+    #[derive(Error, Debug)]
+    pub enum GetMarketResponseStreamError {
+        #[error("failed to parse env var '{var}'")]
+        ParseRefreshEnvVarFailed { source: crate::ParseBoolishEnvVarError, var: String },
+        #[error("market response cache not found at '{cache_path}'")]
+        CacheMissing { cache_path: PathBuf },
+        #[error("failed to open market response cache at '{cache_path}'")]
+        OpenCacheFailed { cache_path: PathBuf },
+        #[error("failed to parse market response cache at '{cache_path}'")]
+        ParseCacheFailed { cache_path: PathBuf },
     }
 }
