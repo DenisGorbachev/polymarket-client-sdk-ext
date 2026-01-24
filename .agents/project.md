@@ -1,4 +1,4 @@
-# Concepts for polymarket-client-sdk-ext
+# Project concepts
 
 ## polymarket-client-sdk-ext
 
