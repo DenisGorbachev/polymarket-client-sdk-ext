@@ -251,14 +251,29 @@ impl From<Market> for MarketResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::assert_round_trip_own;
+    use futures::{Stream, stream};
+    use std::process::ExitCode;
 
     #[test]
-    fn must_round_trip() {
+    fn must_round_trip_fixture() {
         let input = include_str!("../../fixtures/market.json");
         let market_response: MarketResponse = serde_json::de::from_str(input).unwrap();
         let market = Market::try_from(market_response.clone()).unwrap();
         assert_eq!(market.question, "Will Donald Trump win the 2024 US Presidential Election?");
         let market_response_round_trip = MarketResponse::from(market);
         assert_eq!(market_response_round_trip, market_response);
+    }
+
+    #[ignore]
+    #[tokio::test]
+    async fn must_round_trip_data() -> ExitCode {
+        let inputs = get_market_response_stream();
+        assert_round_trip_own::<MarketResponse, Market, <Market as TryFrom<MarketResponse>>::Error>(inputs).await
+    }
+
+    fn get_market_response_stream() -> impl Stream<Item = MarketResponse> {
+        // TODO
+        stream::empty()
     }
 }

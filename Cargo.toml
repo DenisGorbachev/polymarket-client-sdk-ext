@@ -39,7 +39,7 @@ chrono = "0.4.42"
 derive-getters = { version = "0.5.0", features = ["auto_copy_getters"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
-errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic" }
+errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic", features = ["futures"] }
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
 indexmap = { version = "2.6.0", features = ["serde"] }

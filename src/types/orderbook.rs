@@ -133,37 +133,3 @@ mod tests {
         assert_eq!(orderbook_summary_response_round_trip, orderbook_summary_response);
     }
 }
-
-mod unused {
-    #![allow(dead_code)]
-
-    use errgonomic::{handle, handle_bool};
-    use futures::Stream;
-    use futures::StreamExt;
-    use std::error::Error;
-    use thiserror::Error;
-
-    async fn try_round_trip<In, Out, Err>(inputs: impl Stream<Item = In>) -> impl Stream<Item = Result<Out, RoundTripError<In, Err>>>
-    where
-        In: for<'a> From<&'a Out> + PartialEq,
-        Out: for<'a> TryFrom<&'a In, Error = Err>,
-        Err: Error,
-    {
-        inputs.map(|input| {
-            use RoundTripError::*;
-            let output = handle!(Out::try_from(&input), TryFromFailed, input);
-            let input_round_trip = In::from(&output);
-            handle_bool!(input != input_round_trip, RoundTripFailed, input, input_round_trip);
-            Ok(output)
-        })
-    }
-
-    #[derive(Error, Debug)]
-    pub enum RoundTripError<In, Err>
-    where
-        Err: Error,
-    {
-        TryFromFailed { source: Err, input: In },
-        RoundTripFailed { input: In, input_round_trip: In },
-    }
-}

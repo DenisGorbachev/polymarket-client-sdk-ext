@@ -1,5 +1,19 @@
 # Concepts for polymarket-client-sdk-ext
 
+## polymarket-client-sdk-ext
+
+A Rust package that implements a Polymarket client with more precise types than `polymarket-client-sdk` package.
+
+Notes:
+
+* Naming:
+  * `polymarket-client-sdk-ext` is a package
+  * `polymarket_client_sdk_ext` is a crate
+
+## Foundational crate
+
+The `polymarket_client_sdk` crate (it is extended by `polymarket_client_sdk_ext` crate).
+
 ## External data
 
 Data received from the API.
@@ -69,3 +83,7 @@ An env var that indicates whether the test cache must be downloaded again.
 Notes:
 
 * Use `BoolishValueParser` from `clap` to parse this env var
+
+## Extension type
+
+A type that carries the same data as the type from [foundational crate](#foundational-crate).
