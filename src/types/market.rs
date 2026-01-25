@@ -4,6 +4,7 @@ use derive_more::{From, Into};
 use errgonomic::handle;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
@@ -59,11 +60,146 @@ impl Market {
     }
 }
 
+// TODO: Add other fields from Market and MarketResponse
+#[derive(Clone, Debug)]
+pub struct FallibleMarket {
+    pub question: String,
+    pub description: String,
+    pub market_slug: String,
+    pub icon: String,
+    pub image: String,
+    /// Optional condition id provided by the API.
+    pub condition_id: Option<ConditionId>,
+    /// Optional question id provided by the API.
+    pub question_id: Option<QuestionId>,
+    pub active: bool,
+    pub closed: bool,
+    pub archived: bool,
+    pub enable_order_book: bool,
+    pub accepting_orders: bool,
+    pub neg_risk: Result<Option<NegRisk>, TryFromNegRiskTripleError>,
+}
+
+macro_rules! any_field_is_err {
+    ($self:ident, [$($field:ident),*]) => {
+        $($self.$field.is_err() || )* false
+    };
+}
+
+// Using this function indicates that the caller has checked that the `Result` is `Ok`
+pub fn expect_checked<T, E: Debug>(result: Result<T, E>) -> T {
+    result.expect("should not fail because it has been checked by the caller")
+}
+
+impl FallibleMarket {
+    /// This function must check all fields whose type is a [`Result`]
+    pub fn is_err(&self) -> bool {
+        // TODO: Add other Result fields
+        any_field_is_err!(self, [neg_risk])
+    }
+}
+
+impl From<MarketResponse> for FallibleMarket {
+    fn from(market_response: MarketResponse) -> Self {
+        let MarketResponse {
+            enable_order_book,
+            active,
+            closed,
+            archived,
+            accepting_orders,
+            condition_id,
+            question_id,
+            question,
+            description,
+            market_slug,
+            neg_risk,
+            neg_risk_market_id,
+            neg_risk_request_id,
+            icon,
+            image,
+            ..
+        } = market_response;
+        let neg_risk = NegRisk::try_from_neg_risk_triple(neg_risk, neg_risk_market_id, neg_risk_request_id);
+        Self {
+            question,
+            description,
+            market_slug,
+            icon,
+            image,
+            condition_id,
+            question_id,
+            active,
+            closed,
+            archived,
+            enable_order_book,
+            accepting_orders,
+            neg_risk,
+        }
+    }
+}
+
+impl TryFrom<FallibleMarket> for Market {
+    type Error = FallibleMarket;
+
+    fn try_from(fallible_market: FallibleMarket) -> Result<Self, Self::Error> {
+        if fallible_market.is_err() {
+            Err(fallible_market)
+        } else {
+            let FallibleMarket {
+                question,
+                description,
+                market_slug,
+                icon,
+                image,
+                condition_id,
+                question_id,
+                active,
+                closed,
+                archived,
+                enable_order_book,
+                accepting_orders,
+                neg_risk,
+            } = fallible_market;
+            let neg_risk = expect_checked(neg_risk);
+            Ok(Market {
+                question,
+                description,
+                market_slug,
+                icon,
+                image,
+                condition_id,
+                question_id,
+                active,
+                closed,
+                archived,
+                enable_order_book,
+                accepting_orders,
+                // TODO: these fields must come from `fallible_market`
+                accepting_order_timestamp: None,
+                minimum_order_size: Default::default(),
+                minimum_tick_size: Default::default(),
+                end_date_iso: None,
+                game_start_time: None,
+                seconds_delay: Default::default(),
+                fpmm: None,
+                maker_base_fee: Default::default(),
+                taker_base_fee: Default::default(),
+                rewards: Default::default(),
+                tokens: Default::default(),
+                neg_risk,
+                is_50_50_outcome: false,
+                notifications_enabled: false,
+                tags: vec![],
+            })
+        }
+    }
+}
+
 /// NOTE: Some markets have an invalid `neg_risk_market_id` (e.g. "0x12309") because they were created by Polymarket just for testing
 impl TryFrom<MarketResponse> for Market {
     type Error = ConvertMarketResponseToMarketError;
 
-    fn try_from(market: MarketResponse) -> Result<Self, Self::Error> {
+    fn try_from(market_response: MarketResponse) -> Result<Self, Self::Error> {
         use ConvertMarketResponseToMarketError::*;
         let MarketResponse {
             enable_order_book,
@@ -96,7 +232,7 @@ impl TryFrom<MarketResponse> for Market {
             tokens,
             tags,
             ..
-        } = market;
+        } = market_response;
         let rewards = rewards.into();
         let accepting_order_timestamp = handle!(
             accepting_order_timestamp

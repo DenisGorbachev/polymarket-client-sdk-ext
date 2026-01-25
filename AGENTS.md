@@ -1835,10 +1835,13 @@ announcement = ""
 [dependencies]
 alloy = { version = "1.4.0", default-features = false, features = ["std", "serde"] }
 async-stream = { version = "0.3.6" }
+base64 = "0.22.1"
 chrono = "0.4.43"
+clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic", features = ["futures"] }
+fjall = "3.0.1"
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
 indexmap = { version = "2.6.0", features = ["serde"] }
@@ -1854,6 +1857,7 @@ stub-macro = "0.2.1"
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
+tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
 url = { version = "2.5.2", features = ["serde"] }
 
 [dev-dependencies]
@@ -1868,6 +1872,28 @@ ignored = ["stub-macro", "pretty_assertions"]
 
 [features]
 debug = []
+```
+
+### src/main.rs
+
+```rust
+use clap::Parser;
+use errgonomic::exit_result;
+use polymarket_client_sdk_ext::Command;
+use std::process::ExitCode;
+
+#[tokio::main]
+async fn main() -> ExitCode {
+    let args = Command::parse();
+    let result = args.run().await;
+    exit_result(result)
+}
+
+#[test]
+fn verify_cli() {
+    use clap::CommandFactory;
+    Command::command().debug_assert();
+}
 ```
 
 ### src/lib.rs
@@ -1901,10 +1927,8 @@ mod test_helpers;
 #[cfg(test)]
 pub use test_helpers::*;
 
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-pub use tests::*;
 mod traits;
 pub use traits::*;
+mod command;
+pub use command::*;
 ```

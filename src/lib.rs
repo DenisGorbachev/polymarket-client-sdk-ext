@@ -26,9 +26,7 @@ mod test_helpers;
 #[cfg(test)]
 pub use test_helpers::*;
 
-#[cfg(test)]
-mod tests;
-#[cfg(test)]
-pub use tests::*;
 mod traits;
 pub use traits::*;
+mod command;
+pub use command::*;

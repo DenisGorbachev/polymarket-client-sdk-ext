@@ -41,7 +41,7 @@ impl From<NegRisk> for (bool, Option<B256>, Option<B256>) {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Clone, Debug)]
 pub enum TryFromNegRiskTripleError {
     #[error("expected neg_risk_market_id to be Some(value), but it was None")]
     NegRiskMarketIdIsNone,

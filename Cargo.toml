@@ -35,10 +35,13 @@ announcement = ""
 [dependencies]
 alloy = { version = "1.4.0", default-features = false, features = ["std", "serde"] }
 async-stream = { version = "0.3.6" }
+base64 = "0.22.1"
 chrono = "0.4.43"
+clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic", features = ["futures"] }
+fjall = "3.0.1"
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
 indexmap = { version = "2.6.0", features = ["serde"] }
@@ -54,6 +57,7 @@ stub-macro = "0.2.1"
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
+tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
 url = { version = "2.5.2", features = ["serde"] }
 
 [dev-dependencies]

@@ -12,8 +12,32 @@
 
 ## Installation
 
+Install as executable:
+
+```shell
+cargo install --locked polymarket-client-sdk-ext
+```
+
+Install as library dependency in your package:
+
 ```shell
 cargo add polymarket-client-sdk-ext
+```
+
+## Usage
+
+```shell
+Polymarket API client
+
+Usage: polymarket-client-sdk-ext <COMMAND>
+
+Commands:
+  cache-download  
+  help            Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
 ```
 
 ## Gratitude
