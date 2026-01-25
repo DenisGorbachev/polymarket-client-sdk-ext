@@ -37,7 +37,7 @@ impl ClobClient {
             .build())
     }
 
-    pub async fn orderbooks(&self, _token_ids: impl IntoIterator<Item = &TokenId>) {
+    pub async fn order_books(&self, _token_ids: impl IntoIterator<Item = &TokenId>) {
         todo!()
     }
 

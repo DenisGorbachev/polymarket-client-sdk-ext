@@ -17,6 +17,25 @@
   - Negative‑risk links all markets within an event, allowing NO in one market to convert into YES across the others—so the “market” that matters for neg‑risk is the event‑level grouping, not a single binary market.
   - In the NegRiskAdapter contract, the marketId is defined as a hash of oracle+fee+metadata, and each questionId shares the first 31 bytes with its marketId and differs only by the final byte (the question index). That design only makes sense if one marketId represents the group, and each individual binary market is one question within that group.
 
+## API limits
+
+- [Books](#books) endpoint accepts max 500 token_ids
+- [Markets](#markets) endpoint returns 1000 markets per page by default
+
+## CLOB endpoints
+
+### Markets
+
+- REST: `/markets` endpoint
+- `crate::ClobClient`: `markets` method
+- `polymarket_client_sdk::clob::Client`: `markets` method
+
+### Books
+
+- REST: `/books` endpoint
+- `crate::ClobClient`: `order_books` method
+- `polymarket_client_sdk::clob::Client`: `order_books` method
+
 ## Disputed markets
 
 - The Polymarket event pages don’t expose a public “disputed list” endpoint
