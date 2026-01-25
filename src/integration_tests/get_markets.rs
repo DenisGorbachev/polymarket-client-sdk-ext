@@ -1,4 +1,4 @@
-use crate::{Market, NEXT_CURSOR_START, RestClientOld};
+use crate::{ClobClient, ClobClientMarketsError, Market, NEXT_CURSOR_START};
 use futures::StreamExt;
 use std::env;
 use std::fs::File;
@@ -14,16 +14,16 @@ async fn test_markets() {
     let max_pages_string = env::var("MAX_PAGES").unwrap_or(MAX_PAGES_DEFAULT.into());
     let markets_filename = env::var("MARKETS_FILENAME").ok();
     let max_pages = usize::from_str(&max_pages_string).unwrap();
-    let client = RestClientOld::default();
+    let client = ClobClient::default();
     let markets_stream = client.get_markets_stream_at_cursor(next_cursor);
     let markets_stream = markets_stream.take(max_pages);
     pin!(markets_stream);
     let markets_results = markets_stream
-        .collect::<Vec<reqwest::Result<Vec<Market>>>>()
+        .collect::<Vec<Result<Vec<Market>, ClobClientMarketsError>>>()
         .await;
     let markets_pages = markets_results
         .into_iter()
-        .collect::<reqwest::Result<Vec<Vec<Market>>>>()
+        .collect::<Result<Vec<Vec<Market>>, ClobClientMarketsError>>()
         .unwrap();
     let markets = markets_pages.into_iter().flatten().collect::<Vec<Market>>();
     if let Some(markets_filename) = markets_filename {
@@ -42,7 +42,3 @@ async fn test_markets() {
         .find(|market| market.market_slug == "will-donald-trump-jr-win-the-us-2024-republican-presidential-nomination");
     assert!(donald_trump.is_some());
 }
-
-// pub fn collect_all() ->  {
-//     todo!()
-// }

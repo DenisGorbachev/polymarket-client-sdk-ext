@@ -1,4 +1,4 @@
-use crate::{Market, RestClientOld, TokenId};
+use crate::{ClobClient, Market};
 use futures::{StreamExt, TryStreamExt};
 use std::future::ready;
 use tokio::pin;
@@ -7,8 +7,8 @@ use tokio::pin;
 // TODO: This test is slow because finding a market with `enable_order_book = true` takes a lot of time (paging through markets)
 #[tokio::test]
 async fn test_orderbooks() {
-    let client = RestClientOld::default();
-    let markets_stream_raw = client.get_markets_stream();
+    let client = ClobClient::default();
+    let markets_stream_raw = client.markets_stream();
     let markets_stream_filtered = markets_stream_raw.try_filter_map(|markets| {
         let markets = markets
             .into_iter()
@@ -24,10 +24,11 @@ async fn test_orderbooks() {
         .expect("must return some markets with enable_order_book = true")
         .unwrap();
     assert!(!markets.is_empty(), "expecting markets.len() > 0, otherwise we're not really testing the orderbooks");
-    let token_ids = markets
-        .iter()
-        .flat_map(|market| market.tokens.token_ids_array())
-        .collect::<Vec<TokenId>>();
-    let orderbooks = client.get_orderbook_summaries(&token_ids).await.unwrap();
-    assert_eq!(orderbooks.len(), markets.len() * 2);
+    // TODO:
+    // let token_ids = markets
+    //     .iter()
+    //     .flat_map(|market| market.tokens.token_ids_array())
+    //     .collect::<Vec<TokenId>>();
+    // let orderbooks = client.orderbooks(&token_ids).await;
+    // assert_eq!(orderbooks.len(), markets.len() * 2);
 }

@@ -1,6 +1,6 @@
-mod rest_client_old;
+mod clob_client;
 
-pub use rest_client_old::*;
+pub use clob_client::*;
 
 mod market;
 
