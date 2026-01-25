@@ -92,7 +92,7 @@ impl From<Tokens> for Vec<TokenRaw> {
     }
 }
 
-#[derive(Error, Debug)]
+#[derive(Error, Copy, Clone, Debug)]
 pub enum ConvertVecTokenRawToTokensError {
     #[error("expected 2 tokens, got '{tokens_len}'")]
     TokensLengthInvalid { tokens_len: usize },

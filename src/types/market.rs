@@ -1,10 +1,8 @@
 use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, NegRisk, QuestionId, Rewards, TokenId, Tokens, TryFromNegRiskTripleError, from_chrono_date_time, into_chrono_date_time};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
-use errgonomic::handle;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
@@ -16,10 +14,10 @@ pub struct Market {
     pub market_slug: String,
     pub icon: String,
     pub image: String,
-    /// Optional condition id provided by the API.
-    pub condition_id: Option<ConditionId>,
-    /// Optional question id provided by the API.
-    pub question_id: Option<QuestionId>,
+    /// Condition id provided by the API.
+    pub condition_id: ConditionId,
+    /// Question id provided by the API.
+    pub question_id: QuestionId,
     pub active: bool,
     pub closed: bool,
     pub archived: bool,
@@ -60,7 +58,6 @@ impl Market {
     }
 }
 
-// TODO: Add other fields from Market and MarketResponse
 #[derive(Clone, Debug)]
 pub struct FallibleMarket {
     pub question: String,
@@ -77,122 +74,21 @@ pub struct FallibleMarket {
     pub archived: bool,
     pub enable_order_book: bool,
     pub accepting_orders: bool,
+    pub accepting_order_timestamp: Result<Option<OffsetDateTime>, time::error::ComponentRange>,
+    pub minimum_order_size: Amount,
+    pub minimum_tick_size: Amount,
+    pub end_date_iso: Result<Option<OffsetDateTime>, time::error::ComponentRange>,
+    pub game_start_time: Result<Option<OffsetDateTime>, time::error::ComponentRange>,
+    pub seconds_delay: Result<Duration, core::num::TryFromIntError>,
+    pub fpmm: Option<Address>,
+    pub maker_base_fee: Amount,
+    pub taker_base_fee: Amount,
+    pub rewards: Rewards,
+    pub tokens: Result<Tokens, ConvertVecTokenRawToTokensError>,
     pub neg_risk: Result<Option<NegRisk>, TryFromNegRiskTripleError>,
-}
-
-macro_rules! any_field_is_err {
-    ($self:ident, [$($field:ident),*]) => {
-        $($self.$field.is_err() || )* false
-    };
-}
-
-// Using this function indicates that the caller has checked that the `Result` is `Ok`
-pub fn expect_checked<T, E: Debug>(result: Result<T, E>) -> T {
-    result.expect("should not fail because it has been checked by the caller")
-}
-
-impl FallibleMarket {
-    /// This function must check all fields whose type is a [`Result`]
-    pub fn is_err(&self) -> bool {
-        // TODO: Add other Result fields
-        any_field_is_err!(self, [neg_risk])
-    }
-}
-
-impl From<MarketResponse> for FallibleMarket {
-    fn from(market_response: MarketResponse) -> Self {
-        let MarketResponse {
-            enable_order_book,
-            active,
-            closed,
-            archived,
-            accepting_orders,
-            condition_id,
-            question_id,
-            question,
-            description,
-            market_slug,
-            neg_risk,
-            neg_risk_market_id,
-            neg_risk_request_id,
-            icon,
-            image,
-            ..
-        } = market_response;
-        let neg_risk = NegRisk::try_from_neg_risk_triple(neg_risk, neg_risk_market_id, neg_risk_request_id);
-        Self {
-            question,
-            description,
-            market_slug,
-            icon,
-            image,
-            condition_id,
-            question_id,
-            active,
-            closed,
-            archived,
-            enable_order_book,
-            accepting_orders,
-            neg_risk,
-        }
-    }
-}
-
-impl TryFrom<FallibleMarket> for Market {
-    type Error = FallibleMarket;
-
-    fn try_from(fallible_market: FallibleMarket) -> Result<Self, Self::Error> {
-        if fallible_market.is_err() {
-            Err(fallible_market)
-        } else {
-            let FallibleMarket {
-                question,
-                description,
-                market_slug,
-                icon,
-                image,
-                condition_id,
-                question_id,
-                active,
-                closed,
-                archived,
-                enable_order_book,
-                accepting_orders,
-                neg_risk,
-            } = fallible_market;
-            let neg_risk = expect_checked(neg_risk);
-            Ok(Market {
-                question,
-                description,
-                market_slug,
-                icon,
-                image,
-                condition_id,
-                question_id,
-                active,
-                closed,
-                archived,
-                enable_order_book,
-                accepting_orders,
-                // TODO: these fields must come from `fallible_market`
-                accepting_order_timestamp: None,
-                minimum_order_size: Default::default(),
-                minimum_tick_size: Default::default(),
-                end_date_iso: None,
-                game_start_time: None,
-                seconds_delay: Default::default(),
-                fpmm: None,
-                maker_base_fee: Default::default(),
-                taker_base_fee: Default::default(),
-                rewards: Default::default(),
-                tokens: Default::default(),
-                neg_risk,
-                is_50_50_outcome: false,
-                notifications_enabled: false,
-                tags: vec![],
-            })
-        }
-    }
+    pub is_50_50_outcome: bool,
+    pub notifications_enabled: bool,
+    pub tags: Vec<String>,
 }
 
 /// NOTE: Some markets have an invalid `neg_risk_market_id` (e.g. "0x12309") because they were created by Polymarket just for testing
@@ -234,64 +130,83 @@ impl TryFrom<MarketResponse> for Market {
             ..
         } = market_response;
         let rewards = rewards.into();
-        let accepting_order_timestamp = handle!(
-            accepting_order_timestamp
-                .map(from_chrono_date_time)
-                .transpose(),
-            AcceptingOrderTimestampFromChronoDateTimeFailed
-        );
-        let end_date_iso = handle!(end_date_iso.map(from_chrono_date_time).transpose(), EndDateIsoFromChronoDateTimeFailed);
-        let game_start_time = handle!(game_start_time.map(from_chrono_date_time).transpose(), GameStartTimeFromChronoDateTimeFailed);
-        let seconds_delay = handle!(i64::try_from(seconds_delay), SecondsDelayTryFromFailed, seconds_delay);
-        let seconds_delay = Duration::seconds(seconds_delay);
-        let neg_risk = handle!(NegRisk::try_from_neg_risk_triple(neg_risk, neg_risk_market_id, neg_risk_request_id), NegRiskTryFromTripleFailed);
-        let tokens = handle!(Tokens::try_from(tokens), TokensTryFromFailed);
-        Ok(Self {
-            question,
-            description,
-            market_slug,
-            icon,
-            image,
-            condition_id,
-            question_id,
-            active,
-            closed,
-            archived,
-            enable_order_book,
-            accepting_orders,
-            accepting_order_timestamp,
-            minimum_order_size,
-            minimum_tick_size,
-            end_date_iso,
-            game_start_time,
-            seconds_delay,
-            fpmm,
-            maker_base_fee,
-            taker_base_fee,
-            rewards,
-            tokens,
-            neg_risk,
-            is_50_50_outcome,
-            notifications_enabled,
-            tags,
-        })
+        let accepting_order_timestamp = accepting_order_timestamp
+            .map(from_chrono_date_time)
+            .transpose();
+        let end_date_iso = end_date_iso.map(from_chrono_date_time).transpose();
+        let game_start_time = game_start_time.map(from_chrono_date_time).transpose();
+        let seconds_delay = i64::try_from(seconds_delay).map(Duration::seconds);
+        let neg_risk = NegRisk::try_from_neg_risk_triple(neg_risk, neg_risk_market_id, neg_risk_request_id);
+        let tokens = Tokens::try_from(tokens);
+        match (condition_id, question_id, accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, neg_risk, tokens) {
+            (Some(condition_id), Some(question_id), Ok(accepting_order_timestamp), Ok(end_date_iso), Ok(game_start_time), Ok(seconds_delay), Ok(neg_risk), Ok(tokens)) => Ok(Self {
+                question,
+                description,
+                market_slug,
+                icon,
+                image,
+                condition_id,
+                question_id,
+                active,
+                closed,
+                archived,
+                enable_order_book,
+                accepting_orders,
+                accepting_order_timestamp,
+                minimum_order_size,
+                minimum_tick_size,
+                end_date_iso,
+                game_start_time,
+                seconds_delay,
+                fpmm,
+                maker_base_fee,
+                taker_base_fee,
+                rewards,
+                tokens,
+                neg_risk,
+                is_50_50_outcome,
+                notifications_enabled,
+                tags,
+            }),
+            (condition_id, question_id, accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, neg_risk, tokens) => Err(ConversionFailed {
+                fallible_market: FallibleMarket {
+                    question,
+                    description,
+                    market_slug,
+                    icon,
+                    image,
+                    condition_id,
+                    question_id,
+                    active,
+                    closed,
+                    archived,
+                    enable_order_book,
+                    accepting_orders,
+                    accepting_order_timestamp,
+                    minimum_order_size,
+                    minimum_tick_size,
+                    end_date_iso,
+                    game_start_time,
+                    seconds_delay,
+                    fpmm,
+                    maker_base_fee,
+                    taker_base_fee,
+                    rewards,
+                    tokens,
+                    neg_risk,
+                    is_50_50_outcome,
+                    notifications_enabled,
+                    tags,
+                },
+            }),
+        }
     }
 }
 
 #[derive(Error, Debug)]
 pub enum ConvertMarketResponseToMarketError {
-    #[error("failed to convert accepting_order_timestamp")]
-    AcceptingOrderTimestampFromChronoDateTimeFailed { source: time::error::ComponentRange },
-    #[error("failed to convert end_date_iso")]
-    EndDateIsoFromChronoDateTimeFailed { source: time::error::ComponentRange },
-    #[error("failed to convert game_start_time")]
-    GameStartTimeFromChronoDateTimeFailed { source: time::error::ComponentRange },
-    #[error("failed to convert seconds_delay '{seconds_delay}'")]
-    SecondsDelayTryFromFailed { source: core::num::TryFromIntError, seconds_delay: u64 },
-    #[error("failed to convert neg_risk fields")]
-    NegRiskTryFromTripleFailed { source: TryFromNegRiskTripleError },
-    #[error("failed to convert tokens")]
-    TokensTryFromFailed { source: ConvertVecTokenRawToTokensError },
+    #[error("failed to convert market response")]
+    ConversionFailed { fallible_market: FallibleMarket },
 }
 
 impl From<Market> for MarketResponse {
@@ -344,8 +259,8 @@ impl From<Market> for MarketResponse {
             .maybe_accepting_order_timestamp(accepting_order_timestamp)
             .minimum_order_size(minimum_order_size)
             .minimum_tick_size(minimum_tick_size)
-            .maybe_condition_id(condition_id)
-            .maybe_question_id(question_id)
+            .maybe_condition_id(Some(condition_id))
+            .maybe_question_id(Some(question_id))
             .question(question)
             .description(description)
             .market_slug(market_slug)
@@ -382,7 +297,7 @@ mod tests {
         use MustRoundTripFixtureError::*;
         let input = include_str!("../../fixtures/market.json");
         let market_response: MarketResponse = handle!(serde_json::de::from_str(input), DeserializeFailed);
-        let market = handle!(Market::try_from(market_response.clone()), TryFromFailed, market_response);
+        let market = handle!(Market::try_from(market_response.clone()), TryFromFailed);
         let expected_question = "Will Donald Trump win the 2024 US Presidential Election?".to_string();
         handle_bool!(
             market.question != expected_question,
@@ -432,7 +347,7 @@ mod tests {
         #[error("failed to deserialize market fixture")]
         DeserializeFailed { source: serde_json::Error },
         #[error("failed to convert market response")]
-        TryFromFailed { source: ConvertMarketResponseToMarketError, market_response: Box<MarketResponse> },
+        TryFromFailed { source: Box<ConvertMarketResponseToMarketError> },
         #[error("market question mismatch")]
         QuestionMismatch { actual: String, expected: String },
         #[error("round-tripped market response does not match original")]
@@ -445,7 +360,7 @@ mod tests {
         #[error("failed to read market response cache stream")]
         ReadJsonlCacheStreamFailed { source: ReadJsonlCacheStreamError },
         #[error("failed to convert market response")]
-        TryFromFailed { source: ConvertMarketResponseToMarketError, input: Box<MarketResponse> },
+        TryFromFailed { source: Box<ConvertMarketResponseToMarketError>, input: Box<MarketResponse> },
         #[error("round-tripped market response does not match original")]
         RoundTripFailed { input: Box<MarketResponse>, input_round_trip: Box<MarketResponse> },
     }

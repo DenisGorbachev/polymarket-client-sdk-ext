@@ -1,8 +1,8 @@
-use crate::{Market, NEXT_CURSOR_START, NextCursor, TokenId, get_page_stream};
+use crate::{ConvertMarketResponseToMarketError, Market, NEXT_CURSOR_START, NextCursor, TokenId, get_page_stream, is_launched};
 use derive_more::{Deref, DerefMut};
 use derive_new::new;
+use errgonomic::{ErrVec, handle, handle_iter};
 use futures::Stream;
-use itertools::Itertools;
 use polymarket_client_sdk::clob::types::response::Page;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -13,10 +13,10 @@ pub struct ClobClient {
 }
 
 impl ClobClient {
-    // TODO: Fix error handling
+    /// This function returns only launched markets (see [`is_launched`]).
     pub async fn markets(&self, next_cursor: Option<String>) -> Result<Page<Market>, ClobClientMarketsError> {
-        // use ClobClientMarketsError::*;
-        let page = self.inner.markets(next_cursor).await.unwrap();
+        use ClobClientMarketsError::*;
+        let page = handle!(self.inner.markets(next_cursor.clone()).await, MarketsFailed, next_cursor);
         let Page {
             limit,
             count,
@@ -24,11 +24,7 @@ impl ClobClient {
             data,
             ..
         } = page;
-        // TODO: use handle_iter
-        let data = data
-            .into_iter()
-            .map(|market_response| Market::try_from(market_response).unwrap())
-            .collect_vec();
+        let data = handle_iter!(data.into_iter().filter(is_launched).map(Market::try_from), MarketTryFromFailed);
         Ok(Page::builder()
             .data(data)
             .next_cursor(next_cursor)
@@ -51,4 +47,9 @@ impl ClobClient {
 }
 
 #[derive(Error, Debug)]
-pub enum ClobClientMarketsError {}
+pub enum ClobClientMarketsError {
+    #[error("failed to fetch markets page")]
+    MarketsFailed { source: polymarket_client_sdk::error::Error, next_cursor: Option<String> },
+    #[error("failed to convert '{len}' markets", len = source.len())]
+    MarketTryFromFailed { source: ErrVec<ConvertMarketResponseToMarketError> },
+}
