@@ -2716,6 +2716,7 @@ name = "polymarket-client-sdk-ext"
 version = "0.1.0"
 dependencies = [
  "alloy",
+ "anyhow",
  "async-jsonl",
  "async-stream",
  "chrono",

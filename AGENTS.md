@@ -1678,6 +1678,7 @@ time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsi
 url = { version = "2.5.2", features = ["serde"] }
 
 [dev-dependencies]
+anyhow = "1.0.100"
 async-jsonl = "0.4.0"
 pretty_assertions = "1.4.1"
 serde_json = "1.0.129"
@@ -1720,4 +1721,11 @@ mod integration_tests;
 mod test_helpers;
 #[cfg(test)]
 pub use test_helpers::*;
+
+#[cfg(test)]
+mod tests;
+#[cfg(test)]
+pub use tests::*;
+mod traits;
+pub use traits::*;
 ```
