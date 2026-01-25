@@ -124,8 +124,7 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 ### Code style
 
-* Implement proper error handling instead of `unwrap` or `expect` in production code
-  * Use `unwrap` or `expect` in tests
+* Implement proper error handling instead of `unwrap` or `expect` (in normal code and in tests)
   * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
 * The file names must match the names of the primary item in this file (for example: a file with `struct User` must be in `user.rs`)
 * Don't use `mod.rs`, use module files with submodules in the folder with the same name (for example: `user.rs` with submodules in `user` folder)
@@ -1047,7 +1046,7 @@ cfg_if::cfg_if! {
 //! * If Clippy outputs a `result_large_err` warning, then the large fields of the error enum must be wrapped in a `Box`
 //! * If the error enum variant has a `source` field, then this field must be the first field
 //! * The code must not use strings for error messages
-//! * The production code must not use `unwrap` or `expect` (only tests may use `unwrap` or `expect`)
+//! * The code must not use `unwrap` or `expect`
 //! * If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
 //! * If an argument of callee implements `Copy`, the callee must not include it in the list of error enum variant fields (the caller must include it because of the rule to include all relevant owned variables)
 //!
