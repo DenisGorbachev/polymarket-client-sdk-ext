@@ -32,17 +32,14 @@ pub async fn refresh_caches() -> Result<(), RefreshCachesError> {
     let mut market_file = handle!(File::create(&market_temp_path).await, CreateTempFileFailed, temp_path: market_temp_path);
     let mut orderbook_file = handle!(File::create(&orderbook_temp_path).await, CreateTempFileFailed, temp_path: orderbook_temp_path);
     let client = Client::default();
-    let mut downloaded_markets: u64 = 0;
-    let mut downloaded_orderbooks: u64 = 0;
     let mut downloaded_pages: u64 = 0;
-    let mut orderbook_requests: u64 = 0;
     let mut next_cursor: Option<String> = None;
 
     loop {
         if limit_reached(downloaded_pages, page_limit) {
             break;
         }
-        eprintln!("{}", progress_report_line("Requesting markets pages", downloaded_pages.saturating_add(1), page_limit_total));
+        eprintln!("{}", progress_report_line("Downloading markets pages", downloaded_pages.saturating_add(1), page_limit_total));
         let page = handle!(client.markets(next_cursor.clone()).await, FetchMarketsFailed, next_cursor);
         downloaded_pages = downloaded_pages.saturating_add(1);
         let page_next_cursor = page.next_cursor.clone();
@@ -72,12 +69,8 @@ pub async fn refresh_caches() -> Result<(), RefreshCachesError> {
             if let Err(error) = write_result {
                 return Err(error);
             }
-            downloaded_markets = downloaded_markets.saturating_add(1);
-            if downloaded_markets.is_multiple_of(100) {
-                eprintln!("{}", progress_report_line("Downloading markets", downloaded_markets, None));
-            }
         }
-        let fetch_result = fetch_orderbooks_for_tokens(&client, &token_ids, &mut orderbook_file, &orderbook_temp_path, &mut downloaded_orderbooks, &mut orderbook_requests).await;
+        let fetch_result = fetch_orderbooks_for_tokens(&client, &token_ids, &mut orderbook_file, &orderbook_temp_path).await;
         if let Err(error) = fetch_result {
             return Err(error);
         }
@@ -85,12 +78,6 @@ pub async fn refresh_caches() -> Result<(), RefreshCachesError> {
             break;
         }
         next_cursor = Some(page_next_cursor);
-    }
-    if !downloaded_markets.is_multiple_of(100) {
-        eprintln!("{}", progress_report_line("Downloading markets", downloaded_markets, None));
-    }
-    if !downloaded_orderbooks.is_multiple_of(100) {
-        eprintln!("{}", progress_report_line("Downloading orderbooks", downloaded_orderbooks, None));
     }
     handle!(market_file.flush().await, FlushTempFileFailed, temp_path: market_temp_path);
     handle!(market_file.sync_all().await, SyncTempFileFailed, temp_path: market_temp_path);
@@ -135,7 +122,7 @@ where
 }
 
 #[allow(clippy::question_mark)]
-async fn fetch_orderbooks_for_tokens(client: &Client, token_ids: &[TokenId], orderbook_file: &mut File, orderbook_temp_path: &Path, downloaded_orderbooks: &mut u64, orderbook_requests: &mut u64) -> Result<(), RefreshCachesError> {
+async fn fetch_orderbooks_for_tokens(client: &Client, token_ids: &[TokenId], orderbook_file: &mut File, orderbook_temp_path: &Path) -> Result<(), RefreshCachesError> {
     use RefreshCachesError::*;
     let mut ranges = Vec::new();
     ranges.push((0usize, token_ids.len()));
@@ -152,8 +139,6 @@ async fn fetch_orderbooks_for_tokens(client: &Client, token_ids: &[TokenId], ord
                     .build()
             })
             .collect::<Vec<_>>();
-        *orderbook_requests = orderbook_requests.saturating_add(1);
-        eprintln!("{}", progress_report_line("Requesting orderbooks", *orderbook_requests, None));
         let orderbooks_result = client.order_books(&requests).await;
         let orderbooks = match orderbooks_result {
             Ok(orderbooks) => orderbooks,
@@ -187,10 +172,6 @@ async fn fetch_orderbooks_for_tokens(client: &Client, token_ids: &[TokenId], ord
             .await;
             if let Err(error) = write_result {
                 return Err(error);
-            }
-            *downloaded_orderbooks = downloaded_orderbooks.saturating_add(1);
-            if downloaded_orderbooks.is_multiple_of(100) {
-                eprintln!("{}", progress_report_line("Downloading orderbooks", *downloaded_orderbooks, None));
             }
         }
     }

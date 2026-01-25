@@ -78,11 +78,11 @@ https://relayer-v2.polymarket.com/
 
 ### Server Implementation
 
-```text
+```
 Your signing server receives request details and returns the authentication headers:
 ```
 
-```text
+```
 <CodeGroup>
       ```typescript TypeScript theme={null}
       import { 
@@ -158,13 +158,11 @@ Never commit credentials to version control. Use environment variables or a secr
 </Warning>
 ```
 
-```text
-
 ### Client Configuration
 
 ```
 Point your client to your signing server:
-```text
+```
 
 ```
 <CodeGroup>
@@ -228,7 +226,7 @@ Point your client to your signing server:
   <Tab title="Local Signing">
     Sign locally when your backend handles all transactions.
 
-```text
+```
 **How it works:**
 ```
 
@@ -494,7 +492,7 @@ The `execute` method sends transactions through the relayer. Pass an array of tr
       ```typescript TypeScript theme={null}
 ```
 import { encodeFunctionData, parseUnits } from "viem";
-```text
+```
 
 ```
 const transferTx = {
@@ -517,19 +515,19 @@ parseUnits("100", 6) // 100 USDCe (6 decimals)
 }),
 value: "0"
 };
-```text
+```
 
 ```
 const response = await client.execute([transferTx], "Transfer USDCe");
 await response.wait();
-      ```text
+      ```
 
       ```python Python theme={null}
 from web3 import Web3
 
-      ```
+```
 USDC_E = "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174"
-```text
+```
 
 ```
 transfer_tx = {
@@ -540,19 +538,19 @@ abi=[{"name": "transfer", "type": "function", "inputs": [{"name": "to", "type": 
 ).encode_abi(abi_element_identifier="transfer", args=["0xRecipientAddressHere", 100 * 10**6]),
 "value": "0"
 }
-```text
+```
 
 ```
 response = client.execute([transfer_tx], "Transfer USDCe")
 response.wait()
-      ```text
+      ```
 </CodeGroup>
   </Tab>
 
   <Tab title="Approve">
     Set token allowances to enable trading:
 
-      ```
+```
 <CodeGroup>
       ```typescript TypeScript theme={null}
       import { encodeFunctionData, maxUint256 } from "viem";
@@ -612,7 +610,7 @@ response.wait()
       ```typescript TypeScript theme={null}
 ```
 import { encodeFunctionData } from "viem";
-```text
+```
 
 ```
 const redeemTx = {
@@ -634,19 +632,19 @@ args: [collateralToken, parentCollectionId, conditionId, indexSets]
 }),
 value: "0"
 };
-```text
+```
 
 ```
 const response = await client.execute([redeemTx], "Redeem positions");
 await response.wait();
-      ```text
+      ```
 
       ```python Python theme={null}
 from web3 import Web3
 
-      ```
+```
 CTF = "0x4d97dcd97ec945f40cf65f87097ace5ea0476045"
-```text
+```
 
 ```
 redeem_tx = {
@@ -657,19 +655,19 @@ abi=[{"name": "redeemPositions", "type": "function", "inputs": [{"name": "collat
 ).encode_abi(abi_element_identifier="redeemPositions", args=[collateral_token, parent_collection_id, condition_id, index_sets]),
 "value": "0"
 }
-```text
+```
 
 ```
 response = client.execute([redeem_tx], "Redeem positions")
 response.wait()
-      ```text
+      ```
 </CodeGroup>
   </Tab>
 
   <Tab title="Split Positions">
     Split collateral tokens into conditional outcome tokens:
 
-      ```
+```
 <CodeGroup>
       ```typescript TypeScript theme={null}
       import { encodeFunctionData } from "viem";
@@ -727,7 +725,7 @@ response.wait()
       ```typescript TypeScript theme={null}
 ```
 import { encodeFunctionData } from "viem";
-```text
+```
 
 ```
 const mergeTx = {
@@ -750,19 +748,19 @@ args: [collateralToken, parentCollectionId, conditionId, partition, amount]
 }),
 value: "0"
 };
-```text
+```
 
 ```
 const response = await client.execute([mergeTx], "Merge positions");
 await response.wait();
-      ```text
+      ```
 
       ```python Python theme={null}
 from web3 import Web3
 
-      ```
+```
 CTF = "0x4d97dcd97ec945f40cf65f87097ace5ea0476045"
-```text
+```
 
 ```
 merge_tx = {
@@ -773,19 +771,19 @@ abi=[{"name": "mergePositions", "type": "function", "inputs": [{"name": "collate
 ).encode_abi(abi_element_identifier="mergePositions", args=[collateral_token, parent_collection_id, condition_id, partition, amount]),
 "value": "0"
 }
-```text
+```
 
 ```
 response = client.execute([merge_tx], "Merge positions")
 response.wait()
-      ```text
+      ```
 </CodeGroup>
   </Tab>
 
   <Tab title="Batch Transactions">
     Execute multiple transactions atomically in a single call:
 
-      ```
+```
 <CodeGroup>
       ```typescript TypeScript theme={null}
       import { encodeFunctionData, parseUnits, maxUint256 } from "viem";

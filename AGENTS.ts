@@ -190,6 +190,7 @@ const parts = (await Promise.all([
   includeFileIfExists(".agents/knowledge.md"),
   includeFileIfExists(".agents/gotchas.md"),
   includeCargoDependencyFile("errgonomic", "DOCS.md"),
+  includeFile(".agents/cli.md"),
   Promise.resolve("## Project files"),
   includeFile("Cargo.toml"),
   includeFileIfExists("src/main.rs"),

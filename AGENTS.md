@@ -342,6 +342,57 @@ A type that carries the same data as the type from [foundational crate](#foundat
 
 A method that reads the data from a Polymarket CLOB API.
 
+## Polymarket knowledge
+
+### Documentation
+
+* Polymarket has an [LLM-friendly documentation index](https://docs.polymarket.com/llms.txt).
+  * All files from this index have already been downloaded to `.agents/docs/polymarket` on 2026-01-22
+  * To download again, execute [Download Polymarket Docs for Developers](../../specs/download-polymarket-docs.md)
+
+### Database
+
+* Market's primary key is `condition_id`
+* Orderbook's primary key is `asset_id` (aka `token_id`)
+
+### Market fields
+
+* `neg_risk_market_id` does not identify one specific binary market. It identifies the multi‑outcome "negative‑risk market" group (the whole event’s mutually exclusive set) in the NegRiskAdapter contract. Every market/outcome in that negative‑risk event shares the same `neg_risk_market_id`; the per‑market identifier is instead the market’s own `condition_id` (CLOB) and, on the neg‑risk adapter side, its `neg_risk_request_id`/`questionId` (which is derived from the group ID + an index).
+  * Negative‑risk links all markets within an event, allowing NO in one market to convert into YES across the others—so the “market” that matters for neg‑risk is the event‑level grouping, not a single binary market.
+  * In the NegRiskAdapter contract, the marketId is defined as a hash of oracle+fee+metadata, and each questionId shares the first 31 bytes with its marketId and differs only by the final byte (the question index). That design only makes sense if one marketId represents the group, and each individual binary market is one question within that group.
+
+### API limits
+
+* [Books](#books) endpoint accepts max 500 token\_ids
+* [Markets](#markets) endpoint returns 1000 markets per page by default
+
+### CLOB endpoints
+
+#### Markets
+
+* REST: `/markets` endpoint
+* `crate::ClobClient`: `markets` method
+* `polymarket_client_sdk::clob::Client`: `markets` method
+
+#### Books
+
+* REST: `/books` endpoint
+* `crate::ClobClient`: `order_books` method
+* `polymarket_client_sdk::clob::Client`: `order_books` method
+
+### Disputed markets
+
+* The Polymarket event pages don’t expose a public “disputed list” endpoint
+* The “Disputed” label appears in the event page data.
+* Each event page has a Next.js data endpoint at: `https://polymarket.com/_next/data/{buildId}/event/{slug}.json`
+* The `{buildId}` is embedded in Polymarket’s homepage HTML as `"buildId":"..."`.
+* The JSON payload for an event contains a boolean flag indicating dispute status; in observed payloads this can appear as either `wasDisputed: true` or `isDisputed: true`.
+* Therefore, to identify disputed markets you must:
+  1. Fetch `https://polymarket.com/` and extract `buildId`.
+  2. For each market slug, fetch the `_next/data` JSON.
+  3. Mark the market as disputed if any JSON node contains `wasDisputed` or `isDisputed` set to `true`.
+* Slugs can be enumerated from Polymarket’s Gamma API via the `markets` endpoint (used by `polymarket-client-sdk`), then deduplicated and checked one‑by‑one against the `_next/data` endpoints.
+
 ## Error handling guidelines
 
 * Don't use `?` try operator - use the macros that begin with `handle`
@@ -1613,6 +1664,134 @@ cfg_if::cfg_if! {
     }
 }
 ```
+
+## CLI guidelines
+
+### Dependencies
+
+* `clap` (features: at least "derive", "env")
+* `tokio` (features: at least "macros", "rt", "rt-multi-thread")
+* `errgonomic`
+* `thiserror`
+
+### File layout and required items
+
+#### File `src/main.rs`
+
+* Must define a `main` entrypoint
+* Must define a basic test for the top-level command
+
+Example:
+
+```rust
+use clap::Parser;
+use errgonomic::exit_result;
+use my_crate_name::Command;
+use std::process::ExitCode;
+
+#[tokio::main]
+async fn main() -> ExitCode {
+    let args = Command::parse();
+    let result = args.run().await;
+    exit_result(result)
+}
+
+#[test]
+fn verify_cli() {
+    use clap::CommandFactory;
+    Command::command().debug_assert();
+}
+```
+
+#### File `src/command.rs`
+
+* Must define a [command-like struct](#command-like-struct) named `Command`
+* Must define a [subcommand-like enum](#subcommand-like-enum) named `Subcommand`
+
+Example:
+
+```rust
+use Subcommand::*;
+use errgonomic::map_err;
+use thiserror::Error;
+
+#[derive(clap::Parser, Debug)]
+#[command(author, version, about, propagate_version = true)]
+pub struct Command {
+    #[command(subcommand)]
+    subcommand: Subcommand,
+}
+
+#[derive(clap::Subcommand, Clone, Debug)]
+pub enum Subcommand {
+    Print(PrintCommand),
+}
+
+impl Command {
+    pub async fn run(self) -> Result<(), CommandRunError> {
+        use CommandRunError::*;
+        let Self {
+            subcommand,
+        } = self;
+        match subcommand {
+            Print(command) => map_err!(command.run().await, PrintCommandRunFailed),
+        }
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum CommandRunError {
+    #[error("failed to run print command")]
+    PrintCommandRunFailed { source: PrintCommandRunError },
+}
+
+mod print_command;
+
+pub use print_command::*;
+```
+
+### Definitions
+
+#### Command-like struct
+
+A struct that contains fields for CLI arguments.
+
+* Must have a name that is a concatenation of all command names leading up to and including this command name, and ends with `Command` (see example above)
+* Must derive `clap::Parser`
+* Must be attached to a parent module: if it's a top-level command: `src/lib.rs`, else: `src/command.rs`
+* May contain a `subcommand` field annotated with `#[command(subcommand)]`
+* Must have a `pub async fn run`
+  * Must return a `Result`
+  * If it contains a `subcommand` field: must match on `subcommand` and call `run` of each command
+
+Command example:
+
+* Name: `DbDownloadYcombinatorStartupsCommand`
+* File: `src/command/db_download_ycombinator_startups_command.rs` (attached to `src/command.rs`)
+* Shell command: `cargo run -- db download ycombinator-startups`
+
+#### Subcommand-like enum
+
+An enum that contains variants for CLI subcommands.
+
+* Must have a name that is a concatenation of all command names leading up to and including this command name, and ends with `Subcommand` (see example above)
+* Must derive `clap::Subcommand`
+* Must be located in the same file as its parent command struct
+* Each variant must be a tuple variant containing exactly one command
+
+Subcommand example:
+
+* Name: `DbDownloadSubcommand`
+* File: `src/cli/db_command/db_download_command.rs` (same file as its parent `DbDownloadCommand`)
+
+#### Proxy command-like struct
+
+A [command-like struct](#command-like-struct) that has a `subcommand` field and calls `run` on each subcommand.
+
+Proxy command example:
+
+* Name: `DbCommand`
+* File: `src/command/db_command.rs` (attached to `src/command.rs`)
 
 ## Project files
 
