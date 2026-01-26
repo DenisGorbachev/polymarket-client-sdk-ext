@@ -7,13 +7,13 @@ use futures::future::join_all;
 use polymarket_client_sdk::clob::Client;
 use polymarket_client_sdk::clob::types::request::OrderBookSummaryRequest;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
-use std::num::NonZeroU64;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use thiserror::Error;
 
-const DEFAULT_DB_DIR: &str = ".cache/db";
-const DEFAULT_MARKET_KEYSPACE: &str = "clob_market_responses";
-const DEFAULT_ORDERBOOK_KEYSPACE: &str = "clob_order_book_summary_responses";
+pub const DEFAULT_DB_DIR: &str = ".cache/db";
+pub const CLOB_MARKET_RESPONSE_KEYSPACE: &str = "clob_market_responses";
+pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "clob_order_book_summary_responses";
 const CURSOR_KEYSPACE: &str = "cache_download_cursors";
 const CURSOR_KEY: &str = "markets_next_cursor";
 const ORDERBOOKS_CHUNK_SIZE: usize = 500;
@@ -21,13 +21,9 @@ const ORDERBOOKS_CHUNK_SIZE: usize = 500;
 #[derive(clap::Parser, Clone, Debug)]
 pub struct CacheDownloadCommand {
     #[arg(long)]
-    pub market_response_page_limit: Option<NonZeroU64>,
+    pub market_response_page_limit: Option<NonZeroUsize>,
     #[arg(long, default_value = DEFAULT_DB_DIR)]
     pub dir: PathBuf,
-    #[arg(long, default_value = DEFAULT_MARKET_KEYSPACE)]
-    pub market_response_keyspace: String,
-    #[arg(long, default_value = DEFAULT_ORDERBOOK_KEYSPACE)]
-    pub order_book_summary_response_keyspace: String,
 }
 
 impl CacheDownloadCommand {
@@ -36,20 +32,18 @@ impl CacheDownloadCommand {
         let Self {
             market_response_page_limit,
             dir,
-            market_response_keyspace,
-            order_book_summary_response_keyspace,
         } = self;
         let page_limit_total = market_response_page_limit.map(|limit| limit.get());
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
         let market_keyspace = handle!(
-            db.keyspace(&market_response_keyspace, KeyspaceCreateOptions::default),
+            db.keyspace(CLOB_MARKET_RESPONSE_KEYSPACE, KeyspaceCreateOptions::default),
             OpenMarketKeyspaceFailed,
-            keyspace: market_response_keyspace
+            keyspace: CLOB_MARKET_RESPONSE_KEYSPACE.to_string()
         );
         let orderbook_keyspace = handle!(
-            db.keyspace(&order_book_summary_response_keyspace, KeyspaceCreateOptions::default),
+            db.keyspace(CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, KeyspaceCreateOptions::default),
             OpenOrderBookSummaryKeyspaceFailed,
-            keyspace: order_book_summary_response_keyspace
+            keyspace: CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE.to_string()
         );
         let cursor_keyspace = handle!(
             db.keyspace(CURSOR_KEYSPACE, KeyspaceCreateOptions::default),
@@ -58,13 +52,13 @@ impl CacheDownloadCommand {
         );
         let mut next_cursor = handle!(Self::resolve_start_cursor(&db, &cursor_keyspace, &market_keyspace), ResolveStartCursorFailed);
         let client = Client::default();
-        let mut downloaded_pages: u64 = 0;
+        let mut downloaded_pages: usize = 0;
 
         loop {
             if Self::limit_reached(downloaded_pages, market_response_page_limit) {
                 break;
             }
-            eprintln!("{}", progress_report_line("Downloading markets pages", downloaded_pages.saturating_add(1), page_limit_total));
+            eprintln!("{}", progress_report_line("Downloading markets pages", downloaded_pages.saturating_add(1), None, page_limit_total));
             let cursor_opt = Self::cursor_option(&next_cursor);
             let page = handle!(client.markets(cursor_opt).await, FetchMarketsFailed, next_cursor);
             downloaded_pages = downloaded_pages.saturating_add(1);
@@ -233,7 +227,7 @@ impl CacheDownloadCommand {
         Self::decode_offset_cursor(cursor).is_some()
     }
 
-    fn limit_reached(downloaded: u64, limit: Option<NonZeroU64>) -> bool {
+    fn limit_reached(downloaded: usize, limit: Option<NonZeroUsize>) -> bool {
         match limit {
             Some(limit) => downloaded >= limit.get(),
             None => false,

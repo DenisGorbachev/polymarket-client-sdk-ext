@@ -11,7 +11,7 @@ pub struct Command {
 
 #[derive(clap::Subcommand, Clone, Debug)]
 pub enum Subcommand {
-    CacheDownload(CacheDownloadCommand),
+    Cache(CacheCommand),
 }
 
 impl Command {
@@ -21,16 +21,22 @@ impl Command {
             subcommand,
         } = self;
         match subcommand {
-            CacheDownload(command) => map_err!(command.run().await, CacheDownloadCommandRunFailed),
+            Cache(command) => map_err!(command.run().await, CacheCommandRunFailed),
         }
     }
 }
 
 #[derive(Error, Debug)]
 pub enum CommandRunError {
-    #[error("failed to run cache download command")]
-    CacheDownloadCommandRunFailed { source: CacheDownloadCommandRunError },
+    #[error("failed to run cache command")]
+    CacheCommandRunFailed { source: CacheCommandRunError },
 }
 
+mod cache_command;
+pub use cache_command::*;
 mod cache_download_command;
 pub use cache_download_command::*;
+mod cache_market_responses_command;
+pub use cache_market_responses_command::*;
+mod cache_order_book_summary_responses_command;
+pub use cache_order_book_summary_responses_command::*;

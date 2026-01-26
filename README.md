@@ -32,8 +32,8 @@ Polymarket API client
 Usage: polymarket-client-sdk-ext <COMMAND>
 
 Commands:
-  cache-download  
-  help            Print this message or the help of the given subcommand(s)
+  cache  
+  help   Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help     Print help
