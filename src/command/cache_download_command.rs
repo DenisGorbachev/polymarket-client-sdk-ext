@@ -158,15 +158,18 @@ impl CacheDownloadCommand {
         let serialized_markets = handle_iter!(markets.into_iter().map(Self::serialize_market_entry), SerializeMarketEntryFailed);
         let serialized_orderbooks = handle_iter!(orderbooks.into_iter().map(Self::serialize_orderbook_entry), SerializeOrderbookEntryFailed);
         let mut tx = db.write_tx();
+        // TODO: collect all errors via handle_iter
         serialized_markets
             .into_iter()
             .for_each(|(market_slug, bytes)| {
+                // TODO: return an error if the key already exists
                 tx.insert(market_keyspace, market_slug.as_str(), bytes);
             });
         serialized_orderbooks
             .into_iter()
             .for_each(|(token_id, bytes)| {
                 let key = to_fjall_key_from_token_id(token_id);
+                // TODO: return an error if the key already exists
                 tx.insert(orderbook_keyspace, key, bytes);
             });
         if store_cursor {
