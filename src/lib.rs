@@ -23,10 +23,18 @@ mod integration_tests;
 
 #[cfg(test)]
 mod test_helpers;
+
 #[cfg(test)]
 pub use test_helpers::*;
 
 mod traits;
+
 pub use traits::*;
+
 mod command;
+
 pub use command::*;
+
+mod properties;
+
+pub use properties::*;
