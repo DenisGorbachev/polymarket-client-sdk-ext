@@ -1,15 +1,14 @@
 use crate::{CLOB_MARKET_RESPONSE_KEYSPACE, DEFAULT_DB_DIR, Property, PropertyName, ViolationStats, market_response_properties};
 use errgonomic::{handle, handle_iter};
-use fjall::{KeyspaceCreateOptions, Readable, SingleWriterTxDatabase, Snapshot};
+use fjall::{KeyspaceCreateOptions, Readable, SingleWriterTxDatabase, Snapshot, UserKey};
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 use rustc_hash::FxHashMap;
+use serde::de::DeserializeOwned;
 use std::io::Write;
 use std::path::PathBuf;
 use thiserror::Error;
 
-const VIOLATION_EXAMPLE_LIMIT: usize = 10;
-
-type ViolationStatsMap = FxHashMap<PropertyName, ViolationStats<VIOLATION_EXAMPLE_LIMIT, String>>;
+type ViolationStatsMap = FxHashMap<PropertyName, ViolationStats<10, String>>;
 
 #[derive(clap::Parser, Clone, Debug)]
 pub struct CacheCheckCommand {
@@ -33,7 +32,7 @@ impl CacheCheckCommand {
         let mut properties = Self::named_properties();
         let mut violations = Self::init_violations(&properties);
         let iter = snapshot.iter(&keyspace);
-        let _processed = handle_iter!(iter.map(|guard| Self::process_market_entry(&mut violations, &mut properties, &snapshot, guard)), ProcessMarketEntryFailed);
+        let _processed = handle_iter!(iter.map(|guard| Self::process_entry(&mut violations, &mut properties, &snapshot, guard)), ProcessMarketEntryFailed);
         handle!(Self::write_violations(&violations), WriteViolationsFailed);
         Ok(())
     }
@@ -55,19 +54,21 @@ impl CacheCheckCommand {
             .collect()
     }
 
-    fn process_market_entry(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<MarketResponse>>)], snapshot: &Snapshot, guard: fjall::Guard) -> Result<(), CacheCheckCommandProcessMarketEntryError> {
+    fn process_entry<T: DeserializeOwned>(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<T>>)], snapshot: &Snapshot, guard: fjall::Guard) -> Result<(), CacheCheckCommandProcessMarketEntryError> {
         use CacheCheckCommandProcessMarketEntryError::*;
-        let value = handle!(guard.value(), ReadEntryFailed);
-        let market_response = handle!(serde_json::from_slice::<MarketResponse>(value.as_ref()), DeserializeFailed, value);
-        Self::record_violations(violations, properties, snapshot, &market_response);
+        let (key_slice, value_slice) = handle!(guard.into_inner(), ReadEntryFailed);
+        let value = handle!(serde_json::from_slice::<T>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
+        Self::record_violations(violations, properties, snapshot, key_slice, &value);
         Ok(())
     }
 
-    fn record_violations(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<MarketResponse>>)], snapshot: &Snapshot, market_response: &MarketResponse) {
+    fn record_violations<T>(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<T>>)], snapshot: &Snapshot, key: UserKey, value: &T) {
         properties.iter_mut().for_each(|(name, property)| {
-            if !property.holds(market_response, snapshot) {
+            if !property.holds(value, snapshot) {
                 let stats = violations.entry(name.clone()).or_default();
-                stats.witness(market_response.market_slug.clone());
+                // TODO: Fix error handling
+                let key_string = String::from_utf8(key.to_vec()).expect("every key should be a valid string");
+                stats.witness(key_string);
             }
         });
     }
