@@ -1,4 +1,4 @@
-use crate::Holds;
+use crate::Property;
 use fjall::Snapshot;
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 use rustc_hash::FxHashSet;
@@ -8,7 +8,7 @@ pub struct MarketSlugIsUnique {
     slugs: FxHashSet<String>,
 }
 
-impl Holds<MarketResponse> for MarketSlugIsUnique {
+impl Property<MarketResponse> for MarketSlugIsUnique {
     fn holds(&mut self, market_response: &MarketResponse, _snapshot: &Snapshot) -> bool {
         // returns true if the set didn't contain this value
         self.slugs.insert(market_response.market_slug.clone())
