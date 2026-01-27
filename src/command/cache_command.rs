@@ -8,8 +8,7 @@ macro_rules! define_cache_list_command {
     (
         command = $command:ident,
         run_error = $run_error:ident,
-        read_error = $read_error:ident,
-        write_error = $write_error:ident,
+        process_error = $process_error:ident,
         keyspace_const = $keyspace_const:ident,
     ) => {
         #[derive(clap::Parser, Clone, Debug)]
@@ -38,24 +37,18 @@ macro_rules! define_cache_list_command {
                 let read_tx = db.read_tx();
                 let limit = limit.map(std::num::NonZeroUsize::get).unwrap_or(usize::MAX);
                 let iter = read_tx.iter(&keyspace).take(limit);
-                let entries = errgonomic::handle_iter!(iter.map(Self::read_entry), ReadEntriesFailed);
                 let mut stdout = std::io::stdout().lock();
                 let _writes = errgonomic::handle_iter!(
-                    entries.into_iter().map(|entry| Self::write_entry(&mut stdout, entry)),
-                    WriteEntriesFailed
+                    iter.map(|guard| Self::process_entry(&mut stdout, guard)),
+                    ProcessEntryFailed
                 );
                 Ok(())
             }
 
-            fn read_entry(guard: fjall::Guard) -> Result<Vec<u8>, $read_error> {
-                use $read_error::*;
+            fn process_entry(writer: &mut dyn std::io::Write, guard: fjall::Guard) -> Result<(), $process_error> {
+                use $process_error::*;
                 let (_key, value) = errgonomic::handle!(guard.into_inner(), ReadEntryFailed);
-                Ok(value.as_ref().to_vec())
-            }
-
-            fn write_entry(writer: &mut dyn std::io::Write, bytes: Vec<u8>) -> Result<(), $write_error> {
-                use $write_error::*;
-                errgonomic::handle!(writer.write_all(bytes.as_slice()), WriteFailed);
+                errgonomic::handle!(writer.write_all(value.as_ref()), WriteFailed);
                 errgonomic::handle!(writer.write_all(b"\n"), WriteFailed);
                 Ok(())
             }
@@ -67,20 +60,14 @@ macro_rules! define_cache_list_command {
             OpenDatabaseFailed { source: fjall::Error, dir: std::path::PathBuf },
             #[error("failed to open keyspace '{keyspace}'")]
             OpenKeyspaceFailed { source: fjall::Error, keyspace: String },
-            #[error("failed to read '{len}' cache entries", len = source.len())]
-            ReadEntriesFailed { source: errgonomic::ErrVec<$read_error> },
-            #[error("failed to write '{len}' cache entries", len = source.len())]
-            WriteEntriesFailed { source: errgonomic::ErrVec<$write_error> },
+            #[error("failed to process '{len}' cache entries", len = source.len())]
+            ProcessEntryFailed { source: errgonomic::ErrVec<$process_error> },
         }
 
         #[derive(thiserror::Error, Debug)]
-        pub enum $read_error {
+        pub enum $process_error {
             #[error("failed to read cache entry")]
             ReadEntryFailed { source: fjall::Error },
-        }
-
-        #[derive(thiserror::Error, Debug)]
-        pub enum $write_error {
             #[error("failed to write cache entry")]
             WriteFailed { source: std::io::Error },
         }
