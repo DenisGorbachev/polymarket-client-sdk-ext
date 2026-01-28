@@ -21,7 +21,7 @@ macro_rules! define_cache_list_command {
         }
 
         impl $command {
-            pub async fn run(self) -> Result<(), $run_error> {
+            pub async fn run(self) -> Result<std::process::ExitCode, $run_error> {
                 use $run_error::*;
                 use fjall::Readable;
                 let Self { dir, limit } = self;
@@ -43,7 +43,7 @@ macro_rules! define_cache_list_command {
                     iter.map(|guard| Self::process_entry(&mut stdout, guard)),
                     ProcessEntryFailed
                 );
-                Ok(())
+                Ok(std::process::ExitCode::SUCCESS)
             }
 
             fn process_entry(writer: &mut dyn std::io::Write, guard: fjall::Guard) -> Result<(), $process_error> {
