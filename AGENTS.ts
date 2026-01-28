@@ -124,7 +124,7 @@ const includeAgentDocs = async () => {
 
 Read the extra docs from the list below if they are relevant to your current task:
 
-${files.map(file => `* ${file}`)}`.trim()
+${files.map(file => `* ${file}`).join("\n")}`.trim()
   } else {
     return ""
   }
