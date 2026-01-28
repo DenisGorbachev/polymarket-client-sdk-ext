@@ -16,3 +16,12 @@ impl<const LIMIT: usize, T> ViolationStats<LIMIT, T> {
         }
     }
 }
+
+// impl<const LIMIT: usize, T> Default for ViolationStats<LIMIT, T> {
+//     fn default() -> Self {
+//         Self {
+//             count: Default::default(),
+//             examples: Default::default(),
+//         }
+//     }
+// }

@@ -1,8 +1,8 @@
-use crate::{NEXT_CURSOR_STOP, NextCursor, ShouldDownloadOrderbooks, TokenId, progress_report_line, to_fjall_key_from_token_id};
+use crate::{NEXT_CURSOR_STOP, NextCursor, ShouldDownloadOrderbooks, TokenId, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter};
-use fjall::{KeyspaceCreateOptions, PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace};
+use fjall::{KeyspaceCreateOptions, PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace, SingleWriterWriteTx};
 use futures::future::join_all;
 use polymarket_client_sdk::clob::Client;
 use polymarket_client_sdk::clob::types::request::OrderBookSummaryRequest;
@@ -159,22 +159,31 @@ impl CacheDownloadCommand {
         let serialized_markets = handle_iter!(markets.into_iter().map(Self::serialize_market_entry), SerializeMarketEntryFailed);
         let serialized_orderbooks = handle_iter!(orderbooks.into_iter().map(Self::serialize_orderbook_entry), SerializeOrderbookEntryFailed);
         let mut tx = db.write_tx();
-        serialized_markets
-            .into_iter()
-            .for_each(|(market_slug, bytes)| {
-                tx.insert(market_keyspace, market_slug.as_str(), bytes);
-            });
-        serialized_orderbooks
-            .into_iter()
-            .for_each(|(token_id, bytes)| {
-                let key = to_fjall_key_from_token_id(token_id);
-                tx.insert(orderbook_keyspace, key, bytes);
-            });
+        let _market_inserts = handle_iter!(
+            serialized_markets
+                .into_iter()
+                .map(|(market_slug, bytes)| { Self::insert_entry(&mut tx, market_keyspace, market_slug, bytes) }),
+            InsertMarketEntriesFailed
+        );
+        let _orderbook_inserts = handle_iter!(
+            serialized_orderbooks
+                .into_iter()
+                .map(|(token_id, bytes)| { Self::insert_entry(&mut tx, orderbook_keyspace, token_id.to_string(), bytes) }),
+            InsertOrderbookEntriesFailed
+        );
         if store_cursor {
             tx.insert(cursor_keyspace, CURSOR_KEY, next_cursor.as_str());
         }
         handle!(tx.commit(), CommitTransactionFailed);
         handle!(db.persist(PersistMode::SyncAll), PersistDatabaseFailed);
+        Ok(())
+    }
+
+    fn insert_entry(tx: &mut SingleWriterWriteTx, keyspace: &SingleWriterTxKeyspace, key: String, value: Vec<u8>) -> Result<(), CacheDownloadCommandInsertEntryError> {
+        use CacheDownloadCommandInsertEntryError::*;
+        let exists = handle!(tx.contains_key(keyspace, &key), ContainsKeyFailed, key, value);
+        handle_bool!(exists, KeyAlreadyExists, key, value);
+        tx.insert(keyspace, key, value);
         Ok(())
     }
 
@@ -292,10 +301,30 @@ pub enum CacheDownloadCommandWritePageToDatabaseError {
     SerializeMarketEntryFailed { source: ErrVec<CacheDownloadCommandSerializeMarketEntryError> },
     #[error("failed to serialize '{len}' order book summaries", len = source.len())]
     SerializeOrderbookEntryFailed { source: ErrVec<CacheDownloadCommandSerializeOrderbookEntryError> },
+    #[error("failed to insert '{len}' market entries", len = source.len())]
+    InsertMarketEntriesFailed { source: ErrVec<CacheDownloadCommandInsertEntryError> },
+    #[error("failed to insert '{len}' order book entries", len = source.len())]
+    InsertOrderbookEntriesFailed { source: ErrVec<CacheDownloadCommandInsertEntryError> },
     #[error("failed to commit database transaction")]
     CommitTransactionFailed { source: fjall::Error },
     #[error("failed to persist database changes")]
     PersistDatabaseFailed { source: fjall::Error },
+}
+
+#[derive(Error, Debug)]
+pub enum CacheDownloadCommandInsertEntryError {
+    #[error("failed to call contains_key for '{key}'")]
+    ContainsKeyFailed { source: fjall::Error, key: String, value: Vec<u8> },
+    #[error("key already exists: '{key}'")]
+    KeyAlreadyExists { key: String, value: Vec<u8> },
+}
+
+#[derive(Error, Debug)]
+pub enum CacheDownloadCommandInsertOrderbookEntryError {
+    #[error("failed to check if order book key exists for token '{token_id}'")]
+    CheckOrderbookKeyExistsFailed { source: fjall::Error, token_id: TokenId },
+    #[error("order book key already exists for token '{token_id}'")]
+    OrderbookKeyAlreadyExists { token_id: TokenId },
 }
 
 #[derive(Error, Debug)]

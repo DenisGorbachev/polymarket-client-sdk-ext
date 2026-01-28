@@ -36,7 +36,8 @@ pub enum CommandRunError {
 mod cache_command;
 
 pub use cache_command::*;
-
+mod cache_check_command;
+pub use cache_check_command::*;
 mod cache_download_command;
 
 pub use cache_download_command::*;

@@ -2,6 +2,6 @@ mod should_download_orderbooks;
 
 pub use should_download_orderbooks::*;
 
-mod holds;
+mod property;
 
-pub use holds::*;
+pub use property::*;
