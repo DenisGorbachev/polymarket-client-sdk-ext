@@ -4,7 +4,7 @@
 
 - Polymarket has an [LLM-friendly documentation index](https://docs.polymarket.com/llms.txt).
   - All files from this index have already been downloaded to `.agents/docs/polymarket` on 2026-01-22
-  - To download again, execute [Download Polymarket Docs for Developers](../../specs/download-polymarket-docs.md)
+  - To download again, execute [Download Polymarket Docs for Developers](../specs/download-polymarket-docs.md) (TODO: turn this file into a shell task in .mise folder)
 
 ## Database
 

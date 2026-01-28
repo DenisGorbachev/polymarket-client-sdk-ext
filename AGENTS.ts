@@ -1,12 +1,13 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run --no-lock
 
 import {parseArgs} from "jsr:@std/cli@1.0.13"
+import {compare, parse} from "jsr:@std/semver@1.0.0"
 import {stringify} from "jsr:@libs/xml@7.0.3"
 import remarkHeadingShift from "npm:remark-heading-shift@1.1.2"
 import remarkParse from "npm:remark-parse@11.0.0"
 import remarkStringify from "npm:remark-stringify@11.0.0"
 import {unified} from "npm:unified@11.0.5"
-import {dirname, extname, join} from "jsr:@std/path@1.1.4"
+import {dirname, extname, fromFileUrl, join} from "jsr:@std/path@1.1.4"
 
 const args = parseArgs(Deno.args, {
   string: ["output"],
@@ -100,6 +101,35 @@ const renderFileContents = async (path: string, contents: string, pathToRender: 
   return renderCodeFile(pathToRender, contents)
 }
 
+const runAgentDocsList = async (): Promise<string[]> => {
+  const decoder = new TextDecoder()
+  const command = new Deno.Command("mise", {
+    args: ["run", "agent:docs:list"],
+    stdout: "piped",
+    stderr: "inherit",
+    cwd: fromFileUrl(rootUrl),
+  })
+  const output = await command.output()
+  const stdout = decoder.decode(output.stdout).trimEnd()
+  if (stdout.length === 0) {
+    return []
+  }
+  return stdout.split(/\r?\n/).filter((line) => line.length > 0)
+}
+
+const includeAgentDocs = async () => {
+  const files = await runAgentDocsList()
+  if (files.length) {
+    return `# Extra docs
+
+Read the extra docs from the list below if they are relevant to your current task:
+
+${files.map(file => `* ${file}`)}`.trim()
+  } else {
+    return ""
+  }
+}
+
 type CargoMetadata = {
   packages: CargoPackage[]
   resolve: CargoResolve | null
@@ -150,21 +180,33 @@ const loadCargoMetadata = (() => {
   }
 })()
 
+const parseSemVer = (value: string) => {
+  const parsed = parse(value)
+  if (!parsed) {
+    throw new Error(`invalid semver: '${value}'`)
+  }
+  return parsed
+}
+
 const includeCargoDependencyFile = async (dependencyName: string, path: string) => {
   const metadata = await loadCargoMetadata()
-  const resolve = metadata.resolve
-  if (!resolve?.root) {
-    throw new Error("cargo metadata did not include a resolve root")
-  }
-  const rootNode = resolve.nodes.find((node) => node.id === resolve.root)
-  if (!rootNode) {
-    throw new Error(`cargo metadata did not include the root node: '${resolve.root}'`)
-  }
-  const dependency = rootNode.deps.find((dep) => dep.name === dependencyName)
-  if (!dependency) {
+  const candidates = metadata.packages.filter((pkg) => pkg.name === dependencyName)
+  if (candidates.length === 0) {
     throw new Error(`cargo dependency not found: '${dependencyName}'`)
   }
-  const cargoPackage = metadata.packages.find((pkg) => pkg.id === dependency.pkg)
+  const cargoPackage = candidates.reduce((best, current) => {
+    if (!best) {
+      return current
+    }
+    const comparison = compare(parseSemVer(current.version), parseSemVer(best.version))
+    if (comparison > 0) {
+      return current
+    }
+    if (comparison === 0 && current.manifest_path > best.manifest_path) {
+      return current
+    }
+    return best
+  }, null as CargoPackage | null)
   if (!cargoPackage) {
     throw new Error(`cargo package not found for dependency: '${dependencyName}'`)
   }
@@ -189,6 +231,7 @@ const parts = (await Promise.all([
   includeFileIfExists(".agents/project.md"),
   includeFileIfExists(".agents/knowledge.md"),
   includeFileIfExists(".agents/gotchas.md"),
+  includeAgentDocs(),
   includeCargoDependencyFile("errgonomic", "DOCS.md"),
   includeFile(".agents/cli.md"),
   Promise.resolve("## Project files"),

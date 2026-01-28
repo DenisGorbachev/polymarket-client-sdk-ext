@@ -9,6 +9,7 @@ use polymarket_client_sdk::clob::types::request::OrderBookSummaryRequest;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
+use std::process::ExitCode;
 use thiserror::Error;
 
 pub const DEFAULT_DB_DIR: &str = ".cache/db";
@@ -27,7 +28,7 @@ pub struct CacheDownloadCommand {
 }
 
 impl CacheDownloadCommand {
-    pub async fn run(self) -> Result<(), CacheDownloadCommandRunError> {
+    pub async fn run(self) -> Result<ExitCode, CacheDownloadCommandRunError> {
         use CacheDownloadCommandRunError::*;
         let Self {
             market_response_page_limit,
@@ -84,7 +85,7 @@ impl CacheDownloadCommand {
             }
             next_cursor = page_next_cursor;
         }
-        Ok(())
+        Ok(ExitCode::SUCCESS)
     }
 
     fn resolve_start_cursor(db: &SingleWriterTxDatabase, cursor_keyspace: &SingleWriterTxKeyspace, market_keyspace: &SingleWriterTxKeyspace) -> Result<NextCursor, CacheDownloadCommandResolveStartCursorError> {

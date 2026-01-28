@@ -33,6 +33,7 @@ fi
 
   mise trust
   mise install
+  mise reshim
 
   name_old=$(taplo get -f "$cargo_toml" "package.name")
   name_old_snake_case=$(ccase --to snake "$name_old")

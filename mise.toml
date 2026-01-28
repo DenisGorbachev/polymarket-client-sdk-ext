@@ -16,7 +16,7 @@ cargo-binstall = "1.10.15"
 "cargo:cargo-machete" = "0.7.0"
 "cargo:cargo-nextest" = "0.9.102"
 "cargo:cargo-expand" = "1.0.114"
-"cargo:rumdl" = "0.0.185"
+"cargo:rumdl" = "0.1.0"
 
 [tasks."build"]
 run = "cargo build"
@@ -76,10 +76,10 @@ cargo clippy --all-targets --all-features -- -D warnings
 run = "cargo fmt --all"
 
 [tasks."fix:docs"]
-# use `rumdl fmt` instead of `rumdl check --fix` because `rumdl fmt` exits with 0 after fixing the errors
-# `rumdl fmt` may modify any file, so we need to `git add *.md` (`stage_fixed` only stages the files that were modified before `fix:docs` is run)
+# use `rumdl check --fix` instead of `rumdl fmt` because `rumdl check --fix` exits with 1 if errors remain (since v0.1.0)
+# `rumdl check --fix` may modify any file, so we need to `git add *.md` (`stage_fixed` only stages the files that were modified before `fix:docs` is run)
 run = """
-rumdl fmt
+rumdl check --fix
 git add *.md
 """
 
@@ -118,10 +118,10 @@ cargo watch --clear --watch "$PWD" --exec "$CMD_NO_WHITESPACE" "$@"
 """
 
 [tasks."gen:readme"]
-run = "chmod 0644 README.md && ./README.ts --output README.md"
+run = "touch README.md && chmod 0644 README.md && ./README.ts --output README.md"
 
 [tasks."gen:agents"]
-run = "chmod 0644 AGENTS.md && ./AGENTS.ts --output AGENTS.md"
+run = "touch AGENTS.md && chmod 0644 AGENTS.md && ./AGENTS.ts --output AGENTS.md"
 
 [tasks."commitlint"]
 run = "commitlint --extends \"$(mise where npm:@commitlint/config-conventional)/lib/node_modules/@commitlint/config-conventional/lib/index.js\""

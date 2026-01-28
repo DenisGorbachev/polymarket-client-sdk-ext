@@ -18,10 +18,15 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 ### Workflow
 
-* Before starting the task: run `mise run agent:docs:list` and read the docs that are relevant to current task (if present)
 * After finishing the task: run `mise run agent:on:stop` (this command runs the lints and tests)
 * Don't edit the files in the following top-level dirs: `specs`, `.agents`
 * Don't write the tests unless I ask you explicitly
+* If you notice unexpected edits, keep them
+
+### Review workflow
+
+* Output a numbered list of issues (I will reference the issues by number in my answer)
+* If there are no issues, then start your reply with "No issues found"
 
 ### Commands
 
@@ -238,6 +243,31 @@ You are a senior Rust software architect. You write high-quality, production-rea
     /// This is bad because it is not general enough and also forces the caller to collect the strings into a vec, which is bad for performance
     pub fn bar(inputs: impl IntoIterator<Item = String>) {}
     ```
+* Prefer `.map()` instead of `match` when you need to modify the value in the `Option` or `Result`. For example:
+  * Good:
+    ```rust
+    impl core::str::FromStr for UserId {
+        type Err = core::num::ParseIntError;
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            s.parse::<u64>().map(Self::new)
+        }
+    }
+    ```
+  * Bad:
+  ```rust
+  impl core::str::FromStr for UserId {
+      type Err = core::num::ParseIntError;
+
+      fn from_str(s: &str) -> Result<Self, Self::Err> {
+          // This is bad because it uses more code to express the same idea
+          match s.parse::<u64>() {
+              Ok(value) => Ok(Self::new(value)),
+              Err(error) => Err(error),
+          }
+      }
+  }
+  ```
 * Write `macro_rules!` macros to reduce boilerplate
 * If you see similar code in different places, write a macro and replace the similar code with a macro call
 
@@ -348,7 +378,7 @@ A method that reads the data from a Polymarket CLOB API.
 
 * Polymarket has an [LLM-friendly documentation index](https://docs.polymarket.com/llms.txt).
   * All files from this index have already been downloaded to `.agents/docs/polymarket` on 2026-01-22
-  * To download again, execute [Download Polymarket Docs for Developers](../../specs/download-polymarket-docs.md)
+  * To download again, execute [Download Polymarket Docs for Developers](../specs/download-polymarket-docs.md) (TODO: turn this file into a shell task in .mise folder)
 
 ### Database
 
@@ -392,6 +422,12 @@ A method that reads the data from a Polymarket CLOB API.
   2. For each market slug, fetch the `_next/data` JSON.
   3. Mark the market as disputed if any JSON node contains `wasDisputed` or `isDisputed` set to `true`.
 * Slugs can be enumerated from Polymarket’s Gamma API via the `markets` endpoint (used by `polymarket-client-sdk`), then deduplicated and checked one‑by‑one against the `_next/data` endpoints.
+
+# Extra docs
+
+Read the extra docs from the list below if they are relevant to your current task:
+
+* .agents/docs/docs.polymarket.com/changelog/changelog.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/recover-missing-deposit.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/how-to-export-private-key.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/is-my-money-safe.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/wen-token.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/why-do-i-need-crypto.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/polling.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/embeds.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/is-polymarket-the-house.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/support.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/geoblocking.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/what-are-prediction-markets.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/sell-early.md,* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/does-polymarket-have-an-api.md,* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/large-cross-chain-deposits.md,* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/how-to-withdraw.md,* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/usdc-on-eth.md,* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/moonpay.md,* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/supported-tokens.md,* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/coinbase.md,* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-created.md,* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-resolved.md,* .agents/docs/docs.polymarket.com/polymarket-learn/markets/dispute.md,* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-clarified.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/maker-rebates-program.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/holding-rewards.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/how-are-prices-calculated.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/using-the-orderbook.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/no-limits.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/limit-orders.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/fees.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/liquidity-rewards.md,* .agents/docs/docs.polymarket.com/polymarket-learn/trading/market-orders.md,* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/what-is-polymarket.md,* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/how-to-deposit.md,* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/how-to-signup.md,* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/making-your-first-trade.md,* .agents/docs/docs.polymarket.com/api-reference/series/get-series-by-id.md,* .agents/docs/docs.polymarket.com/api-reference/series/list-series.md,* .agents/docs/docs.polymarket.com/api-reference/misc/get-total-markets-a-user-has-traded.md,* .agents/docs/docs.polymarket.com/api-reference/misc/get-live-volume-for-an-event.md,* .agents/docs/docs.polymarket.com/api-reference/misc/get-open-interest.md,* .agents/docs/docs.polymarket.com/api-reference/comments/get-comments-by-comment-id.md,* .agents/docs/docs.polymarket.com/api-reference/comments/get-comments-by-user-address.md,* .agents/docs/docs.polymarket.com/api-reference/comments/list-comments.md,* .agents/docs/docs.polymarket.com/api-reference/data-api-status/data-api-health-check.md,* .agents/docs/docs.polymarket.com/api-reference/core/get-current-positions-for-a-user.md,* .agents/docs/docs.polymarket.com/api-reference/core/get-user-activity.md,* .agents/docs/docs.polymarket.com/api-reference/core/get-total-value-of-a-users-positions.md,* .agents/docs/docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets.md,* .agents/docs/docs.polymarket.com/api-reference/core/get-closed-positions-for-a-user.md,* .agents/docs/docs.polymarket.com/api-reference/core/get-trader-leaderboard-rankings.md,* .agents/docs/docs.polymarket.com/api-reference/core/get-top-holders-for-markets.md,* .agents/docs/docs.polymarket.com/api-reference/builders/get-daily-builder-volume-time-series.md,* .agents/docs/docs.polymarket.com/api-reference/builders/get-aggregated-builder-leaderboard.md,* .agents/docs/docs.polymarket.com/api-reference/bridge/create-deposit-addresses.md,* .agents/docs/docs.polymarket.com/api-reference/bridge/get-supported-assets.md,* .agents/docs/docs.polymarket.com/api-reference/gamma-status/gamma-api-health-check.md,* .agents/docs/docs.polymarket.com/api-reference/sports/get-valid-sports-market-types.md,* .agents/docs/docs.polymarket.com/api-reference/sports/list-teams.md,* .agents/docs/docs.polymarket.com/api-reference/sports/get-sports-metadata-information.md,* .agents/docs/docs.polymarket.com/api-reference/tags/get-tag-by-slug.md,* .agents/docs/docs.polymarket.com/api-reference/tags/get-tags-related-to-a-tag-id.md,* .agents/docs/docs.polymarket.com/api-reference/tags/get-tag-by-id.md,* .agents/docs/docs.polymarket.com/api-reference/tags/get-related-tags-relationships-by-tag-id.md,* .agents/docs/docs.polymarket.com/api-reference/tags/list-tags.md,* .agents/docs/docs.polymarket.com/api-reference/tags/get-related-tags-relationships-by-tag-slug.md,* .agents/docs/docs.polymarket.com/api-reference/tags/get-tags-related-to-a-tag-slug.md,* .agents/docs/docs.polymarket.com/api-reference/search/search-markets-events-and-profiles.md,* .agents/docs/docs.polymarket.com/api-reference/markets/list-markets.md,* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-by-id.md,* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-tags-by-id.md,* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-by-slug.md,* .agents/docs/docs.polymarket.com/api-reference/orderbook/get-multiple-order-books-summaries-by-request.md,* .agents/docs/docs.polymarket.com/api-reference/orderbook/get-order-book-summary.md,* .agents/docs/docs.polymarket.com/api-reference/spreads/get-bid-ask-spreads.md,* .agents/docs/docs.polymarket.com/api-reference/profiles/get-public-profile-by-wallet-address.md,* .agents/docs/docs.polymarket.com/api-reference/events/get-event-by-slug.md,* .agents/docs/docs.polymarket.com/api-reference/events/list-events.md,* .agents/docs/docs.polymarket.com/api-reference/events/get-event-by-id.md,* .agents/docs/docs.polymarket.com/api-reference/events/get-event-tags.md,* .agents/docs/docs.polymarket.com/api-reference/pricing/get-midpoint-price.md,* .agents/docs/docs.polymarket.com/api-reference/pricing/get-market-price.md,* .agents/docs/docs.polymarket.com/api-reference/pricing/get-multiple-market-prices-by-request.md,* .agents/docs/docs.polymarket.com/api-reference/pricing/get-price-history-for-a-traded-token.md,* .agents/docs/docs.polymarket.com/api-reference/pricing/get-multiple-market-prices.md,* .agents/docs/docs.polymarket.com/quickstart/websocket/WSS-Quickstart.md,* .agents/docs/docs.polymarket.com/quickstart/overview.md,* .agents/docs/docs.polymarket.com/quickstart/fetching-data.md,* .agents/docs/docs.polymarket.com/quickstart/introduction/rate-limits.md,* .agents/docs/docs.polymarket.com/quickstart/first-order.md,* .agents/docs/docs.polymarket.com/quickstart/reference/endpoints.md,* .agents/docs/docs.polymarket.com/quickstart/reference/glossary.md,* .agents/docs/docs.polymarket.com/developers/misc-endpoints/bridge-overview.md,* .agents/docs/docs.polymarket.com/developers/market-makers/maker-rebates-program.md,* .agents/docs/docs.polymarket.com/developers/market-makers/setup.md,* .agents/docs/docs.polymarket.com/developers/market-makers/inventory.md,* .agents/docs/docs.polymarket.com/developers/market-makers/data-feeds.md,* .agents/docs/docs.polymarket.com/developers/market-makers/introduction.md,* .agents/docs/docs.polymarket.com/developers/market-makers/liquidity-rewards.md,* .agents/docs/docs.polymarket.com/developers/market-makers/trading.md,* .agents/docs/docs.polymarket.com/developers/proxy-wallet.md,* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-comments.md,* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-overview.md,* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-crypto-prices.md,* .agents/docs/docs.polymarket.com/developers/builders/order-attribution.md,* .agents/docs/docs.polymarket.com/developers/builders/examples.md,* .agents/docs/docs.polymarket.com/developers/builders/relayer-client.md,* .agents/docs/docs.polymarket.com/developers/builders/builder-profile.md,* .agents/docs/docs.polymarket.com/developers/builders/builder-tiers.md,* .agents/docs/docs.polymarket.com/developers/builders/builder-intro.md,* .agents/docs/docs.polymarket.com/developers/CTF/overview.md,* .agents/docs/docs.polymarket.com/developers/CTF/split.md,* .agents/docs/docs.polymarket.com/developers/CTF/deployment-resources.md,* .agents/docs/docs.polymarket.com/developers/CTF/redeem.md,* .agents/docs/docs.polymarket.com/developers/CTF/merge.md,* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/overview.md,* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/gamma-structure.md,* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/fetch-markets-guide.md,* .agents/docs/docs.polymarket.com/developers/resolution/UMA.md,* .agents/docs/docs.polymarket.com/developers/subgraph/overview.md,* .agents/docs/docs.polymarket.com/developers/CLOB/authentication.md,* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-l1.md,* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-l2.md,* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-builder.md,* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-public.md,* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-overview.md,* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/user-channel.md,* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/market-channel.md,* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/wss-auth.md,* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/wss-overview.md,* .agents/docs/docs.polymarket.com/developers/CLOB/trades/trades.md,* .agents/docs/docs.polymarket.com/developers/CLOB/trades/trades-overview.md,* .agents/docs/docs.polymarket.com/developers/CLOB/timeseries.md,* .agents/docs/docs.polymarket.com/developers/CLOB/status.md,* .agents/docs/docs.polymarket.com/developers/CLOB/quickstart.md,* .agents/docs/docs.polymarket.com/developers/CLOB/introduction.md,* .agents/docs/docs.polymarket.com/developers/CLOB/geoblock.md,* .agents/docs/docs.polymarket.com/developers/CLOB/orders/create-order.md,* .agents/docs/docs.polymarket.com/developers/CLOB/orders/create-order-batch.md,* .agents/docs/docs.polymarket.com/developers/CLOB/orders/get-active-order.md,* .agents/docs/docs.polymarket.com/developers/CLOB/orders/get-order.md,* .agents/docs/docs.polymarket.com/developers/CLOB/orders/onchain-order-info.md,* .agents/docs/docs.polymarket.com/developers/CLOB/orders/check-scoring.md,* .agents/docs/docs.polymarket.com/developers/CLOB/orders/cancel-orders.md,* .agents/docs/docs.polymarket.com/developers/CLOB/orders/orders.md,* .agents/docs/docs.polymarket.com/developers/neg-risk/overview.md
 
 ## Error handling guidelines
 
@@ -448,14 +484,11 @@ use futures::StreamExt;
 use std::pin::pin;
 
 /// Converts a [`Result`] into an [`ExitCode`], printing a detailed error trace on failure.
-pub fn exit_result<E: Error>(result: Result<(), E>) -> ExitCode {
-    match result {
-        Ok(()) => ExitCode::SUCCESS,
-        Err(err) => {
-            eprintln_error(&err);
-            ExitCode::FAILURE
-        }
-    }
+pub fn exit_result<E: Error>(result: Result<ExitCode, E>) -> ExitCode {
+    result.unwrap_or_else(|err| {
+        eprintln_error(&err);
+        ExitCode::FAILURE
+    })
 }
 
 /// Converts an [`impl IntoIterator<Item = Result<(), E>>`](IntoIterator) into an [`ExitCode`], printing a detailed error trace on the first failure.
@@ -1061,7 +1094,7 @@ cfg_if::cfg_if! {
 //! # #[derive(Error, Debug)]
 //! # enum Err {}
 //! #
-//! # fn run() -> Result<(), Err> { Ok(()) }
+//! # fn run() -> Result<ExitCode, Err> { Ok(ExitCode::SUCCESS) }
 //! #
 //! pub fn main() -> ExitCode {
 //!     exit_result(run())
@@ -1711,6 +1744,7 @@ fn verify_cli() {
 Example:
 
 ```rust
+use std::process::ExitCode;
 use Subcommand::*;
 use errgonomic::map_err;
 use thiserror::Error;
@@ -1728,7 +1762,7 @@ pub enum Subcommand {
 }
 
 impl Command {
-    pub async fn run(self) -> Result<(), CommandRunError> {
+    pub async fn run(self) -> Result<ExitCode, CommandRunError> {
         use CommandRunError::*;
         let Self {
             subcommand,
@@ -1761,7 +1795,7 @@ A struct that contains fields for CLI arguments.
 * Must be attached to a parent module: if it's a top-level command: `src/lib.rs`, else: `src/command.rs`
 * May contain a `subcommand` field annotated with `#[command(subcommand)]`
 * Must have a `pub async fn run`
-  * Must return a `Result`
+  * Must return a `Result` with `ExitCode`
   * If it contains a `subcommand` field: must match on `subcommand` and call `run` of each command
 
 Command example:

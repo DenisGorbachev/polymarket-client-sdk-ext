@@ -1,6 +1,7 @@
 use crate::{CacheDownloadCommand, CacheDownloadCommandRunError, CacheMarketResponsesCommand, CacheMarketResponsesCommandRunError, CacheOrderBookSummaryResponsesCommand, CacheOrderBookSummaryResponsesCommandRunError};
 use CacheSubcommand::*;
 use errgonomic::map_err;
+use std::process::ExitCode;
 use thiserror::Error;
 
 #[macro_export]
@@ -88,7 +89,7 @@ pub enum CacheSubcommand {
 }
 
 impl CacheCommand {
-    pub async fn run(self) -> Result<(), CacheCommandRunError> {
+    pub async fn run(self) -> Result<ExitCode, CacheCommandRunError> {
         use CacheCommandRunError::*;
         let Self {
             subcommand,

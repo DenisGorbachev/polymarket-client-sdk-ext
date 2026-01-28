@@ -44,6 +44,7 @@ fn verify_cli() {
 Example:
 
 ```rust
+use std::process::ExitCode;
 use Subcommand::*;
 use errgonomic::map_err;
 use thiserror::Error;
@@ -61,7 +62,7 @@ pub enum Subcommand {
 }
 
 impl Command {
-    pub async fn run(self) -> Result<(), CommandRunError> {
+    pub async fn run(self) -> Result<ExitCode, CommandRunError> {
         use CommandRunError::*;
         let Self {
             subcommand,
@@ -94,7 +95,7 @@ A struct that contains fields for CLI arguments.
 - Must be attached to a parent module: if it's a top-level command: `src/lib.rs`, else: `src/command.rs`
 - May contain a `subcommand` field annotated with `#[command(subcommand)]`
 - Must have a `pub async fn run`
-  - Must return a `Result`
+  - Must return a `Result` with `ExitCode`
   - If it contains a `subcommand` field: must match on `subcommand` and call `run` of each command
 
 Command example:
