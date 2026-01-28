@@ -21,7 +21,7 @@ impl CacheOrderBookSummaryResponsesCommand {
             subcommand,
         } = self;
         match subcommand {
-            List(command) => map_err!(command.run().await.map(|_| ExitCode::SUCCESS), CacheOrderBookSummaryResponsesListCommandRunFailed),
+            List(command) => map_err!(command.run().await, CacheOrderBookSummaryResponsesListCommandRunFailed),
         }
     }
 }

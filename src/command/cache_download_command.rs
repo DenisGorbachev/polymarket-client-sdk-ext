@@ -15,8 +15,6 @@ use thiserror::Error;
 pub const DEFAULT_DB_DIR: &str = ".cache/db";
 pub const CLOB_MARKET_RESPONSE_KEYSPACE: &str = "clob_market_responses";
 pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "clob_order_book_summary_responses";
-const CURSOR_KEYSPACE: &str = "cache_download_cursors";
-const CURSOR_KEY: &str = "markets_next_cursor";
 const ORDERBOOKS_CHUNK_SIZE: usize = 500;
 
 #[derive(clap::Parser, Clone, Debug)]
@@ -46,12 +44,7 @@ impl CacheDownloadCommand {
             OpenOrderBookSummaryKeyspaceFailed,
             keyspace: CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE.to_string()
         );
-        let cursor_keyspace = handle!(
-            db.keyspace(CURSOR_KEYSPACE, KeyspaceCreateOptions::default),
-            OpenCursorKeyspaceFailed,
-            keyspace: CURSOR_KEYSPACE.to_string()
-        );
-        let mut next_cursor = handle!(Self::resolve_start_cursor(&db, &cursor_keyspace, &market_keyspace), ResolveStartCursorFailed);
+        let next_cursor = handle!(Self::resolve_start_cursor(&market_keyspace), ResolveStartCursorFailed);
         let client = Client::default();
         let mut downloaded_pages: usize = 0;
 
@@ -60,10 +53,9 @@ impl CacheDownloadCommand {
                 break;
             }
             eprintln!("{}", progress_report_line("Downloading markets pages", downloaded_pages.saturating_add(1), None, page_limit_total));
-            let cursor_opt = Self::cursor_option(&next_cursor);
-            let page = handle!(client.markets(cursor_opt).await, FetchMarketsFailed, next_cursor);
+            let page = handle!(client.markets(Some(next_cursor.clone())).await, FetchMarketsFailed, next_cursor);
             downloaded_pages = downloaded_pages.saturating_add(1);
-            let page_next_cursor = page.next_cursor.clone();
+            let next_cursor = page.next_cursor;
             let markets = page.data;
             if markets.is_empty() {
                 break;
@@ -78,42 +70,19 @@ impl CacheDownloadCommand {
                 .map(|(market_slug, market, _)| (market_slug, market))
                 .collect::<Vec<_>>();
             let orderbooks = handle!(Self::fetch_orderbooks_for_tokens(&client, &token_ids).await, FetchOrderbooksForTokensFailed);
-            let store_cursor = !Self::is_base64_offset_cursor(&page_next_cursor);
-            handle!(Self::write_page_to_database(&db, &market_keyspace, &orderbook_keyspace, &cursor_keyspace, markets_to_store, orderbooks, page_next_cursor.clone(), store_cursor), WritePageToDatabaseFailed);
-            if page_next_cursor == NEXT_CURSOR_STOP || Self::limit_reached(downloaded_pages, market_response_page_limit) {
+            handle!(Self::write_page_to_database(&db, &market_keyspace, &orderbook_keyspace, markets_to_store, orderbooks), WritePageToDatabaseFailed);
+            if next_cursor == NEXT_CURSOR_STOP || Self::limit_reached(downloaded_pages, market_response_page_limit) {
                 break;
             }
-            next_cursor = page_next_cursor;
         }
         Ok(ExitCode::SUCCESS)
     }
 
-    fn resolve_start_cursor(db: &SingleWriterTxDatabase, cursor_keyspace: &SingleWriterTxKeyspace, market_keyspace: &SingleWriterTxKeyspace) -> Result<NextCursor, CacheDownloadCommandResolveStartCursorError> {
+    fn resolve_start_cursor(market_keyspace: &SingleWriterTxKeyspace) -> Result<NextCursor, CacheDownloadCommandResolveStartCursorError> {
         use CacheDownloadCommandResolveStartCursorError::*;
-        let read_tx = db.read_tx();
-        let cursor_bytes_opt = handle!(
-            read_tx.get(cursor_keyspace, CURSOR_KEY),
-            ReadCursorFailed,
-            key: CURSOR_KEY.to_string()
-        );
-        match cursor_bytes_opt {
-            Some(cursor_bytes) => {
-                let cursor_vec = cursor_bytes.as_ref().to_vec();
-                let cursor = handle!(String::from_utf8(cursor_vec), CursorValueInvalid);
-                if Self::is_base64_offset_cursor(&cursor) {
-                    let count = market_keyspace.approximate_len();
-                    let count = handle!(u64::try_from(count), MarketCountConversionFailed, count);
-                    Ok(Self::encode_offset_cursor(count))
-                } else {
-                    Ok(cursor)
-                }
-            }
-            None => {
-                let count = market_keyspace.approximate_len();
-                let count = handle!(u64::try_from(count), MarketCountConversionFailed, count);
-                Ok(Self::encode_offset_cursor(count))
-            }
-        }
+        let count = handle!(market_keyspace.as_ref().len(), LenFailed);
+        let count = handle!(u64::try_from(count), MarketCountConversionFailed, count);
+        Ok(STANDARD.encode(count.to_string()))
     }
 
     fn market_entry_from_response(market: MarketResponse) -> Result<(String, MarketResponse, Vec<TokenId>), CacheDownloadCommandMarketEntryFromResponseError> {
@@ -154,7 +123,7 @@ impl CacheDownloadCommand {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn write_page_to_database(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, cursor_keyspace: &SingleWriterTxKeyspace, markets: Vec<(String, MarketResponse)>, orderbooks: Vec<OrderBookSummaryResponse>, next_cursor: NextCursor, store_cursor: bool) -> Result<(), CacheDownloadCommandWritePageToDatabaseError> {
+    fn write_page_to_database(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, markets: Vec<(String, MarketResponse)>, orderbooks: Vec<OrderBookSummaryResponse>) -> Result<(), CacheDownloadCommandWritePageToDatabaseError> {
         use CacheDownloadCommandWritePageToDatabaseError::*;
         let serialized_markets = handle_iter!(markets.into_iter().map(Self::serialize_market_entry), SerializeMarketEntryFailed);
         let serialized_orderbooks = handle_iter!(orderbooks.into_iter().map(Self::serialize_orderbook_entry), SerializeOrderbookEntryFailed);
@@ -171,9 +140,6 @@ impl CacheDownloadCommand {
                 .map(|(token_id, bytes)| { Self::insert_entry(&mut tx, orderbook_keyspace, token_id.to_string(), bytes) }),
             InsertOrderbookEntriesFailed
         );
-        if store_cursor {
-            tx.insert(cursor_keyspace, CURSOR_KEY, next_cursor.as_str());
-        }
         handle!(tx.commit(), CommitTransactionFailed);
         handle!(db.persist(PersistMode::SyncAll), PersistDatabaseFailed);
         Ok(())
@@ -213,30 +179,6 @@ impl CacheDownloadCommand {
             .build()
     }
 
-    fn cursor_option(cursor: &str) -> Option<String> {
-        if cursor.is_empty() { None } else { Some(cursor.to_string()) }
-    }
-
-    fn encode_offset_cursor(offset: u64) -> String {
-        STANDARD.encode(offset.to_string())
-    }
-
-    fn decode_offset_cursor(cursor: &str) -> Option<i64> {
-        let decoded = match STANDARD.decode(cursor) {
-            Ok(decoded) => decoded,
-            Err(_) => return None,
-        };
-        let decoded_str = match core::str::from_utf8(&decoded) {
-            Ok(decoded_str) => decoded_str,
-            Err(_) => return None,
-        };
-        decoded_str.parse::<i64>().ok()
-    }
-
-    fn is_base64_offset_cursor(cursor: &str) -> bool {
-        Self::decode_offset_cursor(cursor).is_some()
-    }
-
     fn limit_reached(downloaded: usize, limit: Option<NonZeroUsize>) -> bool {
         match limit {
             Some(limit) => downloaded >= limit.get(),
@@ -253,8 +195,6 @@ pub enum CacheDownloadCommandRunError {
     OpenMarketKeyspaceFailed { source: fjall::Error, keyspace: String },
     #[error("failed to open order book summary keyspace '{keyspace}'")]
     OpenOrderBookSummaryKeyspaceFailed { source: fjall::Error, keyspace: String },
-    #[error("failed to open cursor keyspace '{keyspace}'")]
-    OpenCursorKeyspaceFailed { source: fjall::Error, keyspace: String },
     #[error("failed to resolve start cursor")]
     ResolveStartCursorFailed { source: CacheDownloadCommandResolveStartCursorError },
     #[error("failed to fetch markets page with cursor '{next_cursor}'")]
@@ -269,10 +209,8 @@ pub enum CacheDownloadCommandRunError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandResolveStartCursorError {
-    #[error("failed to read stored cursor at key '{key}'")]
-    ReadCursorFailed { source: fjall::Error, key: String },
-    #[error("stored cursor is not valid utf-8")]
-    CursorValueInvalid { source: std::string::FromUtf8Error },
+    #[error("failed to read market keyspace length")]
+    LenFailed { source: fjall::Error },
     #[error("failed to convert market count '{count}' to cursor offset")]
     MarketCountConversionFailed { source: core::num::TryFromIntError, count: usize },
 }

@@ -21,7 +21,7 @@ impl CacheMarketResponsesCommand {
             subcommand,
         } = self;
         match subcommand {
-            List(command) => map_err!(command.run().await.map(|_| ExitCode::SUCCESS), CacheMarketResponsesListCommandRunFailed),
+            List(command) => map_err!(command.run().await, CacheMarketResponsesListCommandRunFailed),
         }
     }
 }
