@@ -15,9 +15,9 @@ pub struct Market {
     pub icon: String,
     pub image: String,
     /// Condition id provided by the API.
-    pub condition_id: ConditionId,
+    pub condition_id: Option<ConditionId>,
     /// Question id provided by the API.
-    pub question_id: QuestionId,
+    pub question_id: Option<QuestionId>,
     pub active: bool,
     pub closed: bool,
     pub archived: bool,
@@ -138,8 +138,8 @@ impl TryFrom<MarketResponse> for Market {
         let seconds_delay = i64::try_from(seconds_delay).map(Duration::seconds);
         let neg_risk = NegRisk::try_from_neg_risk_triple(neg_risk, neg_risk_market_id, neg_risk_request_id);
         let tokens = Tokens::try_from(tokens);
-        match (condition_id, question_id, accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, neg_risk, tokens) {
-            (Some(condition_id), Some(question_id), Ok(accepting_order_timestamp), Ok(end_date_iso), Ok(game_start_time), Ok(seconds_delay), Ok(neg_risk), Ok(tokens)) => Ok(Self {
+        match (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, neg_risk, tokens) {
+            (Ok(accepting_order_timestamp), Ok(end_date_iso), Ok(game_start_time), Ok(seconds_delay), Ok(neg_risk), Ok(tokens)) => Ok(Self {
                 question,
                 description,
                 market_slug,
@@ -168,7 +168,7 @@ impl TryFrom<MarketResponse> for Market {
                 notifications_enabled,
                 tags,
             }),
-            (condition_id, question_id, accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, neg_risk, tokens) => Err(ConversionFailed {
+            (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, neg_risk, tokens) => Err(ConversionFailed {
                 fallible_market: FallibleMarket {
                     question,
                     description,
@@ -259,8 +259,8 @@ impl From<Market> for MarketResponse {
             .maybe_accepting_order_timestamp(accepting_order_timestamp)
             .minimum_order_size(minimum_order_size)
             .minimum_tick_size(minimum_tick_size)
-            .maybe_condition_id(Some(condition_id))
-            .maybe_question_id(Some(question_id))
+            .maybe_condition_id(condition_id)
+            .maybe_question_id(question_id)
             .question(question)
             .description(description)
             .market_slug(market_slug)

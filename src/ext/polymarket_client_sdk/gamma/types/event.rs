@@ -16,18 +16,20 @@ pub fn is_date_cascade(_event: &Event) -> Option<bool> {
 fn get_middle_diffs<'a>(inputs: impl IntoIterator<Item = &'a str>) -> impl Iterator<Item = &'a str> {
     let inputs = inputs.into_iter().collect::<Vec<_>>();
     let (prefix_len, suffix_len) = match inputs.split_first() {
-        Some((base, rest)) if !rest.is_empty() => {
-            let prefix_len = rest.iter().fold(base.len(), |acc, input| {
-                let base_prefix = &base[..acc];
-                common_prefix_len(base_prefix, input)
-            });
-            let suffix_len = rest.iter().fold(base.len(), |acc, input| {
-                let base_suffix = &base[base.len() - acc..];
-                common_suffix_len(base_suffix, input)
-            });
+        Some((base, rest)) => {
+            let prefix_len = rest
+                .iter()
+                .map(|input| common_prefix_len(base, input))
+                .min()
+                .unwrap_or(0);
+            let suffix_len = rest
+                .iter()
+                .map(|input| common_suffix_len(base, input))
+                .min()
+                .unwrap_or(0);
             (prefix_len, suffix_len)
         }
-        _ => (0, 0),
+        None => (0, 0),
     };
     inputs.into_iter().map(move |input| {
         let start = prefix_len.min(input.len());
@@ -103,6 +105,13 @@ mod tests {
     fn must_get_middle_diffs_identical_inputs() {
         let diffs = get_middle_diffs(["Same", "Same"]).collect_vec();
         let expected = vec!["", ""];
+        assert_eq!(diffs, expected);
+    }
+
+    #[test]
+    fn must_get_middle_diffs_varied_length() {
+        let diffs = get_middle_diffs(["ID: a?", "ID: bb?", "ID: ccc?"]).collect_vec();
+        let expected = vec!["a", "bb", "ccc"];
         assert_eq!(diffs, expected);
     }
 }
