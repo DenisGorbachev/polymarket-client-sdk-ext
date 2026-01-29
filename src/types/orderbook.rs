@@ -20,6 +20,8 @@ pub struct Orderbook {
     pub updated_at: OffsetDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_trade_price: Option<Decimal>,
     pub min_order_size: Decimal,
     pub min_tick_size: Decimal,
     pub neg_risk: bool,
@@ -53,6 +55,7 @@ impl TryFrom<OrderBookSummaryResponse> for Orderbook {
             min_order_size,
             neg_risk,
             tick_size,
+            last_trade_price,
             ..
         } = response;
         let condition_id = market;
@@ -69,6 +72,7 @@ impl TryFrom<OrderBookSummaryResponse> for Orderbook {
             min_tick_size,
             neg_risk,
             hash,
+            last_trade_price,
             bids,
             asks,
         })
@@ -97,6 +101,7 @@ impl From<Orderbook> for OrderBookSummaryResponse {
             neg_risk,
             hash,
             updated_at,
+            last_trade_price,
         } = orderbook;
         let market = condition_id;
         let asset_id = token_id;
@@ -107,6 +112,7 @@ impl From<Orderbook> for OrderBookSummaryResponse {
             .asset_id(asset_id)
             .timestamp(timestamp)
             .maybe_hash(hash)
+            .maybe_last_trade_price(last_trade_price)
             .bids(bids.into())
             .asks(asks.into())
             .min_order_size(min_order_size)

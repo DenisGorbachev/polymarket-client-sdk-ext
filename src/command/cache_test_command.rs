@@ -5,6 +5,7 @@ use itertools::Itertools;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
 use rayon::prelude::*;
 use serde::de::DeserializeOwned;
+use similar_asserts::SimpleDiff;
 use std::error::Error as StdError;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
@@ -95,10 +96,18 @@ impl CacheTestCommand {
         handle_bool!(
             input != input_round_trip,
             RoundTripFailed,
+            diff: Self::format_debug_diff(&input, &input_round_trip),
             input: Box::new(input),
             input_round_trip: Box::new(input_round_trip)
         );
         Ok(())
+    }
+
+    fn format_debug_diff<T: core::fmt::Debug>(input: &T, input_round_trip: &T) -> String {
+        let input_string = format!("{input:#?}");
+        let input_round_trip_string = format!("{input_round_trip:#?}");
+        let diff = SimpleDiff::from_str(&input_string, &input_round_trip_string, "input", "input_round_trip");
+        diff.to_string().replace('\r', "\\r").replace('\n', "\\n")
     }
 }
 
@@ -125,6 +134,6 @@ where
     DeserializeFailed { source: serde_json::Error, value: fjall::Slice },
     #[error("failed to convert cache entry")]
     TryFromFailed { source: E, input: Box<T> },
-    #[error("round-tripped cache entry does not match original")]
-    RoundTripFailed { input: Box<T>, input_round_trip: Box<T> },
+    #[error("round-tripped cache entry does not match original: '{diff}'")]
+    RoundTripFailed { input: Box<T>, input_round_trip: Box<T>, diff: String },
 }
