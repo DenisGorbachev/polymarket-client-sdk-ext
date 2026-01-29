@@ -24,6 +24,10 @@ pub struct CacheDownloadCommand {
     #[arg(long)]
     pub page_limit: Option<NonZeroUsize>,
 
+    /// A starting offset that overrides the cached keyspace length
+    #[arg(long)]
+    pub offset: Option<usize>,
+
     #[arg(long, default_value = DEFAULT_DB_DIR)]
     pub dir: PathBuf,
 }
@@ -33,6 +37,7 @@ impl CacheDownloadCommand {
         use CacheDownloadCommandRunError::*;
         let Self {
             page_limit,
+            offset,
             dir,
         } = self;
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
@@ -56,11 +61,11 @@ impl CacheDownloadCommand {
         let page_limit = page_limit.map(NonZeroUsize::get);
         let markets_download = async {
             use CacheDownloadCommandRunError::*;
-            map_err!(Self::download_market_responses(&db, &market_keyspace, &orderbook_keyspace, &clob_client, page_limit).await, DownloadMarketResponsesFailed)
+            map_err!(Self::download_market_responses(&db, &market_keyspace, &orderbook_keyspace, &clob_client, page_limit, offset).await, DownloadMarketResponsesFailed)
         };
         let events_download = async {
             use CacheDownloadCommandRunError::*;
-            map_err!(Self::download_gamma_events(&db, &event_keyspace, &gamma_client, page_limit).await, DownloadGammaEventsFailed)
+            map_err!(Self::download_gamma_events(&db, &event_keyspace, &gamma_client, page_limit, offset).await, DownloadGammaEventsFailed)
         };
         let result = tokio::try_join!(markets_download, events_download);
         match result {
@@ -70,14 +75,17 @@ impl CacheDownloadCommand {
         Ok(ExitCode::SUCCESS)
     }
 
-    async fn download_market_responses(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, client: &ClobClient, page_limit: Option<usize>) -> Result<(), CacheDownloadCommandDownloadMarketResponsesError> {
+    async fn download_market_responses(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, client: &ClobClient, page_limit: Option<usize>, offset: Option<usize>) -> Result<(), CacheDownloadCommandDownloadMarketResponsesError> {
         use CacheDownloadCommandDownloadMarketResponsesError::*;
-        let mut offset = handle!(market_keyspace.as_ref().len(), MarketKeyspaceLenFailed);
+        let mut offset = match offset {
+            Some(offset) => offset,
+            None => handle!(market_keyspace.as_ref().len(), MarketKeyspaceLenFailed),
+        };
         let mut next_cursor: NextCursor = STANDARD.encode(offset.to_string());
         let mut page_offset: usize = 0;
 
         loop {
-            eprintln!("{}", progress_report_line("Downloading markets pages", offset, None, None, page_offset, page_limit));
+            eprintln!("{}", progress_report_line("Downloading markets", offset, None, None, page_offset, page_limit));
             let page = handle!(client.markets(Some(next_cursor.clone())).await, FetchMarketsFailed, next_cursor);
             let markets = page.data;
             let next_cursor_new = page.next_cursor;
@@ -106,14 +114,17 @@ impl CacheDownloadCommand {
         Ok(())
     }
 
-    async fn download_gamma_events(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, client: &GammaClient, page_limit: Option<usize>) -> Result<(), CacheDownloadCommandDownloadGammaEventsError> {
+    async fn download_gamma_events(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, client: &GammaClient, page_limit: Option<usize>, offset: Option<usize>) -> Result<(), CacheDownloadCommandDownloadGammaEventsError> {
         use CacheDownloadCommandDownloadGammaEventsError::*;
-        let mut offset = handle!(event_keyspace.as_ref().len(), EventKeyspaceLenFailed);
+        let mut offset = match offset {
+            Some(offset) => offset,
+            None => handle!(event_keyspace.as_ref().len(), EventKeyspaceLenFailed),
+        };
         let mut page_offset: usize = 0;
         let page_size = GAMMA_EVENTS_PAGE_SIZE;
 
         loop {
-            eprintln!("{}", progress_report_line("Downloading events pages", offset, Some(page_size), None, page_offset, page_limit));
+            eprintln!("{}", progress_report_line("Downloading events", offset, Some(page_size), None, page_offset, page_limit));
             let request = EventsRequest::builder()
                 .order(vec!["id".to_string()])
                 .ascending(true)
