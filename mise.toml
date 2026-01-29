@@ -18,6 +18,8 @@ cargo-binstall = "1.10.15"
 "cargo:cargo-expand" = "1.0.114"
 "cargo:rumdl" = "0.1.0"
 "cargo:https://github.com/DenisGorbachev/fjall-cli" = { version = "latest" }
+jq = "1.8.1"
+fx = "39.2.0"
 
 [env]
 FJALL_DB = "{{config_root}}/.cache/db"
