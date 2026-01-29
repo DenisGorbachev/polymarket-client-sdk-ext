@@ -1,5 +1,5 @@
 use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, Market, Orderbook};
-use errgonomic::{exit_iterator_of_results_print_first, handle, handle_bool};
+use errgonomic::{handle, handle_bool, map_err};
 use fjall::{KeyspaceCreateOptions, Readable, SingleWriterTxDatabase, Snapshot};
 use itertools::Itertools;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
@@ -40,58 +40,49 @@ impl CacheTestCommand {
         );
         let snapshot = db.read_tx();
         let batch_size = batch_size.get();
-        let market_exit = Self::test_keyspace_round_trip::<MarketResponse, Market, ConvertMarketResponseToMarketError>(&snapshot, &market_keyspace, batch_size);
-        let orderbook_exit = Self::test_keyspace_round_trip::<OrderBookSummaryResponse, Orderbook, ConvertOrderBookSummaryResponseToOrderbookError>(&snapshot, &orderbook_keyspace, batch_size);
-        let exit_code = [market_exit, orderbook_exit]
-            .into_iter()
-            .find(|code| *code != ExitCode::SUCCESS)
-            .unwrap_or(ExitCode::SUCCESS);
-        Ok(exit_code)
+        handle!(
+            Self::test_keyspace_round_trip::<MarketResponse, Market, ConvertMarketResponseToMarketError>(&snapshot, &market_keyspace, batch_size),
+            TestKeyspaceRoundTripFailed,
+            keyspace: CLOB_MARKET_RESPONSES_KEYSPACE.to_string(),
+            batch_size
+        );
+        handle!(
+            Self::test_keyspace_round_trip::<OrderBookSummaryResponse, Orderbook, ConvertOrderBookSummaryResponseToOrderbookError>(&snapshot, &orderbook_keyspace, batch_size),
+            TestKeyspaceRoundTripFailed,
+            keyspace: CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE.to_string(),
+            batch_size
+        );
+        Ok(ExitCode::SUCCESS)
     }
 
-    fn test_keyspace_round_trip<T, U, E>(snapshot: &Snapshot, keyspace: &impl AsRef<fjall::Keyspace>, batch_size: usize) -> ExitCode
+    fn test_keyspace_round_trip<T, U, E>(snapshot: &Snapshot, keyspace: &impl AsRef<fjall::Keyspace>, batch_size: usize) -> Result<(), CacheTestCommandRoundTripEntryError<T, E>>
     where
-        T: DeserializeOwned + Clone + PartialEq + Send + core::fmt::Debug + 'static,
+        T: DeserializeOwned + Clone + PartialEq + Send + Sync + core::fmt::Debug + 'static,
         U: TryFrom<T, Error = E>,
         T: From<U>,
         E: StdError + Send + Sync + 'static,
     {
         let iter = snapshot.iter(keyspace);
-        iter.chunks(batch_size)
-            .into_iter()
-            .map(|chunk| {
-                let chunk = chunk.collect::<Vec<_>>();
-                let (values, read_errors) = Self::collect_values::<T, E>(chunk);
-                let read_exit = exit_iterator_of_results_print_first(read_errors.into_iter().map(Err));
-                if read_exit != ExitCode::SUCCESS {
-                    return read_exit;
-                }
-                let results = values
-                    .par_iter()
-                    .map(Self::round_trip_value::<T, U, E>)
-                    .collect::<Vec<_>>();
-                exit_iterator_of_results_print_first(results)
-            })
-            .find(|code| *code != ExitCode::SUCCESS)
-            .unwrap_or(ExitCode::SUCCESS)
+        iter.chunks(batch_size).into_iter().try_for_each(|chunk| {
+            let values = match Self::collect_values::<T, E>(chunk) {
+                Ok(values) => values,
+                Err(error) => return Err(error),
+            };
+            values
+                .par_iter()
+                .try_for_each(Self::round_trip_value::<T, U, E>)
+        })
     }
 
-    fn collect_values<T, E>(guards: Vec<fjall::Guard>) -> (Vec<fjall::Slice>, Vec<CacheTestCommandRoundTripEntryError<T, E>>)
+    fn collect_values<T, E>(guards: impl IntoIterator<Item = fjall::Guard>) -> Result<Vec<fjall::Slice>, CacheTestCommandRoundTripEntryError<T, E>>
     where
         E: StdError + Send + Sync + 'static,
     {
         use CacheTestCommandRoundTripEntryError::*;
-        let mut values = Vec::new();
-        let mut errors = Vec::new();
         guards
             .into_iter()
-            .for_each(|guard| match guard.into_inner() {
-                Ok((_key, value)) => values.push(value),
-                Err(source) => errors.push(ReadEntryFailed {
-                    source,
-                }),
-            });
-        (values, errors)
+            .map(|guard| map_err!(guard.into_inner(), ReadEntryFailed).map(|(_key, value)| value))
+            .collect()
     }
 
     fn round_trip_value<T, U, E>(value: &fjall::Slice) -> Result<(), CacheTestCommandRoundTripEntryError<T, E>>
@@ -127,6 +118,8 @@ pub enum CacheTestCommandRunError {
     OpenMarketKeyspaceFailed { source: fjall::Error, keyspace: String },
     #[error("failed to open orderbook keyspace '{keyspace}'")]
     OpenOrderbookKeyspaceFailed { source: fjall::Error, keyspace: String },
+    #[error("failed to test keyspace '{keyspace}' with batch size '{batch_size}'")]
+    TestKeyspaceRoundTripFailed { source: Box<dyn StdError>, keyspace: String, batch_size: usize },
 }
 
 #[derive(Error, Debug)]
