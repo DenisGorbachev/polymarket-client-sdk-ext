@@ -1,6 +1,6 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, Market, Orderbook};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, Market, OpenKeyspaceError, Orderbook, open_keyspace};
 use errgonomic::{handle, handle_bool, map_err};
-use fjall::{KeyspaceCreateOptions, Readable, SingleWriterTxDatabase, Snapshot};
+use fjall::{Readable, SingleWriterTxDatabase, Snapshot};
 use itertools::Itertools;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
 use rayon::prelude::*;
@@ -28,16 +28,8 @@ impl CacheTestCommand {
             batch_size,
         } = self;
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
-        let market_keyspace = handle!(
-            db.keyspace(CLOB_MARKET_RESPONSES_KEYSPACE, KeyspaceCreateOptions::default),
-            OpenMarketKeyspaceFailed,
-            keyspace: CLOB_MARKET_RESPONSES_KEYSPACE.to_string()
-        );
-        let orderbook_keyspace = handle!(
-            db.keyspace(CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, KeyspaceCreateOptions::default),
-            OpenOrderbookKeyspaceFailed,
-            keyspace: CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE.to_string()
-        );
+        let market_keyspace = handle!(open_keyspace(&db, CLOB_MARKET_RESPONSES_KEYSPACE), OpenMarketKeyspaceFailed);
+        let orderbook_keyspace = handle!(open_keyspace(&db, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE), OpenOrderbookKeyspaceFailed);
         let snapshot = db.read_tx();
         let batch_size = batch_size.get();
         handle!(
@@ -114,10 +106,10 @@ impl CacheTestCommand {
 pub enum CacheTestCommandRunError {
     #[error("failed to open database at '{dir}'")]
     OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
-    #[error("failed to open market keyspace '{keyspace}'")]
-    OpenMarketKeyspaceFailed { source: fjall::Error, keyspace: String },
-    #[error("failed to open orderbook keyspace '{keyspace}'")]
-    OpenOrderbookKeyspaceFailed { source: fjall::Error, keyspace: String },
+    #[error("failed to open market keyspace")]
+    OpenMarketKeyspaceFailed { source: OpenKeyspaceError },
+    #[error("failed to open orderbook keyspace")]
+    OpenOrderbookKeyspaceFailed { source: OpenKeyspaceError },
     #[error("failed to test keyspace '{keyspace}' with batch size '{batch_size}'")]
     TestKeyspaceRoundTripFailed { source: Box<dyn StdError>, keyspace: String, batch_size: usize },
 }

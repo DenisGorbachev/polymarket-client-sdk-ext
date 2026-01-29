@@ -1,9 +1,9 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, GAMMA_EVENTS_KEYSPACE, NEXT_CURSOR_STOP, NextCursor, ShouldDownloadOrderbooks, TokenId, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, GAMMA_EVENTS_KEYSPACE, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, ShouldDownloadOrderbooks, TokenId, open_keyspace, progress_report_line};
 use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_PAGE_SIZE};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter, map_err};
-use fjall::{KeyspaceCreateOptions, PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace};
+use fjall::{PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use futures::future::join_all;
 use polymarket_client_sdk::clob::Client as ClobClient;
 use polymarket_client_sdk::clob::types::request::OrderBookSummaryRequest;
@@ -41,21 +41,9 @@ impl CacheDownloadCommand {
             dir,
         } = self;
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
-        let market_keyspace = handle!(
-            db.keyspace(CLOB_MARKET_RESPONSES_KEYSPACE, KeyspaceCreateOptions::default),
-            KeyspaceOpenFailed,
-            keyspace: CLOB_MARKET_RESPONSES_KEYSPACE
-        );
-        let orderbook_keyspace = handle!(
-            db.keyspace(CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, KeyspaceCreateOptions::default),
-            KeyspaceOpenFailed,
-            keyspace: CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE
-        );
-        let event_keyspace = handle!(
-            db.keyspace(GAMMA_EVENTS_KEYSPACE, KeyspaceCreateOptions::default),
-            KeyspaceOpenFailed,
-            keyspace: GAMMA_EVENTS_KEYSPACE
-        );
+        let market_keyspace = handle!(open_keyspace(&db, CLOB_MARKET_RESPONSES_KEYSPACE), KeyspaceOpenFailed);
+        let orderbook_keyspace = handle!(open_keyspace(&db, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE), KeyspaceOpenFailed);
+        let event_keyspace = handle!(open_keyspace(&db, GAMMA_EVENTS_KEYSPACE), KeyspaceOpenFailed);
         let clob_client = ClobClient::default();
         let gamma_client = GammaClient::default();
         let page_limit = page_limit.map(NonZeroUsize::get);
@@ -284,8 +272,8 @@ impl CacheDownloadCommand {
 pub enum CacheDownloadCommandRunError {
     #[error("failed to open database at '{dir}'")]
     OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
-    #[error("failed to open keyspace '{keyspace}'")]
-    KeyspaceOpenFailed { source: fjall::Error, keyspace: &'static str },
+    #[error("failed to open keyspace")]
+    KeyspaceOpenFailed { source: OpenKeyspaceError },
     #[error("failed to download market responses")]
     DownloadMarketResponsesFailed { source: CacheDownloadCommandDownloadMarketResponsesError },
     #[error("failed to download gamma events")]

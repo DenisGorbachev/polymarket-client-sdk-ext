@@ -1,6 +1,6 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, Property, PropertyName, PropertyStats};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, OpenKeyspaceError, Property, PropertyName, PropertyStats, open_keyspace};
 use errgonomic::{handle, handle_iter};
-use fjall::{KeyspaceCreateOptions, Readable, SingleWriterTxDatabase, Snapshot, UserKey};
+use fjall::{Readable, SingleWriterTxDatabase, Snapshot, UserKey};
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 use rustc_hash::FxHashMap;
 use serde::de::DeserializeOwned;
@@ -24,11 +24,7 @@ impl CacheCheckCommand {
             dir,
         } = self;
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
-        let keyspace = handle!(
-            db.keyspace(CLOB_MARKET_RESPONSES_KEYSPACE, KeyspaceCreateOptions::default),
-            OpenMarketKeyspaceFailed,
-            keyspace: CLOB_MARKET_RESPONSES_KEYSPACE.to_string()
-        );
+        let keyspace = handle!(open_keyspace(&db, CLOB_MARKET_RESPONSES_KEYSPACE), OpenMarketKeyspaceFailed);
         let snapshot = db.read_tx();
         let mut properties = Self::named_properties();
         let mut violations = Self::init_violations(&properties);
@@ -88,8 +84,8 @@ impl CacheCheckCommand {
 pub enum CacheCheckCommandRunError {
     #[error("failed to open database at '{dir}'")]
     OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
-    #[error("failed to open market keyspace '{keyspace}'")]
-    OpenMarketKeyspaceFailed { source: fjall::Error, keyspace: String },
+    #[error("failed to open market keyspace")]
+    OpenMarketKeyspaceFailed { source: OpenKeyspaceError },
     #[error("failed to process '{len}' cache entries", len = source.len())]
     ProcessMarketEntryFailed { source: errgonomic::ErrVec<CacheCheckCommandProcessMarketEntryError> },
     #[error("failed to write violations output")]
