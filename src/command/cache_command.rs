@@ -1,4 +1,4 @@
-use crate::{CacheCheckCommand, CacheCheckCommandRunError, CacheDownloadCommand, CacheDownloadCommandRunError, CacheMarketResponsesCommand, CacheMarketResponsesCommandRunError, CacheOrderBookSummaryResponsesCommand, CacheOrderBookSummaryResponsesCommandRunError, CacheTestCommand, CacheTestCommandRunError};
+use crate::{CacheCheckCommand, CacheCheckCommandRunError, CacheDownloadCommand, CacheDownloadCommandRunError, CacheGammaEventsCommand, CacheGammaEventsCommandRunError, CacheMarketResponsesCommand, CacheMarketResponsesCommandRunError, CacheOrderBookSummaryResponsesCommand, CacheOrderBookSummaryResponsesCommandRunError, CacheTestCommand, CacheTestCommandRunError};
 use CacheSubcommand::*;
 use errgonomic::map_err;
 use std::process::ExitCode;
@@ -16,6 +16,7 @@ pub struct CacheCommand {
 pub enum CacheSubcommand {
     Check(CacheCheckCommand),
     Download(CacheDownloadCommand),
+    GammaEvents(CacheGammaEventsCommand),
     MarketResponses(CacheMarketResponsesCommand),
     OrderBookSummaryResponses(CacheOrderBookSummaryResponsesCommand),
     Test(CacheTestCommand),
@@ -30,6 +31,7 @@ impl CacheCommand {
         match subcommand {
             Check(command) => map_err!(command.run().await, CacheCheckCommandRunFailed),
             Download(command) => map_err!(command.run().await, CacheDownloadCommandRunFailed),
+            GammaEvents(command) => map_err!(command.run().await, CacheGammaEventsCommandRunFailed),
             MarketResponses(command) => map_err!(command.run().await, CacheMarketResponsesCommandRunFailed),
             OrderBookSummaryResponses(command) => map_err!(command.run().await, CacheOrderBookSummaryResponsesCommandRunFailed),
             Test(command) => map_err!(command.run().await, CacheTestCommandRunFailed),
@@ -43,6 +45,8 @@ pub enum CacheCommandRunError {
     CacheCheckCommandRunFailed { source: CacheCheckCommandRunError },
     #[error("failed to run cache download command")]
     CacheDownloadCommandRunFailed { source: CacheDownloadCommandRunError },
+    #[error("failed to run cache gamma events command")]
+    CacheGammaEventsCommandRunFailed { source: CacheGammaEventsCommandRunError },
     #[error("failed to run cache market responses command")]
     CacheMarketResponsesCommandRunFailed { source: CacheMarketResponsesCommandRunError },
     #[error("failed to run cache order book summary responses command")]

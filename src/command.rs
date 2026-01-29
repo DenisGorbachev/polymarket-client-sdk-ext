@@ -42,6 +42,10 @@ mod cache_download_command;
 
 pub use cache_download_command::*;
 
+mod cache_gamma_events_command;
+
+pub use cache_gamma_events_command::*;
+
 mod cache_market_responses_command;
 
 pub use cache_market_responses_command::*;
