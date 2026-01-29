@@ -2,7 +2,7 @@ use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEY
 use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_PAGE_SIZE};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use errgonomic::{ErrVec, handle, handle_bool, handle_iter, map_err};
+use errgonomic::{ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
 use fjall::{PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use futures::future::join_all;
 use polymarket_client_sdk::clob::Client as ClobClient;
@@ -11,6 +11,7 @@ use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSumm
 use polymarket_client_sdk::gamma::Client as GammaClient;
 use polymarket_client_sdk::gamma::types::request::EventsRequest;
 use polymarket_client_sdk::gamma::types::response::Event;
+use rustc_hash::FxHashSet;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -70,6 +71,7 @@ impl CacheDownloadCommand {
             None => handle!(market_keyspace.as_ref().len(), MarketKeyspaceLenFailed),
         };
         let mut next_cursor: NextCursor = STANDARD.encode(offset.to_string());
+        let mut market_slugs = FxHashSet::default();
         let mut page_offset: usize = 0;
 
         loop {
@@ -81,7 +83,12 @@ impl CacheDownloadCommand {
                 break;
             }
             let market_count = markets.len();
-            let market_entries = handle_iter!(markets.into_iter().map(Self::market_entry_from_response), MarketEntryFromResponseFailed);
+            let market_entries = handle_iter!(
+                markets
+                    .into_iter()
+                    .map(|market| Self::market_entry_from_response(market, &mut market_slugs)),
+                MarketEntryFromResponseFailed
+            );
             let token_ids = market_entries
                 .iter()
                 .flat_map(|(_, _, token_ids)| token_ids.iter().copied())
@@ -108,6 +115,7 @@ impl CacheDownloadCommand {
             Some(offset) => offset,
             None => handle!(event_keyspace.as_ref().len(), EventKeyspaceLenFailed),
         };
+        let mut event_slugs = FxHashSet::default();
         let mut page_offset: usize = 0;
         let page_size = GAMMA_EVENTS_PAGE_SIZE;
 
@@ -124,7 +132,7 @@ impl CacheDownloadCommand {
                 break;
             }
             let event_count = events.len();
-            handle!(Self::write_events_to_database(db, event_keyspace, events), WriteEventsToDatabaseFailed);
+            handle!(Self::write_events_to_database(db, event_keyspace, &mut event_slugs, events), WriteEventsToDatabaseFailed);
             offset = offset.saturating_add(event_count);
             page_offset = page_offset.saturating_add(1);
             if event_count < page_size || Self::limit_reached(page_offset, page_limit) {
@@ -134,10 +142,12 @@ impl CacheDownloadCommand {
         Ok(())
     }
 
-    fn market_entry_from_response(market: MarketResponse) -> Result<(String, MarketResponse, Vec<TokenId>), CacheDownloadCommandMarketEntryFromResponseError> {
+    fn market_entry_from_response(market: MarketResponse, market_slugs: &mut FxHashSet<String>) -> Result<(String, MarketResponse, Vec<TokenId>), CacheDownloadCommandMarketEntryFromResponseError> {
         use CacheDownloadCommandMarketEntryFromResponseError::*;
         let market_slug = market.market_slug.clone();
         handle_bool!(market_slug.trim().is_empty(), MarketSlugInvalid, market: Box::new(market));
+        let is_duplicate = !market_slugs.insert(market_slug.clone());
+        handle_bool!(is_duplicate, MarketSlugDuplicateInvalid, market_slug);
         let token_ids = if market.should_download_orderbooks() {
             market
                 .tokens
@@ -150,10 +160,14 @@ impl CacheDownloadCommand {
         Ok((market_slug, market, token_ids))
     }
 
-    fn event_entry_from_response(event: Event) -> Result<(String, Event), CacheDownloadCommandEventEntryFromResponseError> {
+    fn event_entry_from_response(event: Event, event_slugs: &mut FxHashSet<String>) -> Result<(String, Event), CacheDownloadCommandEventEntryFromResponseError> {
         use CacheDownloadCommandEventEntryFromResponseError::*;
         let event_id = event.id.clone();
         handle_bool!(event_id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
+        let event_slug = handle_opt!(event.slug.clone(), EventSlugMissingInvalid, event: Box::new(event));
+        handle_bool!(event_slug.trim().is_empty(), EventSlugInvalid, event_slug);
+        let is_duplicate = !event_slugs.insert(event_slug.clone());
+        handle_bool!(is_duplicate, EventSlugDuplicateInvalid, event_slug);
         Ok((event_id, event))
     }
 
@@ -205,9 +219,14 @@ impl CacheDownloadCommand {
         Ok(())
     }
 
-    fn write_events_to_database(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, events: Vec<Event>) -> Result<(), CacheDownloadCommandWriteEventsToDatabaseError> {
+    fn write_events_to_database(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, event_slugs: &mut FxHashSet<String>, events: Vec<Event>) -> Result<(), CacheDownloadCommandWriteEventsToDatabaseError> {
         use CacheDownloadCommandWriteEventsToDatabaseError::*;
-        let event_entries = handle_iter!(events.into_iter().map(Self::event_entry_from_response), EventEntryFromResponseFailed);
+        let event_entries = handle_iter!(
+            events
+                .into_iter()
+                .map(|event| Self::event_entry_from_response(event, event_slugs)),
+            EventEntryFromResponseFailed
+        );
         let serialized_events = handle_iter!(event_entries.into_iter().map(Self::serialize_event_entry), SerializeEventEntryFailed);
         let mut tx = db.write_tx();
         let _event_inserts = handle_iter!(
@@ -310,12 +329,20 @@ pub enum CacheDownloadCommandDownloadGammaEventsError {
 pub enum CacheDownloadCommandMarketEntryFromResponseError {
     #[error("market response has empty market slug")]
     MarketSlugInvalid { market: Box<MarketResponse> },
+    #[error("market response has duplicate market slug '{market_slug}'")]
+    MarketSlugDuplicateInvalid { market_slug: String },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandEventEntryFromResponseError {
     #[error("event response has empty event id")]
     EventIdInvalid { event: Box<Event> },
+    #[error("event response has missing event slug")]
+    EventSlugMissingInvalid { event: Box<Event> },
+    #[error("event response has empty event slug '{event_slug}'")]
+    EventSlugInvalid { event_slug: String },
+    #[error("event response has duplicate event slug '{event_slug}'")]
+    EventSlugDuplicateInvalid { event_slug: String },
 }
 
 #[derive(Error, Debug)]
