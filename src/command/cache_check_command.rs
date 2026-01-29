@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, Property, PropertyName, ViolationStats};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, Property, PropertyName, PropertyStats};
 use errgonomic::{handle, handle_iter};
 use fjall::{KeyspaceCreateOptions, Readable, SingleWriterTxDatabase, Snapshot, UserKey};
 use polymarket_client_sdk::clob::types::response::MarketResponse;
@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use thiserror::Error;
 
-type ViolationStatsMap = FxHashMap<PropertyName, ViolationStats<10, String>>;
+type ViolationStatsMap = FxHashMap<PropertyName, PropertyStats<3, String>>;
 
 #[derive(clap::Parser, Clone, Debug)]
 pub struct CacheCheckCommand {
@@ -52,7 +52,7 @@ impl CacheCheckCommand {
     fn init_violations(properties: &[(PropertyName, Box<dyn Property<MarketResponse>>)]) -> ViolationStatsMap {
         properties
             .iter()
-            .map(|(name, _)| (name.clone(), ViolationStats::default()))
+            .map(|(name, _)| (name.clone(), PropertyStats::default()))
             .collect()
     }
 

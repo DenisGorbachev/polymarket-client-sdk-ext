@@ -52,3 +52,7 @@ pub use if_condition_id_is_none_then_orders_are_disabled::*;
 mod token_id_is_unique_or_zero;
 
 pub use token_id_is_unique_or_zero::*;
+
+mod active_xor_closed;
+
+pub use active_xor_closed::*;
