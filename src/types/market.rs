@@ -1,4 +1,4 @@
-use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, NegRisk, QuestionId, Rewards, TokenId, Tokens, TryFromNegRiskTripleError, from_chrono_date_time, into_chrono_date_time};
+use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, QuestionId, Rewards, TokenId, Tokens, from_chrono_date_time, into_chrono_date_time};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
@@ -37,8 +37,9 @@ pub struct Market {
     pub taker_base_fee: Amount,
     pub rewards: Rewards,
     pub tokens: Tokens,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub neg_risk: Option<NegRisk>,
+    pub neg_risk: bool,
+    pub neg_risk_market_id: Option<QuestionId>,
+    pub neg_risk_request_id: Option<EventId>,
     pub is_50_50_outcome: bool,
     pub notifications_enabled: bool,
     pub tags: Vec<String>,
@@ -85,7 +86,9 @@ pub struct FallibleMarket {
     pub taker_base_fee: Amount,
     pub rewards: Rewards,
     pub tokens: Result<Tokens, ConvertVecTokenRawToTokensError>,
-    pub neg_risk: Result<Option<NegRisk>, TryFromNegRiskTripleError>,
+    pub neg_risk: bool,
+    pub neg_risk_market_id: Option<QuestionId>,
+    pub neg_risk_request_id: Option<EventId>,
     pub is_50_50_outcome: bool,
     pub notifications_enabled: bool,
     pub tags: Vec<String>,
@@ -136,10 +139,9 @@ impl TryFrom<MarketResponse> for Market {
         let end_date_iso = end_date_iso.map(from_chrono_date_time).transpose();
         let game_start_time = game_start_time.map(from_chrono_date_time).transpose();
         let seconds_delay = i64::try_from(seconds_delay).map(Duration::seconds);
-        let neg_risk = NegRisk::try_from_neg_risk_triple(neg_risk, neg_risk_market_id, neg_risk_request_id);
         let tokens = Tokens::try_from(tokens);
-        match (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, neg_risk, tokens) {
-            (Ok(accepting_order_timestamp), Ok(end_date_iso), Ok(game_start_time), Ok(seconds_delay), Ok(neg_risk), Ok(tokens)) => Ok(Self {
+        match (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, tokens) {
+            (Ok(accepting_order_timestamp), Ok(end_date_iso), Ok(game_start_time), Ok(seconds_delay), Ok(tokens)) => Ok(Self {
                 question,
                 description,
                 market_slug,
@@ -164,11 +166,13 @@ impl TryFrom<MarketResponse> for Market {
                 rewards,
                 tokens,
                 neg_risk,
+                neg_risk_market_id,
+                neg_risk_request_id,
                 is_50_50_outcome,
                 notifications_enabled,
                 tags,
             }),
-            (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, neg_risk, tokens) => Err(ConversionFailed {
+            (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, tokens) => Err(ConversionFailed {
                 fallible_market: FallibleMarket {
                     question,
                     description,
@@ -194,6 +198,8 @@ impl TryFrom<MarketResponse> for Market {
                     rewards,
                     tokens,
                     neg_risk,
+                    neg_risk_market_id,
+                    neg_risk_request_id,
                     is_50_50_outcome,
                     notifications_enabled,
                     tags,
@@ -236,6 +242,8 @@ impl From<Market> for MarketResponse {
             rewards,
             tokens,
             neg_risk,
+            neg_risk_market_id,
+            neg_risk_request_id,
             is_50_50_outcome,
             notifications_enabled,
             tags,
@@ -245,9 +253,6 @@ impl From<Market> for MarketResponse {
         let game_start_time = game_start_time.map(|timestamp| into_chrono_date_time(timestamp).expect("game_start_time should convert because it originated from TryFrom"));
         let seconds_delay = seconds_delay.whole_seconds();
         let seconds_delay = u64::try_from(seconds_delay).map_or(0, |value| value);
-        let (neg_risk, neg_risk_market_id, neg_risk_request_id) = neg_risk
-            .map(Into::into)
-            .unwrap_or_else(|| (false, None, None));
         let rewards: RewardsRaw = rewards.into();
         let tokens: Vec<TokenRaw> = tokens.into();
         MarketResponse::builder()
