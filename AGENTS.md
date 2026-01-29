@@ -2025,6 +2025,7 @@ fjall = "3.0.1"
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
 indexmap = { version = "2.6.0", features = ["serde"] }
+linkme = "0.3.35"
 polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"], git = "https://github.com/DenisGorbachev/rs-clob-client" }
 reqwest = { version = "0.13.1", features = ["json"] }
 rust_decimal = { version = "1.36.0", features = ["serde"] }

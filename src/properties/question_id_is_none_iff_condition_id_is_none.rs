@@ -1,4 +1,4 @@
-use crate::Property;
+use crate::{MARKET_RESPONSE_PROPERTIES, Property};
 use fjall::Snapshot;
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 
@@ -10,3 +10,5 @@ impl Property<MarketResponse> for QuestionIdIsNoneIffConditionIdIsNone {
         value.question_id.is_none() == value.condition_id.is_none()
     }
 }
+
+register_property!(QuestionIdIsNoneIffConditionIdIsNone, MarketResponse, MARKET_RESPONSE_PROPERTIES);

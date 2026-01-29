@@ -1,17 +1,30 @@
 use crate::Property;
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 
-pub fn market_response_properties() -> Vec<Box<dyn Property<MarketResponse>>> {
-    vec![
-        Box::new(MarketSlugIsUnique::default()),
-        Box::new(QuestionIdIsNoneIffConditionIdIsNone),
-    ]
+pub type PropertyFactory<T> = fn() -> Box<dyn Property<T>>;
+
+#[linkme::distributed_slice]
+pub static MARKET_RESPONSE_PROPERTIES: [PropertyFactory<MarketResponse>] = [..];
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! register_property {
+    ($typ:ident, $target:ty, $slice:ident) => {
+        #[linkme::distributed_slice($slice)]
+        fn factory() -> Box<dyn $crate::Property<$target>> {
+            Box::new($typ::default())
+        }
+    };
 }
 
 mod market_slug_is_unique;
 
 pub use market_slug_is_unique::*;
 
-mod some_markets_are_test_markets;
+mod question_id_is_none_iff_condition_id_is_none;
 
-pub use some_markets_are_test_markets::*;
+pub use question_id_is_none_iff_condition_id_is_none::*;
+
+mod if_is_50_50_outcome_then_both_tokens_are_losers;
+
+pub use if_is_50_50_outcome_then_both_tokens_are_losers::*;

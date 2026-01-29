@@ -17,6 +17,10 @@ cargo-binstall = "1.10.15"
 "cargo:cargo-nextest" = "0.9.102"
 "cargo:cargo-expand" = "1.0.114"
 "cargo:rumdl" = "0.1.0"
+"cargo:https://github.com/DenisGorbachev/fjall-cli" = { version = "latest" }
+
+[env]
+FJALL_DB = "{{config_root}}/.cache/db"
 
 [tasks."build"]
 run = "cargo build"
