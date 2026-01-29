@@ -109,3 +109,5 @@ pub use property_stats::*;
 mod property_name;
 
 pub use property_name::*;
+mod output_kind;
+pub use output_kind::*;
