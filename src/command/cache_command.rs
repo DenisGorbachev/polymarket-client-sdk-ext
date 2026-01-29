@@ -75,6 +75,8 @@ macro_rules! define_cache_list_command {
     };
 }
 
+pub const DEFAULT_DB_DIR: &str = ".cache/db";
+
 #[derive(clap::Parser, Clone, Debug)]
 pub struct CacheCommand {
     #[command(subcommand)]

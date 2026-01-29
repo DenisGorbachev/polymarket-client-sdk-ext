@@ -1,3 +1,4 @@
+use crate::DEFAULT_DB_DIR;
 use crate::{NEXT_CURSOR_STOP, NextCursor, ShouldDownloadOrderbooks, TokenId, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
@@ -14,7 +15,6 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 use thiserror::Error;
 
-pub const DEFAULT_DB_DIR: &str = ".cache/db";
 pub const GAMMA_EVENT_KEYSPACE: &str = "gamma_events";
 pub const CLOB_MARKET_RESPONSE_KEYSPACE: &str = "clob_market_responses";
 pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "clob_order_book_summary_responses";
@@ -24,6 +24,7 @@ const ORDERBOOKS_CHUNK_SIZE: usize = 500;
 pub struct CacheDownloadCommand {
     #[arg(long)]
     pub market_response_page_limit: Option<NonZeroUsize>,
+
     #[arg(long, default_value = DEFAULT_DB_DIR)]
     pub dir: PathBuf,
 }
