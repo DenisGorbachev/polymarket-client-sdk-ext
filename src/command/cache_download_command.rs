@@ -14,7 +14,6 @@ use polymarket_client_sdk::gamma::types::response::Event;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use stub_macro::stub;
 use thiserror::Error;
 
 const ORDERBOOKS_CHUNK_SIZE: usize = 500;
@@ -73,19 +72,19 @@ impl CacheDownloadCommand {
 
     async fn download_market_responses(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, client: &ClobClient, page_limit: Option<usize>) -> Result<(), CacheDownloadCommandDownloadMarketResponsesError> {
         use CacheDownloadCommandDownloadMarketResponsesError::*;
-        let offset = stub!(usize, "Use handle!(market_keyspace.as_ref().len(), LenFailed)");
-        let mut next_cursor = handle!(Self::resolve_start_offset(market_keyspace), ResolveStartCursorFailed);
+        let mut offset = handle!(market_keyspace.as_ref().len(), MarketKeyspaceLenFailed);
+        let mut next_cursor: NextCursor = STANDARD.encode(offset.to_string());
         let mut page_offset: usize = 0;
 
         loop {
             eprintln!("{}", progress_report_line("Downloading markets pages", offset, None, None, page_offset, page_limit));
             let page = handle!(client.markets(Some(next_cursor.clone())).await, FetchMarketsFailed, next_cursor);
-            page_offset = page_offset.saturating_add(1);
             let markets = page.data;
             let next_cursor_new = page.next_cursor;
             if markets.is_empty() {
                 break;
             }
+            let market_count = markets.len();
             let market_entries = handle_iter!(markets.into_iter().map(Self::market_entry_from_response), MarketEntryFromResponseFailed);
             let token_ids = market_entries
                 .iter()
@@ -97,6 +96,8 @@ impl CacheDownloadCommand {
                 .collect::<Vec<_>>();
             let orderbooks = handle!(Self::fetch_orderbooks_for_tokens(client, &token_ids).await, FetchOrderbooksForTokensFailed);
             handle!(Self::write_market_response_page_to_database(db, market_keyspace, orderbook_keyspace, markets_to_store, orderbooks), WritePageToDatabaseFailed);
+            offset = offset.saturating_add(market_count);
+            page_offset = page_offset.saturating_add(1);
             next_cursor = next_cursor_new;
             if next_cursor == NEXT_CURSOR_STOP || Self::limit_reached(page_offset, page_limit) {
                 break;
@@ -107,17 +108,17 @@ impl CacheDownloadCommand {
 
     async fn download_gamma_events(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, client: &GammaClient, page_limit: Option<usize>) -> Result<(), CacheDownloadCommandDownloadGammaEventsError> {
         use CacheDownloadCommandDownloadGammaEventsError::*;
-        let offset = stub!(usize, "Use handle!(event_keyspace.as_ref().len(), LenFailed)");
-        let mut offset_i32 = handle!(Self::resolve_start_event_offset(event_keyspace), ResolveStartEventOffsetFailed);
-        let mut page_offset = 0;
+        let mut offset = handle!(event_keyspace.as_ref().len(), EventKeyspaceLenFailed);
+        let mut page_offset: usize = 0;
+        let page_size = GAMMA_EVENTS_PAGE_SIZE;
 
         loop {
-            eprintln!("{}", progress_report_line("Downloading events pages", offset, None, None, page_offset, page_limit));
+            eprintln!("{}", progress_report_line("Downloading events pages", offset, Some(page_size), None, page_offset, page_limit));
             let request = EventsRequest::builder()
                 .order(vec!["id".to_string()])
                 .ascending(true)
-                .limit(GAMMA_EVENTS_PAGE_SIZE)
-                .offset(offset_i32)
+                .limit(GAMMA_EVENTS_PAGE_SIZE as i32)
+                .offset(offset as i32)
                 .build();
             let events = handle!(client.events(&request).await, FetchEventsFailed, request: Box::new(request));
             if events.is_empty() {
@@ -125,30 +126,13 @@ impl CacheDownloadCommand {
             }
             let event_count = events.len();
             handle!(Self::write_events_to_database(db, event_keyspace, events), WriteEventsToDatabaseFailed);
-            let event_count = handle!(i32::try_from(event_count), EventCountConversionFailed, count: event_count);
-            offset_i32 = offset_i32.saturating_add(event_count);
+            offset = offset.saturating_add(event_count);
             page_offset = page_offset.saturating_add(1);
-            if event_count < GAMMA_EVENTS_PAGE_SIZE || Self::limit_reached(page_offset, page_limit) {
+            if event_count < page_size || Self::limit_reached(page_offset, page_limit) {
                 break;
             }
         }
         Ok(())
-    }
-
-    // TODO: Remove this function
-    fn resolve_start_offset(market_keyspace: &SingleWriterTxKeyspace) -> Result<NextCursor, CacheDownloadCommandResolveStartCursorError> {
-        use CacheDownloadCommandResolveStartCursorError::*;
-        let count = handle!(market_keyspace.as_ref().len(), LenFailed);
-        let count = handle!(u64::try_from(count), MarketCountConversionFailed, count);
-        Ok(STANDARD.encode(count.to_string()))
-    }
-
-    // TODO: Remove this function
-    fn resolve_start_event_offset(event_keyspace: &SingleWriterTxKeyspace) -> Result<i32, CacheDownloadCommandResolveStartEventOffsetError> {
-        use CacheDownloadCommandResolveStartEventOffsetError::*;
-        let count = handle!(event_keyspace.as_ref().len(), LenFailed);
-        let offset = handle!(i32::try_from(count), EventCountConversionFailed, count);
-        Ok(offset)
     }
 
     fn market_entry_from_response(market: MarketResponse) -> Result<(String, MarketResponse, Vec<TokenId>), CacheDownloadCommandMarketEntryFromResponseError> {
@@ -299,8 +283,8 @@ pub enum CacheDownloadCommandRunError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandDownloadMarketResponsesError {
-    #[error("failed to resolve start cursor")]
-    ResolveStartCursorFailed { source: CacheDownloadCommandResolveStartCursorError },
+    #[error("failed to read market keyspace length")]
+    MarketKeyspaceLenFailed { source: fjall::Error },
     #[error("failed to fetch markets page with cursor '{next_cursor}'")]
     FetchMarketsFailed { source: polymarket_client_sdk::error::Error, next_cursor: NextCursor },
     #[error("failed to parse '{len}' market responses", len = source.len())]
@@ -313,30 +297,14 @@ pub enum CacheDownloadCommandDownloadMarketResponsesError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandDownloadGammaEventsError {
-    #[error("failed to resolve start event offset")]
-    ResolveStartEventOffsetFailed { source: CacheDownloadCommandResolveStartEventOffsetError },
+    #[error("failed to read event keyspace length")]
+    EventKeyspaceLenFailed { source: fjall::Error },
     #[error("failed to fetch gamma events page")]
     FetchEventsFailed { source: polymarket_client_sdk::error::Error, request: Box<EventsRequest> },
     #[error("failed to convert event count '{count}' to offset")]
     EventCountConversionFailed { source: core::num::TryFromIntError, count: usize },
     #[error("failed to persist events to database")]
     WriteEventsToDatabaseFailed { source: CacheDownloadCommandWriteEventsToDatabaseError },
-}
-
-#[derive(Error, Debug)]
-pub enum CacheDownloadCommandResolveStartCursorError {
-    #[error("failed to read market keyspace length")]
-    LenFailed { source: fjall::Error },
-    #[error("failed to convert market count '{count}' to cursor offset")]
-    MarketCountConversionFailed { source: core::num::TryFromIntError, count: usize },
-}
-
-#[derive(Error, Debug)]
-pub enum CacheDownloadCommandResolveStartEventOffsetError {
-    #[error("failed to read event keyspace length")]
-    LenFailed { source: fjall::Error },
-    #[error("failed to convert event count '{count}' to start offset")]
-    EventCountConversionFailed { source: core::num::TryFromIntError, count: usize },
 }
 
 #[derive(Error, Debug)]
