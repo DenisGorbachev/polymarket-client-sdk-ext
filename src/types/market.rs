@@ -287,10 +287,7 @@ impl From<Market> for MarketResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ReadJsonlCacheStreamError, market_response_cache_path, read_jsonl_cache_stream};
-    use errgonomic::{exit_stream_of_results_print_first, handle, handle_bool};
-    use futures::{Stream, StreamExt};
-    use std::process::ExitCode;
+    use errgonomic::{handle, handle_bool};
 
     #[test]
     fn must_round_trip_fixture() -> Result<(), MustRoundTripFixtureError> {
@@ -310,37 +307,6 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn must_round_trip_cache() -> ExitCode {
-        let inputs = get_market_response_stream().await;
-        let results = inputs.map(|result| {
-            use MustRoundTripDataError::*;
-            let input = handle!(result, ReadJsonlCacheStreamFailed);
-            let output = handle!(
-                Market::try_from(input.clone()),
-                TryFromFailed,
-                input: Box::new(input.clone())
-            );
-            let input_round_trip = MarketResponse::from(output);
-            handle_bool!(
-                input != input_round_trip,
-                RoundTripFailed,
-                input: Box::new(input),
-                input_round_trip: Box::new(input_round_trip)
-            );
-            Ok(())
-        });
-        exit_stream_of_results_print_first(results).await
-    }
-
-    async fn get_market_response_stream() -> impl Stream<Item = Result<MarketResponse, ReadJsonlCacheStreamError>> {
-        let cache_path = market_response_cache_path();
-        match read_jsonl_cache_stream::<MarketResponse>(cache_path).await {
-            Ok(stream) => stream.boxed(),
-            Err(error) => futures::stream::once(async move { Err(error) }).boxed(),
-        }
-    }
-
     #[allow(clippy::enum_variant_names)]
     #[derive(Error, Debug)]
     enum MustRoundTripFixtureError {
@@ -352,16 +318,5 @@ mod tests {
         QuestionMismatch { actual: String, expected: String },
         #[error("round-tripped market response does not match original")]
         RoundTripFailed { market_response: Box<MarketResponse>, market_response_round_trip: Box<MarketResponse> },
-    }
-
-    #[allow(clippy::enum_variant_names)]
-    #[derive(Error, Debug)]
-    enum MustRoundTripDataError {
-        #[error("failed to read market response cache stream")]
-        ReadJsonlCacheStreamFailed { source: ReadJsonlCacheStreamError },
-        #[error("failed to convert market response")]
-        TryFromFailed { source: Box<ConvertMarketResponseToMarketError>, input: Box<MarketResponse> },
-        #[error("round-tripped market response does not match original")]
-        RoundTripFailed { input: Box<MarketResponse>, input_round_trip: Box<MarketResponse> },
     }
 }

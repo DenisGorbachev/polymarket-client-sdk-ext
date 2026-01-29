@@ -119,10 +119,7 @@ impl From<Orderbook> for OrderBookSummaryResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ReadJsonlCacheStreamError, orderbook_summary_response_cache_path, read_jsonl_cache_stream};
-    use errgonomic::{exit_stream_of_results_print_first, handle, handle_bool};
-    use futures::{Stream, StreamExt};
-    use std::process::ExitCode;
+    use errgonomic::{handle, handle_bool};
 
     #[test]
     fn must_round_trip() -> Result<(), MustRoundTripFixtureError> {
@@ -135,28 +132,6 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn must_round_trip_cache() -> ExitCode {
-        let inputs = get_orderbook_summary_response_stream().await;
-        let results = inputs.map(|result| {
-            use MustRoundTripCacheError::*;
-            let input = handle!(result, ReadJsonlCacheStreamFailed);
-            let output = handle!(Orderbook::try_from(input.clone()), TryFromFailed, input);
-            let input_round_trip = OrderBookSummaryResponse::from(output);
-            handle_bool!(input != input_round_trip, RoundTripFailed, input, input_round_trip);
-            Ok(())
-        });
-        exit_stream_of_results_print_first(results).await
-    }
-
-    async fn get_orderbook_summary_response_stream() -> impl Stream<Item = Result<OrderBookSummaryResponse, ReadJsonlCacheStreamError>> {
-        let cache_path = orderbook_summary_response_cache_path();
-        match read_jsonl_cache_stream::<OrderBookSummaryResponse>(cache_path).await {
-            Ok(stream) => stream.boxed(),
-            Err(error) => futures::stream::once(async move { Err(error) }).boxed(),
-        }
-    }
-
     #[allow(clippy::enum_variant_names)]
     #[derive(Error, Debug)]
     enum MustRoundTripFixtureError {
@@ -166,16 +141,5 @@ mod tests {
         TryFromFailed { source: ConvertOrderBookSummaryResponseToOrderbookError, orderbook_summary_response: Box<OrderBookSummaryResponse> },
         #[error("round-tripped orderbook response does not match original")]
         RoundTripFailed { orderbook_summary_response: Box<OrderBookSummaryResponse>, orderbook_summary_response_round_trip: Box<OrderBookSummaryResponse> },
-    }
-
-    #[allow(clippy::enum_variant_names)]
-    #[derive(Error, Debug)]
-    enum MustRoundTripCacheError {
-        #[error("failed to read orderbook cache stream")]
-        ReadJsonlCacheStreamFailed { source: ReadJsonlCacheStreamError },
-        #[error("failed to convert orderbook response")]
-        TryFromFailed { source: ConvertOrderBookSummaryResponseToOrderbookError, input: Box<OrderBookSummaryResponse> },
-        #[error("round-tripped orderbook response does not match original")]
-        RoundTripFailed { input: Box<OrderBookSummaryResponse>, input_round_trip: Box<OrderBookSummaryResponse> },
     }
 }
