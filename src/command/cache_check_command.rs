@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSE_KEYSPACE, DEFAULT_DB_DIR, Property, PropertyName, ViolationStats, market_response_properties};
+use crate::{CLOB_MARKET_RESPONSE_KEYSPACE, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, Property, PropertyName, ViolationStats};
 use errgonomic::{handle, handle_iter};
 use fjall::{KeyspaceCreateOptions, Readable, SingleWriterTxDatabase, Snapshot, UserKey};
 use polymarket_client_sdk::clob::types::response::MarketResponse;
@@ -39,9 +39,10 @@ impl CacheCheckCommand {
     }
 
     fn named_properties() -> Vec<(PropertyName, Box<dyn Property<MarketResponse>>)> {
-        market_response_properties()
+        MARKET_RESPONSE_PROPERTIES
             .into_iter()
-            .map(|property| {
+            .map(|factory| {
+                let property = factory();
                 let name = property.name();
                 (name, property)
             })

@@ -3,4 +3,4 @@
 
 set -euo pipefail
 
-fjall get clob_market_responses "$@" | jq "del(.notifications_enabled, .tags, .rewards, .image, .icon)" | fx
+fjall get clob_market_responses "$@" | jq "del(.notifications_enabled, .tags, .rewards, .image, .icon)"

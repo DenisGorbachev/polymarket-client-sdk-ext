@@ -1,4 +1,4 @@
-use crate::Property;
+use crate::{MARKET_RESPONSE_PROPERTIES, Property};
 use fjall::Snapshot;
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 
@@ -10,3 +10,5 @@ impl Property<MarketResponse> for IfIs5050OutcomeThenBothTokensAreLosers {
         if value.is_50_50_outcome { value.tokens.iter().all(|token| !token.winner) } else { true }
     }
 }
+
+register_property!(IfIs5050OutcomeThenBothTokensAreLosers, MarketResponse, MARKET_RESPONSE_PROPERTIES);

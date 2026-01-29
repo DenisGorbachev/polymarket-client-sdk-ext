@@ -1,4 +1,4 @@
-use crate::Property;
+use crate::{MARKET_RESPONSE_PROPERTIES, Property};
 use fjall::Snapshot;
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 use rustc_hash::FxHashSet;
@@ -14,3 +14,5 @@ impl Property<MarketResponse> for MarketSlugIsUnique {
         self.slugs.insert(market_response.market_slug.clone())
     }
 }
+
+register_property!(MarketSlugIsUnique, MarketResponse, MARKET_RESPONSE_PROPERTIES);
