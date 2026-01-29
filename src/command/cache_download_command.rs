@@ -1,5 +1,5 @@
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, GAMMA_EVENTS_KEYSPACE, NEXT_CURSOR_STOP, NextCursor, ShouldDownloadOrderbooks, TokenId, progress_report_line};
 use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_PAGE_SIZE};
-use crate::{NEXT_CURSOR_STOP, NextCursor, ShouldDownloadOrderbooks, TokenId, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter, map_err};
@@ -14,11 +14,9 @@ use polymarket_client_sdk::gamma::types::response::Event;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use stub_macro::stub;
 use thiserror::Error;
 
-pub const GAMMA_EVENT_KEYSPACE: &str = "gamma_events";
-pub const CLOB_MARKET_RESPONSE_KEYSPACE: &str = "clob_market_responses";
-pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "clob_order_book_summary_responses";
 const ORDERBOOKS_CHUNK_SIZE: usize = 500;
 
 #[derive(clap::Parser, Clone, Debug)]
@@ -40,22 +38,23 @@ impl CacheDownloadCommand {
         } = self;
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
         let market_keyspace = handle!(
-            db.keyspace(CLOB_MARKET_RESPONSE_KEYSPACE, KeyspaceCreateOptions::default),
-            OpenMarketKeyspaceFailed,
-            keyspace: CLOB_MARKET_RESPONSE_KEYSPACE.to_string()
+            db.keyspace(CLOB_MARKET_RESPONSES_KEYSPACE, KeyspaceCreateOptions::default),
+            KeyspaceOpenFailed,
+            keyspace: CLOB_MARKET_RESPONSES_KEYSPACE
         );
         let orderbook_keyspace = handle!(
             db.keyspace(CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, KeyspaceCreateOptions::default),
-            OpenOrderBookSummaryKeyspaceFailed,
-            keyspace: CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE.to_string()
+            KeyspaceOpenFailed,
+            keyspace: CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE
         );
         let event_keyspace = handle!(
-            db.keyspace(GAMMA_EVENT_KEYSPACE, KeyspaceCreateOptions::default),
-            OpenGammaEventKeyspaceFailed,
-            keyspace: GAMMA_EVENT_KEYSPACE.to_string()
+            db.keyspace(GAMMA_EVENTS_KEYSPACE, KeyspaceCreateOptions::default),
+            KeyspaceOpenFailed,
+            keyspace: GAMMA_EVENTS_KEYSPACE
         );
         let clob_client = ClobClient::default();
         let gamma_client = GammaClient::default();
+        let page_limit = page_limit.map(NonZeroUsize::get);
         let markets_download = async {
             use CacheDownloadCommandRunError::*;
             map_err!(Self::download_market_responses(&db, &market_keyspace, &orderbook_keyspace, &clob_client, page_limit).await, DownloadMarketResponsesFailed)
@@ -72,16 +71,16 @@ impl CacheDownloadCommand {
         Ok(ExitCode::SUCCESS)
     }
 
-    async fn download_market_responses(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, client: &ClobClient, page_limit: Option<NonZeroUsize>) -> Result<(), CacheDownloadCommandDownloadMarketResponsesError> {
+    async fn download_market_responses(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, client: &ClobClient, page_limit: Option<usize>) -> Result<(), CacheDownloadCommandDownloadMarketResponsesError> {
         use CacheDownloadCommandDownloadMarketResponsesError::*;
-        let page_limit_total = page_limit.map(NonZeroUsize::get);
-        let mut next_cursor = handle!(Self::resolve_start_cursor(market_keyspace), ResolveStartCursorFailed);
-        let mut downloaded_pages: usize = 0;
+        let offset = stub!(usize, "Use handle!(market_keyspace.as_ref().len(), LenFailed)");
+        let mut next_cursor = handle!(Self::resolve_start_offset(market_keyspace), ResolveStartCursorFailed);
+        let mut page_offset: usize = 0;
 
         loop {
-            eprintln!("{}", progress_report_line("Downloading markets pages", downloaded_pages.saturating_add(1), page_limit_total, None));
+            eprintln!("{}", progress_report_line("Downloading markets pages", offset, None, None, page_offset, page_limit));
             let page = handle!(client.markets(Some(next_cursor.clone())).await, FetchMarketsFailed, next_cursor);
-            downloaded_pages = downloaded_pages.saturating_add(1);
+            page_offset = page_offset.saturating_add(1);
             let markets = page.data;
             let next_cursor_new = page.next_cursor;
             if markets.is_empty() {
@@ -99,25 +98,26 @@ impl CacheDownloadCommand {
             let orderbooks = handle!(Self::fetch_orderbooks_for_tokens(client, &token_ids).await, FetchOrderbooksForTokensFailed);
             handle!(Self::write_market_response_page_to_database(db, market_keyspace, orderbook_keyspace, markets_to_store, orderbooks), WritePageToDatabaseFailed);
             next_cursor = next_cursor_new;
-            if next_cursor == NEXT_CURSOR_STOP || Self::limit_reached(downloaded_pages, page_limit) {
+            if next_cursor == NEXT_CURSOR_STOP || Self::limit_reached(page_offset, page_limit) {
                 break;
             }
         }
         Ok(())
     }
 
-    async fn download_gamma_events(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, client: &GammaClient, page_limit: Option<NonZeroUsize>) -> Result<(), CacheDownloadCommandDownloadGammaEventsError> {
+    async fn download_gamma_events(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, client: &GammaClient, page_limit: Option<usize>) -> Result<(), CacheDownloadCommandDownloadGammaEventsError> {
         use CacheDownloadCommandDownloadGammaEventsError::*;
-        let mut offset = handle!(Self::resolve_start_event_offset(event_keyspace), ResolveStartEventOffsetFailed);
-        let mut downloaded_pages: usize = 0;
+        let offset = stub!(usize, "Use handle!(event_keyspace.as_ref().len(), LenFailed)");
+        let mut offset_i32 = handle!(Self::resolve_start_event_offset(event_keyspace), ResolveStartEventOffsetFailed);
+        let mut page_offset = 0;
 
         loop {
-            eprintln!("{}", progress_report_line("Downloading events pages", downloaded_pages.saturating_add(1), None, None));
+            eprintln!("{}", progress_report_line("Downloading events pages", offset, None, None, page_offset, page_limit));
             let request = EventsRequest::builder()
                 .order(vec!["id".to_string()])
                 .ascending(true)
                 .limit(GAMMA_EVENTS_PAGE_SIZE)
-                .offset(offset)
+                .offset(offset_i32)
                 .build();
             let events = handle!(client.events(&request).await, FetchEventsFailed, request: Box::new(request));
             if events.is_empty() {
@@ -126,22 +126,24 @@ impl CacheDownloadCommand {
             let event_count = events.len();
             handle!(Self::write_events_to_database(db, event_keyspace, events), WriteEventsToDatabaseFailed);
             let event_count = handle!(i32::try_from(event_count), EventCountConversionFailed, count: event_count);
-            offset = offset.saturating_add(event_count);
-            downloaded_pages = downloaded_pages.saturating_add(1);
-            if event_count < GAMMA_EVENTS_PAGE_SIZE || Self::limit_reached(downloaded_pages, page_limit) {
+            offset_i32 = offset_i32.saturating_add(event_count);
+            page_offset = page_offset.saturating_add(1);
+            if event_count < GAMMA_EVENTS_PAGE_SIZE || Self::limit_reached(page_offset, page_limit) {
                 break;
             }
         }
         Ok(())
     }
 
-    fn resolve_start_cursor(market_keyspace: &SingleWriterTxKeyspace) -> Result<NextCursor, CacheDownloadCommandResolveStartCursorError> {
+    // TODO: Remove this function
+    fn resolve_start_offset(market_keyspace: &SingleWriterTxKeyspace) -> Result<NextCursor, CacheDownloadCommandResolveStartCursorError> {
         use CacheDownloadCommandResolveStartCursorError::*;
         let count = handle!(market_keyspace.as_ref().len(), LenFailed);
         let count = handle!(u64::try_from(count), MarketCountConversionFailed, count);
         Ok(STANDARD.encode(count.to_string()))
     }
 
+    // TODO: Remove this function
     fn resolve_start_event_offset(event_keyspace: &SingleWriterTxKeyspace) -> Result<i32, CacheDownloadCommandResolveStartEventOffsetError> {
         use CacheDownloadCommandResolveStartEventOffsetError::*;
         let count = handle!(event_keyspace.as_ref().len(), LenFailed);
@@ -275,9 +277,9 @@ impl CacheDownloadCommand {
         Ok((event_id, bytes))
     }
 
-    fn limit_reached(downloaded: usize, limit: Option<NonZeroUsize>) -> bool {
+    fn limit_reached(offset: usize, limit: Option<usize>) -> bool {
         match limit {
-            Some(limit) => downloaded >= limit.get(),
+            Some(limit) => offset >= limit,
             None => false,
         }
     }
@@ -287,12 +289,8 @@ impl CacheDownloadCommand {
 pub enum CacheDownloadCommandRunError {
     #[error("failed to open database at '{dir}'")]
     OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
-    #[error("failed to open market keyspace '{keyspace}'")]
-    OpenMarketKeyspaceFailed { source: fjall::Error, keyspace: String },
-    #[error("failed to open order book summary keyspace '{keyspace}'")]
-    OpenOrderBookSummaryKeyspaceFailed { source: fjall::Error, keyspace: String },
-    #[error("failed to open gamma event keyspace '{keyspace}'")]
-    OpenGammaEventKeyspaceFailed { source: fjall::Error, keyspace: String },
+    #[error("failed to open keyspace '{keyspace}'")]
+    KeyspaceOpenFailed { source: fjall::Error, keyspace: &'static str },
     #[error("failed to download market responses")]
     DownloadMarketResponsesFailed { source: CacheDownloadCommandDownloadMarketResponsesError },
     #[error("failed to download gamma events")]

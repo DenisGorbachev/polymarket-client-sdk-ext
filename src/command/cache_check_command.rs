@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSE_KEYSPACE, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, Property, PropertyName, ViolationStats};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, Property, PropertyName, ViolationStats};
 use errgonomic::{handle, handle_iter};
 use fjall::{KeyspaceCreateOptions, Readable, SingleWriterTxDatabase, Snapshot, UserKey};
 use polymarket_client_sdk::clob::types::response::MarketResponse;
@@ -25,9 +25,9 @@ impl CacheCheckCommand {
         } = self;
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
         let keyspace = handle!(
-            db.keyspace(CLOB_MARKET_RESPONSE_KEYSPACE, KeyspaceCreateOptions::default),
+            db.keyspace(CLOB_MARKET_RESPONSES_KEYSPACE, KeyspaceCreateOptions::default),
             OpenMarketKeyspaceFailed,
-            keyspace: CLOB_MARKET_RESPONSE_KEYSPACE.to_string()
+            keyspace: CLOB_MARKET_RESPONSES_KEYSPACE.to_string()
         );
         let snapshot = db.read_tx();
         let mut properties = Self::named_properties();
