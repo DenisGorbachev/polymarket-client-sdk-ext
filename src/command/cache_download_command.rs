@@ -4,9 +4,11 @@ use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter};
 use fjall::{KeyspaceCreateOptions, PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace, SingleWriterWriteTx};
 use futures::future::join_all;
-use polymarket_client_sdk::clob::Client;
+use polymarket_client_sdk::clob::Client as ClobClient;
 use polymarket_client_sdk::clob::types::request::OrderBookSummaryRequest;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
+use polymarket_client_sdk::gamma::Client as GammaClient;
+use polymarket_client_sdk::gamma::types::request::EventsRequest;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -45,7 +47,13 @@ impl CacheDownloadCommand {
             keyspace: CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE.to_string()
         );
         let next_cursor = handle!(Self::resolve_start_cursor(&market_keyspace), ResolveStartCursorFailed);
-        let client = Client::default();
+        let clob_client = ClobClient::default();
+        let gamma_client = GammaClient::default();
+        let events_request = EventsRequest::builder()
+            .order(vec!["id".to_string()])
+            .ascending(true)
+            .build();
+        let _events = gamma_client.events(&events_request).await;
         let mut downloaded_pages: usize = 0;
 
         loop {
@@ -53,7 +61,7 @@ impl CacheDownloadCommand {
                 break;
             }
             eprintln!("{}", progress_report_line("Downloading markets pages", downloaded_pages.saturating_add(1), None, page_limit_total));
-            let page = handle!(client.markets(Some(next_cursor.clone())).await, FetchMarketsFailed, next_cursor);
+            let page = handle!(clob_client.markets(Some(next_cursor.clone())).await, FetchMarketsFailed, next_cursor);
             downloaded_pages = downloaded_pages.saturating_add(1);
             let next_cursor = page.next_cursor;
             let markets = page.data;
@@ -69,7 +77,7 @@ impl CacheDownloadCommand {
                 .into_iter()
                 .map(|(market_slug, market, _)| (market_slug, market))
                 .collect::<Vec<_>>();
-            let orderbooks = handle!(Self::fetch_orderbooks_for_tokens(&client, &token_ids).await, FetchOrderbooksForTokensFailed);
+            let orderbooks = handle!(Self::fetch_orderbooks_for_tokens(&clob_client, &token_ids).await, FetchOrderbooksForTokensFailed);
             handle!(Self::write_page_to_database(&db, &market_keyspace, &orderbook_keyspace, markets_to_store, orderbooks), WritePageToDatabaseFailed);
             if next_cursor == NEXT_CURSOR_STOP || Self::limit_reached(downloaded_pages, market_response_page_limit) {
                 break;
@@ -101,7 +109,7 @@ impl CacheDownloadCommand {
         Ok((market_slug, market, token_ids))
     }
 
-    async fn fetch_orderbooks_for_tokens(client: &Client, token_ids: &[TokenId]) -> Result<Vec<OrderBookSummaryResponse>, CacheDownloadCommandFetchOrderbooksForTokensError> {
+    async fn fetch_orderbooks_for_tokens(client: &ClobClient, token_ids: &[TokenId]) -> Result<Vec<OrderBookSummaryResponse>, CacheDownloadCommandFetchOrderbooksForTokensError> {
         use CacheDownloadCommandFetchOrderbooksForTokensError::*;
         let futures = token_ids
             .chunks(ORDERBOOKS_CHUNK_SIZE)
@@ -111,7 +119,7 @@ impl CacheDownloadCommand {
         Ok(orderbooks.into_iter().flatten().collect())
     }
 
-    async fn fetch_orderbooks_chunk(client: &Client, token_ids: &[TokenId]) -> Result<Vec<OrderBookSummaryResponse>, CacheDownloadCommandFetchOrderbooksChunkError> {
+    async fn fetch_orderbooks_chunk(client: &ClobClient, token_ids: &[TokenId]) -> Result<Vec<OrderBookSummaryResponse>, CacheDownloadCommandFetchOrderbooksChunkError> {
         use CacheDownloadCommandFetchOrderbooksChunkError::*;
         let requests = token_ids
             .iter()
