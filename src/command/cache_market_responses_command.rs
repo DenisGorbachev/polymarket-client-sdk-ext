@@ -1,7 +1,6 @@
-use CacheMarketResponsesSubcommand::*;
-use errgonomic::map_err;
 use std::process::ExitCode;
 use thiserror::Error;
+// use CacheMarketResponsesSubcommand::*;
 
 #[derive(clap::Parser, Clone, Debug)]
 pub struct CacheMarketResponsesCommand {
@@ -10,28 +9,17 @@ pub struct CacheMarketResponsesCommand {
 }
 
 #[derive(clap::Subcommand, Clone, Debug)]
-pub enum CacheMarketResponsesSubcommand {
-    List(CacheMarketResponsesListCommand),
-}
+pub enum CacheMarketResponsesSubcommand {}
 
 impl CacheMarketResponsesCommand {
     pub async fn run(self) -> Result<ExitCode, CacheMarketResponsesCommandRunError> {
-        use CacheMarketResponsesCommandRunError::*;
-        let Self {
-            subcommand,
-        } = self;
-        match subcommand {
-            List(command) => map_err!(command.run().await, CacheMarketResponsesListCommandRunFailed),
-        }
+        // use CacheMarketResponsesCommandRunError::*;
+        // let Self {
+        //     subcommand: _,
+        // } = self;
+        Ok(ExitCode::SUCCESS)
     }
 }
 
 #[derive(Error, Debug)]
-pub enum CacheMarketResponsesCommandRunError {
-    #[error("failed to run cache market responses list command")]
-    CacheMarketResponsesListCommandRunFailed { source: CacheMarketResponsesListCommandRunError },
-}
-
-mod cache_market_responses_list_command;
-
-pub use cache_market_responses_list_command::*;
+pub enum CacheMarketResponsesCommandRunError {}
