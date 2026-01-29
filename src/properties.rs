@@ -49,6 +49,6 @@ mod if_condition_id_is_none_then_orders_are_disabled;
 
 pub use if_condition_id_is_none_then_orders_are_disabled::*;
 
-mod token_id_is_unique;
+mod token_id_is_unique_or_zero;
 
-pub use token_id_is_unique::*;
+pub use token_id_is_unique_or_zero::*;
