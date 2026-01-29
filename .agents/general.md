@@ -15,6 +15,7 @@ You are a senior Rust software architect. You write high-quality, production-rea
 ## Workflow
 
 * After finishing the task: run `mise run agent:on:stop` (this command runs the lints and tests)
+  * `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
 * Don't edit the files in the following top-level dirs: `specs`, `.agents`
 * Don't write the tests unless I ask you explicitly
 * If you notice unexpected edits, keep them
@@ -76,6 +77,10 @@ You are a senior Rust software architect. You write high-quality, production-rea
       * Keyspace name
   * Recommendations:
     * When in doubt, prefer accepting a parameter instead of defining a constant
+
+## Memory usage
+
+* Prefer streaming and iterating (avoid large in-memory `Vec`)
 
 ## Conversions
 
