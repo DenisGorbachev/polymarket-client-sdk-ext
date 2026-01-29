@@ -311,7 +311,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn must_round_trip_data() -> ExitCode {
+    async fn must_round_trip_cache() -> ExitCode {
         let inputs = get_market_response_stream().await;
         let results = inputs.map(|result| {
             use MustRoundTripDataError::*;
