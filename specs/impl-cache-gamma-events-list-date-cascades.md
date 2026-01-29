@@ -8,7 +8,7 @@
 
 ## Tasks
 
-* Implement CacheGammaEventsListDateCascadesCommand
+* Implement CacheGammaEventsListDateCascadesCommand (callable as `cache gamma-events list-date-cascades`)
   * Must read the events from GAMMA_EVENTS_KEYSPACE
   * Must output the events that pass `is_date_cascade`
   * Must support `offset` and `limit` options (call `skip` and `take` on the iter)
