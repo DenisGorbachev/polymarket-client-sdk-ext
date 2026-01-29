@@ -4,9 +4,9 @@ use polymarket_client_sdk::clob::types::response::MarketResponse;
 use rust_decimal::Decimal;
 
 #[derive(Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
-pub struct TokenPricesAreProbabilities;
+pub struct TokenPricesAreBetweenZeroAndOne;
 
-impl Property<MarketResponse> for TokenPricesAreProbabilities {
+impl Property<MarketResponse> for TokenPricesAreBetweenZeroAndOne {
     fn holds(&mut self, value: &MarketResponse, _snapshot: &Snapshot) -> bool {
         value
             .tokens
@@ -15,4 +15,4 @@ impl Property<MarketResponse> for TokenPricesAreProbabilities {
     }
 }
 
-register_property!(TokenPricesAreProbabilities, MarketResponse, MARKET_RESPONSE_PROPERTIES);
+register_property!(TokenPricesAreBetweenZeroAndOne, MarketResponse, MARKET_RESPONSE_PROPERTIES);
