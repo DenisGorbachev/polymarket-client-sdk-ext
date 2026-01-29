@@ -15,6 +15,7 @@ use std::process::ExitCode;
 use thiserror::Error;
 
 pub const DEFAULT_DB_DIR: &str = ".cache/db";
+pub const GAMMA_EVENT_KEYSPACE: &str = "gamma_events";
 pub const CLOB_MARKET_RESPONSE_KEYSPACE: &str = "clob_market_responses";
 pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "clob_order_book_summary_responses";
 const ORDERBOOKS_CHUNK_SIZE: usize = 500;
