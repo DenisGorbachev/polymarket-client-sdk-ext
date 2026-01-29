@@ -5,7 +5,7 @@ pub fn market_response_properties() -> Vec<Box<dyn Property<MarketResponse>>> {
     vec![
         Box::new(MarketSlugIsUnique::default()),
         Box::new(QuestionIdIsNoneIffConditionIdIsNone),
-        Box::new(Is5050OutcomeIffBothTokensAreWinners),
+        Box::new(IfIs5050OutcomeThenBothTokensAreLosers),
     ]
 }
 
@@ -17,6 +17,6 @@ mod question_id_is_none_iff_condition_id_is_none;
 
 pub use question_id_is_none_iff_condition_id_is_none::*;
 
-mod is_50_50_outcome_iff_both_tokens_are_winners;
+mod if_is_50_50_outcome_then_both_tokens_are_losers;
 
-pub use is_50_50_outcome_iff_both_tokens_are_winners::*;
+pub use if_is_50_50_outcome_then_both_tokens_are_losers::*;

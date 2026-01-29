@@ -3,10 +3,10 @@ use fjall::Snapshot;
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 
 #[derive(Default, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Copy, Debug)]
-pub struct Is5050OutcomeIffBothTokensAreWinners;
+pub struct IfIs5050OutcomeThenBothTokensAreLosers;
 
-impl Property<MarketResponse> for Is5050OutcomeIffBothTokensAreWinners {
+impl Property<MarketResponse> for IfIs5050OutcomeThenBothTokensAreLosers {
     fn holds(&mut self, value: &MarketResponse, _snapshot: &Snapshot) -> bool {
-        value.is_50_50_outcome == value.tokens.iter().all(|token| token.winner)
+        if value.is_50_50_outcome { value.tokens.iter().all(|token| !token.winner) } else { true }
     }
 }
