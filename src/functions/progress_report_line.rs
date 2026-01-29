@@ -1,10 +1,10 @@
-pub fn progress_report_line(action: &str, count: usize, total: Option<usize>, limit: Option<usize>) -> String {
-    let counter = match total {
-        None => format!("{count} so far"),
-        Some(total) => format!("{count} / {total}"),
-    };
-    match limit {
-        None => format!("{action}: {counter}"),
-        Some(limit) => format!("{action}: {counter} (limit: {limit})"),
+pub fn progress_report_line(action: &str, offset: usize, limit: Option<usize>, total: Option<usize>) -> String {
+    let mut parts = vec![format!("{action} (offset: {offset})")];
+    if let Some(limit) = limit {
+        parts.push(format!("(limit: {limit})"))
     }
+    if let Some(total) = total {
+        parts.push(format!("(total: {total})"))
+    }
+    parts.join(" ")
 }
