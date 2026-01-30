@@ -1895,6 +1895,7 @@ rustc-hash = { version = "2.0.0" }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.132" }
 similar-asserts = "1.7.0"
+strum = { version = "0.27.2", features = ["derive"] }
 #standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 stub-macro = "0.2.1"
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }

@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, Market, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, Orderbook, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, MarketResponsePrecise, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, Orderbook, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
@@ -271,7 +271,7 @@ impl CacheDownloadCommand {
 
     fn serialize_market_entry((market_slug, market): (String, MarketResponse)) -> Result<(String, Vec<u8>), CacheDownloadCommandSerializeMarketEntryError> {
         use CacheDownloadCommandSerializeMarketEntryError::*;
-        let market = handle!(Self::round_trip_entry::<MarketResponse, Market, ConvertMarketResponseToMarketError>(market), RoundTripEntryFailed);
+        let market = handle!(Self::round_trip_entry::<MarketResponse, MarketResponsePrecise, ConvertMarketResponseToMarketError>(market), RoundTripEntryFailed);
         let bytes = handle!(
             bitcode::serialize(&market),
             SerializeFailed,

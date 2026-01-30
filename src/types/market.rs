@@ -1,4 +1,4 @@
-use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, QuestionId, Rewards, TokenId, Tokens, from_chrono_date_time, into_chrono_date_time};
+use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, Flank, NegRisk, QuestionId, Rewards, TokenId, Tokens, from_chrono_date_time, into_chrono_date_time};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
@@ -11,12 +11,55 @@ use time::{Duration, OffsetDateTime};
 pub struct Market {
     pub question: String,
     pub description: String,
+    pub slug: String,
+    pub condition_id: ConditionId,
+    pub question_id: QuestionId,
+    pub active: bool,
+    pub closed: bool,
+    pub archived: bool,
+    pub enable_order_book: bool,
+    pub accepting_orders: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accepting_order_timestamp: Option<OffsetDateTime>,
+    pub minimum_order_size: Amount,
+    pub minimum_tick_size: Amount,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_date_iso: Option<OffsetDateTime>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fpmm: Option<Address>,
+    pub maker_base_fee: Amount,
+    pub taker_base_fee: Amount,
+    pub left_token_id: TokenId,
+    pub right_token_id: TokenId,
+    pub winner: Option<Flank>,
+    pub neg_risk: NegRisk,
+    pub is_50_50_outcome: bool,
+}
+
+impl Market {
+    pub fn maybe_try_from_market_response_precise(market_response: MarketResponsePrecise) -> Option<Result<Self, <Self as TryFrom<MarketResponsePrecise>>::Error>> {
+        if market_response.is_bogus() { None } else { Some(Self::try_from(market_response)) }
+    }
+}
+
+impl TryFrom<MarketResponsePrecise> for Market {
+    type Error = ();
+
+    fn try_from(_input: MarketResponsePrecise) -> Result<Self, Self::Error> {
+        todo!()
+    }
+}
+
+#[derive(From, Into, Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct MarketResponsePrecise {
+    pub question: String,
+    pub description: String,
+    /// `market_slug` is unique according to check in [`crate::CacheDownloadCommand`]
     pub market_slug: String,
     pub icon: String,
     pub image: String,
-    /// Condition id provided by the API.
     pub condition_id: Option<ConditionId>,
-    /// Question id provided by the API.
     pub question_id: Option<QuestionId>,
     pub active: bool,
     pub closed: bool,
@@ -32,6 +75,7 @@ pub struct Market {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_start_time: Option<OffsetDateTime>,
     pub seconds_delay: Duration,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub fpmm: Option<Address>,
     pub maker_base_fee: Amount,
     pub taker_base_fee: Amount,
@@ -45,9 +89,15 @@ pub struct Market {
     pub tags: Vec<String>,
 }
 
-impl Market {
+impl MarketResponsePrecise {
     pub fn is_tradeable(&self) -> bool {
         self.active && !self.closed && !self.archived && self.accepting_orders && self.enable_order_book
+    }
+
+    /// Only those two market ids have `m.question_id.is_none() != m.condition_id.is_none()`
+    /// These markets are old (2021 and 2022) and `m.closed == true`
+    pub fn is_bogus(&self) -> bool {
+        self.market_slug == "dodgers" || self.market_slug == "will-it-snow-in-new-yorks-central-park-on-new-years-eve-dec-31"
     }
 
     pub fn token_ids_tuple(&self) -> (TokenId, TokenId) {
@@ -60,7 +110,7 @@ impl Market {
 }
 
 #[derive(Clone, Debug)]
-pub struct FallibleMarket {
+pub struct MarketResponsePreciseFallible {
     pub question: String,
     pub description: String,
     pub market_slug: String,
@@ -95,7 +145,7 @@ pub struct FallibleMarket {
 }
 
 /// NOTE: Some markets have an invalid `neg_risk_market_id` (e.g. "0x12309") because they were created by Polymarket just for testing
-impl TryFrom<MarketResponse> for Market {
+impl TryFrom<MarketResponse> for MarketResponsePrecise {
     type Error = ConvertMarketResponseToMarketError;
 
     fn try_from(market_response: MarketResponse) -> Result<Self, Self::Error> {
@@ -173,7 +223,7 @@ impl TryFrom<MarketResponse> for Market {
                 tags,
             }),
             (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, tokens) => Err(ConversionFailed {
-                fallible_market: FallibleMarket {
+                fallible_market: MarketResponsePreciseFallible {
                     question,
                     description,
                     market_slug,
@@ -212,12 +262,12 @@ impl TryFrom<MarketResponse> for Market {
 #[derive(Error, Debug)]
 pub enum ConvertMarketResponseToMarketError {
     #[error("failed to convert market response")]
-    ConversionFailed { fallible_market: FallibleMarket },
+    ConversionFailed { fallible_market: MarketResponsePreciseFallible },
 }
 
-impl From<Market> for MarketResponse {
-    fn from(market: Market) -> Self {
-        let Market {
+impl From<MarketResponsePrecise> for MarketResponse {
+    fn from(market: MarketResponsePrecise) -> Self {
+        let MarketResponsePrecise {
             question,
             description,
             market_slug,
@@ -299,7 +349,7 @@ mod tests {
         use MustRoundTripFixtureError::*;
         let input = include_str!("../../fixtures/market.json");
         let market_response: MarketResponse = handle!(serde_json::de::from_str(input), DeserializeFailed);
-        let market = handle!(Market::try_from(market_response.clone()), TryFromFailed);
+        let market = handle!(MarketResponsePrecise::try_from(market_response.clone()), TryFromFailed);
         let expected_question = "Will Donald Trump win the 2024 US Presidential Election?".to_string();
         handle_bool!(
             market.question != expected_question,

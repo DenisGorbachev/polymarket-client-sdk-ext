@@ -1,4 +1,4 @@
-use crate::{ClobClient, ClobClientMarketsError, Market, NEXT_CURSOR_START};
+use crate::{ClobClient, ClobClientMarketsError, MarketResponsePrecise, NEXT_CURSOR_START};
 use futures::StreamExt;
 use std::env;
 use std::fs::File;
@@ -19,13 +19,16 @@ async fn test_markets() {
     let markets_stream = markets_stream.take(max_pages);
     pin!(markets_stream);
     let markets_results = markets_stream
-        .collect::<Vec<Result<Vec<Market>, ClobClientMarketsError>>>()
+        .collect::<Vec<Result<Vec<MarketResponsePrecise>, ClobClientMarketsError>>>()
         .await;
     let markets_pages = markets_results
         .into_iter()
-        .collect::<Result<Vec<Vec<Market>>, ClobClientMarketsError>>()
+        .collect::<Result<Vec<Vec<MarketResponsePrecise>>, ClobClientMarketsError>>()
         .unwrap();
-    let markets = markets_pages.into_iter().flatten().collect::<Vec<Market>>();
+    let markets = markets_pages
+        .into_iter()
+        .flatten()
+        .collect::<Vec<MarketResponsePrecise>>();
     if let Some(markets_filename) = markets_filename {
         let markets_dump = serde_json::to_string(&markets).unwrap();
         File::options()

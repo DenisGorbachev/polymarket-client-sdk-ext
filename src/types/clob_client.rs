@@ -1,4 +1,4 @@
-use crate::{ConvertMarketResponseToMarketError, Market, NEXT_CURSOR_START, NextCursor, TokenId, get_page_stream, is_launched};
+use crate::{ConvertMarketResponseToMarketError, MarketResponsePrecise, NEXT_CURSOR_START, NextCursor, TokenId, get_page_stream, is_launched};
 use derive_more::{Deref, DerefMut};
 use derive_new::new;
 use errgonomic::{ErrVec, handle, handle_iter};
@@ -14,7 +14,7 @@ pub struct ClobClient {
 
 impl ClobClient {
     /// This function returns only launched markets (see [`is_launched`]).
-    pub async fn markets(&self, next_cursor: Option<String>) -> Result<Page<Market>, ClobClientMarketsError> {
+    pub async fn markets(&self, next_cursor: Option<String>) -> Result<Page<MarketResponsePrecise>, ClobClientMarketsError> {
         use ClobClientMarketsError::*;
         let page = handle!(self.inner.markets(next_cursor.clone()).await, MarketsFailed, next_cursor);
         let Page {
@@ -24,7 +24,12 @@ impl ClobClient {
             data,
             ..
         } = page;
-        let data = handle_iter!(data.into_iter().filter(is_launched).map(Market::try_from), MarketTryFromFailed);
+        let data = handle_iter!(
+            data.into_iter()
+                .filter(is_launched)
+                .map(MarketResponsePrecise::try_from),
+            MarketTryFromFailed
+        );
         Ok(Page::builder()
             .data(data)
             .next_cursor(next_cursor)
@@ -37,11 +42,11 @@ impl ClobClient {
         todo!()
     }
 
-    pub fn markets_stream(&self) -> impl Stream<Item = Result<Vec<Market>, ClobClientMarketsError>> + '_ {
+    pub fn markets_stream(&self) -> impl Stream<Item = Result<Vec<MarketResponsePrecise>, ClobClientMarketsError>> + '_ {
         self.get_markets_stream_at_cursor(NEXT_CURSOR_START.into())
     }
 
-    pub fn get_markets_stream_at_cursor(&self, next_cursor: NextCursor) -> impl Stream<Item = Result<Vec<Market>, ClobClientMarketsError>> + '_ {
+    pub fn get_markets_stream_at_cursor(&self, next_cursor: NextCursor) -> impl Stream<Item = Result<Vec<MarketResponsePrecise>, ClobClientMarketsError>> + '_ {
         get_page_stream(|next_cursor| self.markets(Some(next_cursor)), next_cursor)
     }
 }
