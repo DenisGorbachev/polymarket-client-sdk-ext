@@ -188,11 +188,11 @@ const parseSemVer = (value: string) => {
   return parsed
 }
 
-const includeCargoDependencyFile = async (dependencyName: string, path: string) => {
+const includeCargoDependencyFileIfExists = async (dependencyName: string, path: string) => {
   const metadata = await loadCargoMetadata()
   const candidates = metadata.packages.filter((pkg) => pkg.name === dependencyName)
   if (candidates.length === 0) {
-    throw new Error(`cargo dependency not found: '${dependencyName}'`)
+    return null
   }
   const cargoPackage = candidates.reduce((best, current) => {
     if (!best) {
@@ -212,6 +212,10 @@ const includeCargoDependencyFile = async (dependencyName: string, path: string) 
   }
   const crateRoot = dirname(cargoPackage.manifest_path)
   const fullPath = join(crateRoot, path)
+  const exists = await fileExists(fullPath)
+  if (!exists) {
+    return null
+  }
   const contents = await Deno.readTextFile(fullPath)
   return await renderFileContents(path, contents, `${dependencyName}/${path}`)
 }
@@ -232,7 +236,7 @@ const parts = (await Promise.all([
   includeFileIfExists(".agents/knowledge.md"),
   includeFileIfExists(".agents/docs.md"),
   includeFileIfExists(".agents/gotchas.md"),
-  includeCargoDependencyFile("errgonomic", "DOCS.md"),
+  includeCargoDependencyFileIfExists("errgonomic", "DOCS.md"),
   includeFile(".agents/cli.md"),
   Promise.resolve("## Project files"),
   includeFile("Cargo.toml"),
