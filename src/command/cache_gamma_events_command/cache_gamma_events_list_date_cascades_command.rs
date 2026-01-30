@@ -68,16 +68,17 @@ impl CacheGammaEventsListDateCascadesCommand {
         })
     }
 
-    fn date_cascade_entry_from_guard(guard: fjall::Guard) -> Result<Option<(fjall::Slice, fjall::Slice)>, CacheGammaEventsListDateCascadesCommandWriteDateCascadesError> {
+    fn date_cascade_entry_from_guard(guard: fjall::Guard) -> Result<Option<(fjall::Slice, Vec<u8>)>, CacheGammaEventsListDateCascadesCommandWriteDateCascadesError> {
         use CacheGammaEventsListDateCascadesCommandWriteDateCascadesError::*;
         let (key_slice, value_slice) = handle!(guard.into_inner(), ReadEntryFailed);
-        let event = handle!(
-            serde_json::from_slice::<Event>(value_slice.as_ref()),
-            DeserializeFailed,
-            value: value_slice
-        );
+        let event = handle!(bitcode::deserialize::<Event>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
         let is_date_cascade = is_date_cascade(&event).is_some_and(|value| value);
-        if is_date_cascade { Ok(Some((key_slice, value_slice))) } else { Ok(None) }
+        if is_date_cascade {
+            let output_bytes = handle!(serde_json::to_vec(&event), SerializeOutputFailed, event: Box::new(event));
+            Ok(Some((key_slice, output_bytes)))
+        } else {
+            Ok(None)
+        }
     }
 }
 
@@ -96,7 +97,9 @@ pub enum CacheGammaEventsListDateCascadesCommandWriteDateCascadesError {
     #[error("failed to read cache entry")]
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize event entry")]
-    DeserializeFailed { source: serde_json::Error, value: fjall::Slice },
+    DeserializeFailed { source: bitcode::Error, value: fjall::Slice },
+    #[error("failed to serialize event output")]
+    SerializeOutputFailed { source: serde_json::Error, event: Box<Event> },
     #[error("failed to write output")]
     WriteFailed { source: crate::OutputKindWriteError },
     #[error("failed to write output newline")]

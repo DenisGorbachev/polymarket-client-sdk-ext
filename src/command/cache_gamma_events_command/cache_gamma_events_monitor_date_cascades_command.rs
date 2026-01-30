@@ -60,7 +60,7 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
     fn date_cascade_event_id_from_guard(guard: fjall::Guard) -> Result<Option<String>, CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError> {
         use CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError::*;
         let (_key, value) = handle!(guard.into_inner(), ReadEntryFailed);
-        let event = handle!(serde_json::from_slice::<Event>(value.as_ref()), DeserializeFailed, value);
+        let event = handle!(bitcode::deserialize::<Event>(value.as_ref()), DeserializeFailed, value);
         let is_date_cascade = is_date_cascade(&event).is_some_and(|value| value);
         if is_date_cascade {
             handle_bool!(event.id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
@@ -108,7 +108,7 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
     fn serialize_event_entry(event: Event) -> Result<(String, Vec<u8>), CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError> {
         use CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError::*;
         handle_bool!(event.id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
-        let bytes = handle!(serde_json::to_vec(&event), SerializeFailed, event: Box::new(event));
+        let bytes = handle!(bitcode::serialize(&event), SerializeFailed, event: Box::new(event));
         Ok((event.id, bytes))
     }
 }
@@ -136,7 +136,7 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardEr
     #[error("failed to read cache entry")]
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize event entry")]
-    DeserializeFailed { source: serde_json::Error, value: fjall::Slice },
+    DeserializeFailed { source: bitcode::Error, value: fjall::Slice },
     #[error("event response has empty event id")]
     EventIdInvalid { event: Box<Event> },
 }
@@ -170,5 +170,5 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError {
     #[error("event response has empty event id")]
     EventIdInvalid { event: Box<Event> },
     #[error("failed to serialize event response")]
-    SerializeFailed { source: serde_json::Error, event: Box<Event> },
+    SerializeFailed { source: bitcode::Error, event: Box<Event> },
 }

@@ -55,7 +55,7 @@ impl CacheCheckCommand {
     fn process_entry<T: DeserializeOwned>(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<T>>)], snapshot: &Snapshot, guard: fjall::Guard) -> Result<(), CacheCheckCommandProcessMarketEntryError> {
         use CacheCheckCommandProcessMarketEntryError::*;
         let (key_slice, value_slice) = handle!(guard.into_inner(), ReadEntryFailed);
-        let value = handle!(serde_json::from_slice::<T>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
+        let value = handle!(bitcode::deserialize::<T>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
         Self::record_violations(violations, properties, snapshot, key_slice, &value);
         Ok(())
     }
@@ -97,7 +97,7 @@ pub enum CacheCheckCommandProcessMarketEntryError {
     #[error("failed to read cache entry")]
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize market response")]
-    DeserializeFailed { source: serde_json::Error, value: fjall::Slice },
+    DeserializeFailed { source: bitcode::Error, value: fjall::Slice },
 }
 
 #[derive(Error, Debug)]

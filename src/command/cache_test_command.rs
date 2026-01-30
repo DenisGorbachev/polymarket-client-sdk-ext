@@ -87,7 +87,7 @@ impl CacheTestCommand {
     {
         use CacheTestCommandRoundTripEntryError::*;
         let input = handle!(
-            serde_json::from_slice::<T>(value.as_ref()),
+            bitcode::deserialize::<T>(value.as_ref()),
             DeserializeFailed,
             value: value.clone()
         );
@@ -131,7 +131,7 @@ where
     #[error("failed to read cache entry")]
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize cache entry")]
-    DeserializeFailed { source: serde_json::Error, value: fjall::Slice },
+    DeserializeFailed { source: bitcode::Error, value: fjall::Slice },
     #[error("failed to convert cache entry")]
     TryFromFailed { source: E, input: Box<T> },
     #[error("round-tripped cache entry does not match original: '{diff}'")]

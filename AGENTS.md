@@ -1875,6 +1875,7 @@ announcement = ""
 alloy = { version = "1.4.0", default-features = false, features = ["std", "serde"] }
 async-stream = { version = "0.3.6" }
 base64 = "0.22.1"
+bitcode = { version = "0.6.9", features = ["serde", "rust_decimal", "time"] }
 chrono = "0.4.43"
 clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"

@@ -252,7 +252,7 @@ impl CacheDownloadCommand {
     fn serialize_market_entry((market_slug, market): (String, MarketResponse)) -> Result<(String, Vec<u8>), CacheDownloadCommandSerializeMarketEntryError> {
         use CacheDownloadCommandSerializeMarketEntryError::*;
         let bytes = handle!(
-            serde_json::to_vec(&market),
+            bitcode::serialize(&market),
             SerializeFailed,
             market: Box::new(market)
         );
@@ -262,7 +262,7 @@ impl CacheDownloadCommand {
     fn serialize_orderbook_entry(orderbook: OrderBookSummaryResponse) -> Result<(TokenId, Vec<u8>), CacheDownloadCommandSerializeOrderbookEntryError> {
         use CacheDownloadCommandSerializeOrderbookEntryError::*;
         let bytes = handle!(
-            serde_json::to_vec(&orderbook),
+            bitcode::serialize(&orderbook),
             SerializeFailed,
             orderbook: Box::new(orderbook)
         );
@@ -272,7 +272,7 @@ impl CacheDownloadCommand {
     fn serialize_event_entry((event_id, event): (String, Event)) -> Result<(String, Vec<u8>), CacheDownloadCommandSerializeEventEntryError> {
         use CacheDownloadCommandSerializeEventEntryError::*;
         let bytes = handle!(
-            serde_json::to_vec(&event),
+            bitcode::serialize(&event),
             SerializeFailed,
             event: Box::new(event)
         );
@@ -406,17 +406,17 @@ pub enum CacheDownloadCommandInsertOrderbookEntryError {
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandSerializeMarketEntryError {
     #[error("failed to serialize market response")]
-    SerializeFailed { source: serde_json::Error, market: Box<MarketResponse> },
+    SerializeFailed { source: bitcode::Error, market: Box<MarketResponse> },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandSerializeOrderbookEntryError {
     #[error("failed to serialize order book summary")]
-    SerializeFailed { source: serde_json::Error, orderbook: Box<OrderBookSummaryResponse> },
+    SerializeFailed { source: bitcode::Error, orderbook: Box<OrderBookSummaryResponse> },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandSerializeEventEntryError {
     #[error("failed to serialize event response")]
-    SerializeFailed { source: serde_json::Error, event: Box<Event> },
+    SerializeFailed { source: bitcode::Error, event: Box<Event> },
 }
