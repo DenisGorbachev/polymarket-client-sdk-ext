@@ -119,3 +119,7 @@ mod flank;
 pub use flank::*;
 mod rkyv_decimal;
 pub use rkyv_decimal::*;
+mod rkyv_index_map_decimal;
+pub use rkyv_index_map_decimal::*;
+mod rkyv_ref_wrapper;
+pub use rkyv_ref_wrapper::*;

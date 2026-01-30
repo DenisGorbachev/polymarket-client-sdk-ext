@@ -1,18 +1,29 @@
-use crate::{Amount, Level, Price};
+use crate::{Amount, Level, Price, RkyvIndexMapDecimal};
+use derive_more::{AsRef, Deref, DerefMut, Into};
 use indexmap::IndexMap;
 use polymarket_client_sdk::clob::types::response::OrderSummary;
+use rkyv::Archive;
 use rustc_hash::FxBuildHasher;
 use serde::{Deserialize, Serialize};
-use subtype::subtype;
 use thiserror::Error;
 
-subtype!(
-    /// The orderbook is represented as two `BookSide` (`bids` and `asks`) because some APIs may return a crossed book during fast moves (max bid price ≥ min ask price).
-    #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
-    pub struct BookSide(IndexMap<Price, Amount, FxBuildHasher>)
-);
+/// The orderbook is represented as two `BookSide` (`bids` and `asks`) because some APIs may return a crossed book during fast moves (max bid price ≥ min ask price).
+#[derive(Archive, Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Deref, DerefMut, AsRef, Into)]
+pub struct BookSide(#[rkyv(with = RkyvIndexMapDecimal)] IndexMap<Price, Amount, FxBuildHasher>);
 
 impl BookSide {
+    pub fn new(map: impl Into<IndexMap<Price, Amount, FxBuildHasher>>) -> Self {
+        Self(map.into())
+    }
+
+    pub fn set(&mut self, map: impl Into<IndexMap<Price, Amount, FxBuildHasher>>) {
+        self.0 = map.into();
+    }
+
+    pub fn into_inner(self) -> IndexMap<Price, Amount, FxBuildHasher> {
+        self.0
+    }
+
     pub fn min_price(&self) -> Option<&Price> {
         self.keys().min()
     }
@@ -38,6 +49,18 @@ impl BookSide {
             // can't cross if no prices (no orders)
             _ => false,
         }
+    }
+}
+
+impl From<IndexMap<Price, Amount, FxBuildHasher>> for BookSide {
+    fn from(value: IndexMap<Price, Amount, FxBuildHasher>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<&IndexMap<Price, Amount, FxBuildHasher>> for BookSide {
+    fn from(value: &IndexMap<Price, Amount, FxBuildHasher>) -> Self {
+        Self(value.clone())
     }
 }
 

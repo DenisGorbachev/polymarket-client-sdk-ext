@@ -1899,7 +1899,6 @@ similar-asserts = "1.7.0"
 strum = { version = "0.27.2", features = ["derive"] }
 #standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 stub-macro = "0.2.1"
-subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
