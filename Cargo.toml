@@ -49,7 +49,6 @@ indexmap = { version = "2.6.0", features = ["serde"] }
 itertools = "0.14.0"
 linkme = "0.3.35"
 polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"], git = "https://github.com/DenisGorbachev/rs-clob-client" }
-rayon = "1.11.0"
 reqwest = { version = "0.13.1", features = ["json"] }
 rust_decimal = { version = "1.36.0", features = ["serde"] }
 rustc-hash = { version = "2.0.0" }

@@ -1,5 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, GAMMA_EVENTS_KEYSPACE, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, ShouldDownloadOrderbooks, TokenId, open_keyspace, progress_report_line};
-use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_PAGE_SIZE};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, Market, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, Orderbook, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
@@ -12,6 +11,7 @@ use polymarket_client_sdk::gamma::Client as GammaClient;
 use polymarket_client_sdk::gamma::types::request::EventsRequest;
 use polymarket_client_sdk::gamma::types::response::Event;
 use rustc_hash::FxHashSet;
+use std::error::Error as StdError;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -241,6 +241,26 @@ impl CacheDownloadCommand {
         Ok(())
     }
 
+    fn round_trip_entry<T, U, E>(input: T) -> Result<T, CacheDownloadCommandRoundTripEntryError<T, E>>
+    where
+        T: Clone + PartialEq + core::fmt::Debug,
+        U: TryFrom<T, Error = E>,
+        T: From<U>,
+        E: StdError + Send + Sync + 'static,
+    {
+        use CacheDownloadCommandRoundTripEntryError::*;
+        let output = handle!(U::try_from(input.clone()), TryFromFailed, input: Box::new(input));
+        let input_round_trip = T::from(output);
+        handle_bool!(
+            input != input_round_trip,
+            RoundTripFailed,
+            diff: format_debug_diff(&input, &input_round_trip, "input", "input_round_trip"),
+            input: Box::new(input),
+            input_round_trip: Box::new(input_round_trip)
+        );
+        Ok(input)
+    }
+
     // fn insert_entry(tx: &mut SingleWriterWriteTx, keyspace: &SingleWriterTxKeyspace, key: String, value: Vec<u8>) -> Result<(), CacheDownloadCommandInsertEntryError> {
     //     use CacheDownloadCommandInsertEntryError::*;
     //     let exists = handle!(tx.contains_key(keyspace, &key), ContainsKeyFailed, key, value);
@@ -251,6 +271,7 @@ impl CacheDownloadCommand {
 
     fn serialize_market_entry((market_slug, market): (String, MarketResponse)) -> Result<(String, Vec<u8>), CacheDownloadCommandSerializeMarketEntryError> {
         use CacheDownloadCommandSerializeMarketEntryError::*;
+        let market = handle!(Self::round_trip_entry::<MarketResponse, Market, ConvertMarketResponseToMarketError>(market), RoundTripEntryFailed);
         let bytes = handle!(
             bitcode::serialize(&market),
             SerializeFailed,
@@ -261,6 +282,7 @@ impl CacheDownloadCommand {
 
     fn serialize_orderbook_entry(orderbook: OrderBookSummaryResponse) -> Result<(TokenId, Vec<u8>), CacheDownloadCommandSerializeOrderbookEntryError> {
         use CacheDownloadCommandSerializeOrderbookEntryError::*;
+        let orderbook = handle!(Self::round_trip_entry::<OrderBookSummaryResponse, Orderbook, ConvertOrderBookSummaryResponseToOrderbookError>(orderbook), RoundTripEntryFailed);
         let bytes = handle!(
             bitcode::serialize(&orderbook),
             SerializeFailed,
@@ -388,6 +410,18 @@ pub enum CacheDownloadCommandWriteEventsToDatabaseError {
 }
 
 #[derive(Error, Debug)]
+pub enum CacheDownloadCommandRoundTripEntryError<T, E>
+where
+    T: core::fmt::Debug,
+    E: StdError + Send + Sync + 'static,
+{
+    #[error("failed to convert cache entry")]
+    TryFromFailed { source: E, input: Box<T> },
+    #[error("round-tripped cache entry does not match original: '{diff}'")]
+    RoundTripFailed { input: Box<T>, input_round_trip: Box<T>, diff: String },
+}
+
+#[derive(Error, Debug)]
 pub enum CacheDownloadCommandInsertEntryError {
     #[error("failed to call contains_key for '{key}'")]
     ContainsKeyFailed { source: fjall::Error, key: String, value: Vec<u8> },
@@ -405,12 +439,16 @@ pub enum CacheDownloadCommandInsertOrderbookEntryError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandSerializeMarketEntryError {
+    #[error("failed to round-trip market response")]
+    RoundTripEntryFailed { source: Box<CacheDownloadCommandRoundTripEntryError<MarketResponse, ConvertMarketResponseToMarketError>> },
     #[error("failed to serialize market response")]
     SerializeFailed { source: bitcode::Error, market: Box<MarketResponse> },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandSerializeOrderbookEntryError {
+    #[error("failed to round-trip order book summary response")]
+    RoundTripEntryFailed { source: CacheDownloadCommandRoundTripEntryError<OrderBookSummaryResponse, ConvertOrderBookSummaryResponseToOrderbookError> },
     #[error("failed to serialize order book summary")]
     SerializeFailed { source: bitcode::Error, orderbook: Box<OrderBookSummaryResponse> },
 }

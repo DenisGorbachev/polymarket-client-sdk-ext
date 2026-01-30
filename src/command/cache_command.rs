@@ -1,4 +1,4 @@
-use crate::{CacheCheckCommand, CacheCheckCommandRunError, CacheDownloadCommand, CacheDownloadCommandRunError, CacheGammaEventsCommand, CacheGammaEventsCommandRunError, CacheMarketResponsesCommand, CacheMarketResponsesCommandRunError, CacheOrderBookSummaryResponsesCommand, CacheOrderBookSummaryResponsesCommandRunError, CacheTestCommand, CacheTestCommandRunError};
+use crate::{CacheCheckCommand, CacheCheckCommandRunError, CacheDownloadCommand, CacheDownloadCommandRunError, CacheGammaEventsCommand, CacheGammaEventsCommandRunError, CacheMarketResponsesCommand, CacheMarketResponsesCommandRunError, CacheOrderBookSummaryResponsesCommand, CacheOrderBookSummaryResponsesCommandRunError};
 use CacheSubcommand::*;
 use errgonomic::map_err;
 use std::process::ExitCode;
@@ -19,7 +19,6 @@ pub enum CacheSubcommand {
     GammaEvents(CacheGammaEventsCommand),
     MarketResponses(CacheMarketResponsesCommand),
     OrderBookSummaryResponses(CacheOrderBookSummaryResponsesCommand),
-    Test(CacheTestCommand),
 }
 
 impl CacheCommand {
@@ -34,7 +33,6 @@ impl CacheCommand {
             GammaEvents(command) => map_err!(command.run().await, CacheGammaEventsCommandRunFailed),
             MarketResponses(command) => map_err!(command.run().await, CacheMarketResponsesCommandRunFailed),
             OrderBookSummaryResponses(command) => map_err!(command.run().await, CacheOrderBookSummaryResponsesCommandRunFailed),
-            Test(command) => map_err!(command.run().await, CacheTestCommandRunFailed),
         }
     }
 }
@@ -51,6 +49,4 @@ pub enum CacheCommandRunError {
     CacheMarketResponsesCommandRunFailed { source: CacheMarketResponsesCommandRunError },
     #[error("failed to run cache order book summary responses command")]
     CacheOrderBookSummaryResponsesCommandRunFailed { source: CacheOrderBookSummaryResponsesCommandRunError },
-    #[error("failed to run cache test command")]
-    CacheTestCommandRunFailed { source: CacheTestCommandRunError },
 }

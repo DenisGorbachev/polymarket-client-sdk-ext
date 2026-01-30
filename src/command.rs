@@ -53,7 +53,3 @@ pub use cache_market_responses_command::*;
 mod cache_order_book_summary_responses_command;
 
 pub use cache_order_book_summary_responses_command::*;
-
-mod cache_test_command;
-
-pub use cache_test_command::*;
