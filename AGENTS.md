@@ -1890,6 +1890,7 @@ itertools = "0.14.0"
 linkme = "0.3.35"
 polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"], git = "https://github.com/DenisGorbachev/rs-clob-client" }
 reqwest = { version = "0.13.1", features = ["json"] }
+rkyv = { version = "0.8.14", features = ["unaligned", "indexmap-2"] }
 rust_decimal = { version = "1.36.0", features = ["serde"] }
 rustc-hash = { version = "2.0.0" }
 serde = { version = "1.0.204", features = ["derive"] }
@@ -1903,7 +1904,6 @@ thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
 url = { version = "2.5.2", features = ["serde"] }
-rkyv = { version = "0.8.14", features = ["unaligned", "indexmap-2"] }
 
 [dev-dependencies]
 anyhow = "1.0.100"

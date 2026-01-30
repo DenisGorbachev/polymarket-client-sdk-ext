@@ -10,6 +10,7 @@
 
 * Add derive Archive from `rkyv` to BookSide
 * Fix the error by using RkyvDecimal
+  * Try to do it in an elegant way with minimal code (research how to do it)
 
 ## Notes
 
