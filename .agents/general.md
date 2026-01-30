@@ -18,6 +18,7 @@ You are a senior Rust software architect. You write high-quality, production-rea
   * `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
 * Don't edit the files in the following top-level dirs: `specs`, `.agents`
 * Don't write the tests unless I ask you explicitly
+* If you need to patch a dependency, tell me about it, but don't do it without my explicit permission
 * If you notice unexpected edits, keep them
 
 ## Review workflow
