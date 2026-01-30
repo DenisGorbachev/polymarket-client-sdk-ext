@@ -1,8 +1,35 @@
-use crate::is_date_like;
-use polymarket_client_sdk::gamma::types::response::Event;
+use crate::{BOOLEAN_OUTCOMES, is_date_like};
+use polymarket_client_sdk::gamma::types::response::{Event, Market};
+use std::ops::Deref;
 
-pub fn is_date_cascade(_event: &Event) -> Option<bool> {
-    let questions = _event
+/// This function may return multiple plans (because multiple pairs of markets may exhibit inverted pricing)
+///
+/// This function assumes that the `event` passes [`is_date_cascade`] check
+///
+/// Returns a vec of prices
+pub fn get_date_cascade_opportunity(event: &Event) -> Option<Vec<rust_decimal::Decimal>> {
+    let _prices = event
+        .markets
+        .as_ref()?
+        .iter()
+        .map(|x| x.outcome_prices.as_ref());
+    todo!()
+}
+
+/// This function assumes that prev `Market` ends before next `Market`
+pub fn is_inverted_pricing(prev: &Market, next: &Market) -> Option<bool> {
+    debug_assert!(prev.end_date < next.end_date);
+    let prev_outcomes = prev.outcomes.as_ref()?;
+    let next_outcomes = next.outcomes.as_ref()?;
+    debug_assert_eq!(prev_outcomes, BOOLEAN_OUTCOMES.deref());
+    debug_assert_eq!(next_outcomes, BOOLEAN_OUTCOMES.deref());
+    let prev_yes_price = prev.outcome_prices.as_ref()?.first()?;
+    let next_yes_price = next.outcome_prices.as_ref()?.first()?;
+    Some(prev_yes_price > next_yes_price)
+}
+
+pub fn is_date_cascade(event: &Event) -> Option<bool> {
+    let questions = event
         .markets
         .as_ref()?
         .iter()
