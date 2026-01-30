@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 
 #[derive(From, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Orderbook {
+pub struct OrderBookSummaryResponsePrecise {
     /// `condition_id` uniquely identifies the market
     #[serde(with = "alloy::primitives::serde_hex")]
     pub condition_id: ConditionId,
@@ -22,14 +22,16 @@ pub struct Orderbook {
     pub hash: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_trade_price: Option<Decimal>,
+    // #[rkyv(with = RkyvDecimal)]
     pub min_order_size: Decimal,
+    // #[rkyv(with = RkyvDecimal)]
     pub min_tick_size: Decimal,
     pub neg_risk: bool,
     pub bids: BookSide,
     pub asks: BookSide,
 }
 
-impl Orderbook {
+impl OrderBookSummaryResponsePrecise {
     pub fn validate(&self) -> Result<(), BidAskCrossError> {
         let max_bid_price_opt = self.bids.keys().max();
         let min_ask_price_opt = self.asks.keys().min();
@@ -40,7 +42,7 @@ impl Orderbook {
     }
 }
 
-impl TryFrom<OrderBookSummaryResponse> for Orderbook {
+impl TryFrom<OrderBookSummaryResponse> for OrderBookSummaryResponsePrecise {
     type Error = ConvertOrderBookSummaryResponseToOrderbookError;
 
     fn try_from(response: OrderBookSummaryResponse) -> Result<Self, Self::Error> {
@@ -89,9 +91,9 @@ pub enum ConvertOrderBookSummaryResponseToOrderbookError {
     AsksTryFromFailed { source: ConvertVecOrderSummaryToBookSideError },
 }
 
-impl From<Orderbook> for OrderBookSummaryResponse {
-    fn from(orderbook: Orderbook) -> Self {
-        let Orderbook {
+impl From<OrderBookSummaryResponsePrecise> for OrderBookSummaryResponse {
+    fn from(orderbook: OrderBookSummaryResponsePrecise) -> Self {
+        let OrderBookSummaryResponsePrecise {
             condition_id,
             token_id,
             bids,
@@ -132,7 +134,7 @@ mod tests {
         use MustRoundTripFixtureError::*;
         let input = include_str!("../../fixtures/orderbook.json").trim();
         let orderbook_summary_response = handle!(serde_json::de::from_str::<OrderBookSummaryResponse>(input), DeserializeFailed);
-        let orderbook = handle!(Orderbook::try_from(orderbook_summary_response.clone()), TryFromFailed, orderbook_summary_response);
+        let orderbook = handle!(OrderBookSummaryResponsePrecise::try_from(orderbook_summary_response.clone()), TryFromFailed, orderbook_summary_response);
         let orderbook_summary_response_round_trip = OrderBookSummaryResponse::from(orderbook);
         handle_bool!(orderbook_summary_response_round_trip != orderbook_summary_response, RoundTripFailed, orderbook_summary_response, orderbook_summary_response_round_trip);
         Ok(())

@@ -57,6 +57,6 @@ mod active_xor_closed;
 
 pub use active_xor_closed::*;
 
-mod no_two_winner_tokens;
+mod max_winner_token_count_is_one;
 
-pub use no_two_winner_tokens::*;
+pub use max_winner_token_count_is_one::*;

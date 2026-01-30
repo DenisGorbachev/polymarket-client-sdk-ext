@@ -1903,6 +1903,7 @@ thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
 url = { version = "2.5.2", features = ["serde"] }
+rkyv = { version = "0.8.14", features = ["unaligned", "indexmap-2"] }
 
 [dev-dependencies]
 anyhow = "1.0.100"
@@ -1916,6 +1917,9 @@ ignored = ["stub-macro", "pretty_assertions"]
 
 [features]
 debug = []
+
+[patch.crates-io]
+ruint = { git = "https://github.com/DenisGorbachev/uint", branch = "fix/rkyv-archived-u64" }
 ```
 
 ### src/main.rs

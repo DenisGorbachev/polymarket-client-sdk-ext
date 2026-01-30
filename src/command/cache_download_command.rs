@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, MarketResponsePrecise, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, Orderbook, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, MarketResponsePrecise, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
@@ -282,7 +282,7 @@ impl CacheDownloadCommand {
 
     fn serialize_orderbook_entry(orderbook: OrderBookSummaryResponse) -> Result<(TokenId, Vec<u8>), CacheDownloadCommandSerializeOrderbookEntryError> {
         use CacheDownloadCommandSerializeOrderbookEntryError::*;
-        let orderbook = handle!(Self::round_trip_entry::<OrderBookSummaryResponse, Orderbook, ConvertOrderBookSummaryResponseToOrderbookError>(orderbook), RoundTripEntryFailed);
+        let orderbook = handle!(Self::round_trip_entry::<OrderBookSummaryResponse, OrderBookSummaryResponsePrecise, ConvertOrderBookSummaryResponseToOrderbookError>(orderbook), RoundTripEntryFailed);
         let bytes = handle!(
             bitcode::serialize(&orderbook),
             SerializeFailed,
