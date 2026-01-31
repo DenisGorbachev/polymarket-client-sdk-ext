@@ -1,35 +1,42 @@
-use crate::{BidAskCrossError, BookSide, ConditionId, ConvertVecOrderSummaryToBookSideError, TimestampVisitor, TokenId, UintAsString, from_chrono_date_time, into_chrono_date_time};
+use crate::RkyvOffsetDateTime;
+use crate::{BidAskCrossError, BookSideMap, ConditionId, ConvertVecOrderSummaryToBookSideError, RkyvDecimal, TimestampVisitor, TokenId, UintAsString, from_chrono_date_time, into_chrono_date_time};
 use derive_more::{From, Into};
 use errgonomic::handle;
 use polymarket_client_sdk::clob::types::TickSize;
 use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
+use rkyv::Archive;
+use rkyv::with::Map;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
 
-#[derive(From, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
+#[derive(From, Into, Serialize, Deserialize, Archive, Eq, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Orderbook {
+pub struct OrderBookSummaryResponsePrecise {
     /// `condition_id` uniquely identifies the market
     #[serde(with = "alloy::primitives::serde_hex")]
     pub condition_id: ConditionId,
     #[serde(with = "UintAsString")]
     pub token_id: TokenId,
     #[serde(with = "TimestampVisitor")]
+    #[rkyv(with = RkyvOffsetDateTime)]
     pub updated_at: OffsetDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[rkyv(with = Map<RkyvDecimal>)]
     pub last_trade_price: Option<Decimal>,
+    #[rkyv(with = RkyvDecimal)]
     pub min_order_size: Decimal,
+    #[rkyv(with = RkyvDecimal)]
     pub min_tick_size: Decimal,
     pub neg_risk: bool,
-    pub bids: BookSide,
-    pub asks: BookSide,
+    pub bids: BookSideMap,
+    pub asks: BookSideMap,
 }
 
-impl Orderbook {
+impl OrderBookSummaryResponsePrecise {
     pub fn validate(&self) -> Result<(), BidAskCrossError> {
         let max_bid_price_opt = self.bids.keys().max();
         let min_ask_price_opt = self.asks.keys().min();
@@ -40,7 +47,7 @@ impl Orderbook {
     }
 }
 
-impl TryFrom<OrderBookSummaryResponse> for Orderbook {
+impl TryFrom<OrderBookSummaryResponse> for OrderBookSummaryResponsePrecise {
     type Error = ConvertOrderBookSummaryResponseToOrderbookError;
 
     fn try_from(response: OrderBookSummaryResponse) -> Result<Self, Self::Error> {
@@ -61,8 +68,8 @@ impl TryFrom<OrderBookSummaryResponse> for Orderbook {
         let condition_id = market;
         let token_id = asset_id;
         let updated_at = handle!(from_chrono_date_time(timestamp), FromChronoDateTimeFailed, timestamp);
-        let bids = handle!(BookSide::try_from(bids), BidsTryFromFailed);
-        let asks = handle!(BookSide::try_from(asks), AsksTryFromFailed);
+        let bids = handle!(BookSideMap::try_from(bids), BidsTryFromFailed);
+        let asks = handle!(BookSideMap::try_from(asks), AsksTryFromFailed);
         let min_tick_size = tick_size.into();
         Ok(Self {
             condition_id,
@@ -89,9 +96,9 @@ pub enum ConvertOrderBookSummaryResponseToOrderbookError {
     AsksTryFromFailed { source: ConvertVecOrderSummaryToBookSideError },
 }
 
-impl From<Orderbook> for OrderBookSummaryResponse {
-    fn from(orderbook: Orderbook) -> Self {
-        let Orderbook {
+impl From<OrderBookSummaryResponsePrecise> for OrderBookSummaryResponse {
+    fn from(orderbook: OrderBookSummaryResponsePrecise) -> Self {
+        let OrderBookSummaryResponsePrecise {
             condition_id,
             token_id,
             bids,
@@ -132,7 +139,7 @@ mod tests {
         use MustRoundTripFixtureError::*;
         let input = include_str!("../../fixtures/orderbook.json").trim();
         let orderbook_summary_response = handle!(serde_json::de::from_str::<OrderBookSummaryResponse>(input), DeserializeFailed);
-        let orderbook = handle!(Orderbook::try_from(orderbook_summary_response.clone()), TryFromFailed, orderbook_summary_response);
+        let orderbook = handle!(OrderBookSummaryResponsePrecise::try_from(orderbook_summary_response.clone()), TryFromFailed, orderbook_summary_response);
         let orderbook_summary_response_round_trip = OrderBookSummaryResponse::from(orderbook);
         handle_bool!(orderbook_summary_response_round_trip != orderbook_summary_response, RoundTripFailed, orderbook_summary_response, orderbook_summary_response_round_trip);
         Ok(())

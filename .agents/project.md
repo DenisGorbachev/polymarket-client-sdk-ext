@@ -10,6 +10,18 @@ Notes:
   * `polymarket-client-sdk-ext` is a package
   * `polymarket_client_sdk_ext` is a crate
 
+Requirements:
+
+* If the type derives both the `serde` and `rkyv` traits
+  * Then: the derive macros must be prefixed with the crate name (for example: `serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize`)
+  * Else: the derive macros must not be prefixed with the crate name (for example: `Serialize, Deserialize`)
+* Derive macros must be in the following order:
+  * `derive_new`
+  * `derive_more`
+  * `serde`
+  * `rkyv`
+  * `core`
+
 ## Foundational crate
 
 The `polymarket_client_sdk` crate (it is extended by `polymarket_client_sdk_ext` crate).
@@ -75,14 +87,6 @@ Examples:
 
 * JSONL
 * CSV
-
-## REFRESH_TEST_CACHE
-
-An env var that indicates whether the test cache must be downloaded again.
-
-Notes:
-
-* Use `BoolishValueParser` from `clap` to parse this env var
 
 ## Extension type
 

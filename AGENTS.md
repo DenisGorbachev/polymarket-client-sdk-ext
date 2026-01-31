@@ -296,6 +296,18 @@ Notes:
   * `polymarket-client-sdk-ext` is a package
   * `polymarket_client_sdk_ext` is a crate
 
+Requirements:
+
+* If the type derives both the `serde` and `rkyv` traits
+  * Then: the derive macros must be prefixed with the crate name (for example: `serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize`)
+  * Else: the derive macros must not be prefixed with the crate name (for example: `Serialize, Deserialize`)
+* Derive macros must be in the following order:
+  * `derive_new`
+  * `derive_more`
+  * `serde`
+  * `rkyv`
+  * `core`
+
 ### Foundational crate
 
 The `polymarket_client_sdk` crate (it is extended by `polymarket_client_sdk_ext` crate).
@@ -361,14 +373,6 @@ Examples:
 
 * JSONL
 * CSV
-
-### REFRESH\_TEST\_CACHE
-
-An env var that indicates whether the test cache must be downloaded again.
-
-Notes:
-
-* Use `BoolishValueParser` from `clap` to parse this env var
 
 ### Extension type
 
@@ -1874,6 +1878,8 @@ announcement = ""
 
 [dependencies]
 alloy = { version = "1.4.0", default-features = false, features = ["std", "serde"] }
+# alloy-primitives is needed to enable the "rkyv" feature
+alloy-primitives = { version = "1.5.4", features = ["rkyv"] }
 async-stream = { version = "0.3.6" }
 base64 = "0.22.1"
 bitcode = { version = "0.6.9", features = ["serde", "rust_decimal", "time"] }
@@ -1890,6 +1896,7 @@ itertools = "0.14.0"
 linkme = "0.3.35"
 polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"], git = "https://github.com/DenisGorbachev/rs-clob-client" }
 reqwest = { version = "0.13.1", features = ["json"] }
+rkyv = { version = "0.8.14", features = ["unaligned", "indexmap-2"] }
 rust_decimal = { version = "1.36.0", features = ["serde"] }
 rustc-hash = { version = "2.0.0" }
 serde = { version = "1.0.204", features = ["derive"] }
@@ -1898,7 +1905,6 @@ similar-asserts = "1.7.0"
 strum = { version = "0.27.2", features = ["derive"] }
 #standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 stub-macro = "0.2.1"
-subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
@@ -1912,10 +1918,13 @@ serde_json = "1.0.129"
 tokio = { version = "1.39.2", features = ["macros", "fs", "net", "rt", "rt-multi-thread"] }
 
 [package.metadata.cargo-machete]
-ignored = ["stub-macro", "pretty_assertions"]
+ignored = ["alloy-primitives", "stub-macro", "pretty_assertions"]
 
 [features]
 debug = []
+
+[patch.crates-io]
+ruint = { git = "https://github.com/DenisGorbachev/uint", branch = "fix/rkyv-archived-u64" }
 ```
 
 ### src/main.rs

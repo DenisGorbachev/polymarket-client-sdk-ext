@@ -12,5 +12,11 @@ pub const GAMMA_EVENTS_KEYSPACE: &str = "gamma_events";
 pub const CLOB_MARKET_RESPONSES_KEYSPACE: &str = "clob_market_responses";
 pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "clob_order_book_summary_responses";
 
+/// The keyspace for [`Market`](crate::Market)
+pub const CLOB_MARKETS_KEYSPACE: &str = "clob_markets";
+
+/// The keyspace for [`OrderBook`](crate::OrderBook)
+pub const CLOB_ORDER_BOOKS_KEYSPACE: &str = "clob_order_books";
+
 /// Important: some markets have non-boolean outcomes (for example: ["Western Carolina vs. UNC Greensboro"](https://gamma-api.polymarket.com/markets/522329))
 pub static BOOLEAN_OUTCOMES: LazyLock<Vec<String>> = LazyLock::new(|| vec!["Yes".to_string(), "No".to_string()]);
