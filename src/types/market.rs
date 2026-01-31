@@ -1,12 +1,14 @@
-use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, Flank, NegRisk, QuestionId, Rewards, TokenId, Tokens, from_chrono_date_time, into_chrono_date_time};
+use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, Flank, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, from_chrono_date_time, into_chrono_date_time};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
+use rkyv::Archive;
+use rkyv::with::Map;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
-#[derive(From, Into, Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(From, Into, Serialize, Deserialize, Archive, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Market {
     pub question: String,
@@ -19,15 +21,21 @@ pub struct Market {
     pub archived: bool,
     pub enable_order_book: bool,
     pub accepting_orders: bool,
+    #[rkyv(with = Map<RkyvOffsetDateTime>)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accepting_order_timestamp: Option<OffsetDateTime>,
+    #[rkyv(with = RkyvDecimal)]
     pub minimum_order_size: Amount,
+    #[rkyv(with = RkyvDecimal)]
     pub minimum_tick_size: Amount,
+    #[rkyv(with = Map<RkyvOffsetDateTime>)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_date_iso: Option<OffsetDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fpmm: Option<Address>,
+    #[rkyv(with = RkyvDecimal)]
     pub maker_base_fee: Amount,
+    #[rkyv(with = RkyvDecimal)]
     pub taker_base_fee: Amount,
     pub left_token_id: TokenId,
     pub right_token_id: TokenId,

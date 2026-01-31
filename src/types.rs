@@ -123,3 +123,5 @@ mod rkyv_index_map_decimal;
 pub use rkyv_index_map_decimal::*;
 mod rkyv_ref_wrapper;
 pub use rkyv_ref_wrapper::*;
+mod rkyv_offset_date_time;
+pub use rkyv_offset_date_time::*;
