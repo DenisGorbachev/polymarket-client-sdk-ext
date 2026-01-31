@@ -1,14 +1,17 @@
-use crate::{BidAskCrossError, BookSide, ConditionId, ConvertVecOrderSummaryToBookSideError, TimestampVisitor, TokenId, UintAsString, from_chrono_date_time, into_chrono_date_time};
+use crate::RkyvOffsetDateTime;
+use crate::{BidAskCrossError, BookSideMap, ConditionId, ConvertVecOrderSummaryToBookSideError, RkyvDecimal, TimestampVisitor, TokenId, UintAsString, from_chrono_date_time, into_chrono_date_time};
 use derive_more::{From, Into};
 use errgonomic::handle;
 use polymarket_client_sdk::clob::types::TickSize;
 use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
+use rkyv::Archive;
+use rkyv::with::Map;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
 
-#[derive(From, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
+#[derive(From, Into, Serialize, Deserialize, Archive, Eq, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct OrderBookSummaryResponsePrecise {
     /// `condition_id` uniquely identifies the market
@@ -17,18 +20,20 @@ pub struct OrderBookSummaryResponsePrecise {
     #[serde(with = "UintAsString")]
     pub token_id: TokenId,
     #[serde(with = "TimestampVisitor")]
+    #[rkyv(with = RkyvOffsetDateTime)]
     pub updated_at: OffsetDateTime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[rkyv(with = Map<RkyvDecimal>)]
     pub last_trade_price: Option<Decimal>,
-    // #[rkyv(with = RkyvDecimal)]
+    #[rkyv(with = RkyvDecimal)]
     pub min_order_size: Decimal,
-    // #[rkyv(with = RkyvDecimal)]
+    #[rkyv(with = RkyvDecimal)]
     pub min_tick_size: Decimal,
     pub neg_risk: bool,
-    pub bids: BookSide,
-    pub asks: BookSide,
+    pub bids: BookSideMap,
+    pub asks: BookSideMap,
 }
 
 impl OrderBookSummaryResponsePrecise {
@@ -63,8 +68,8 @@ impl TryFrom<OrderBookSummaryResponse> for OrderBookSummaryResponsePrecise {
         let condition_id = market;
         let token_id = asset_id;
         let updated_at = handle!(from_chrono_date_time(timestamp), FromChronoDateTimeFailed, timestamp);
-        let bids = handle!(BookSide::try_from(bids), BidsTryFromFailed);
-        let asks = handle!(BookSide::try_from(asks), AsksTryFromFailed);
+        let bids = handle!(BookSideMap::try_from(bids), BidsTryFromFailed);
+        let asks = handle!(BookSideMap::try_from(asks), AsksTryFromFailed);
         let min_tick_size = tick_size.into();
         Ok(Self {
             condition_id,

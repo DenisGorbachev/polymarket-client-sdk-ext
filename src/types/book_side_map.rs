@@ -9,9 +9,9 @@ use thiserror::Error;
 
 /// The orderbook is represented as two `BookSide` (`bids` and `asks`) because some APIs may return a crossed book during fast moves (max bid price ≥ min ask price).
 #[derive(Archive, Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Deref, DerefMut, AsRef, Into)]
-pub struct BookSide(#[rkyv(with = RkyvIndexMapDecimal)] IndexMap<Price, Amount, FxBuildHasher>);
+pub struct BookSideMap(#[rkyv(with = RkyvIndexMapDecimal)] IndexMap<Price, Amount, FxBuildHasher>);
 
-impl BookSide {
+impl BookSideMap {
     pub fn new(map: impl Into<IndexMap<Price, Amount, FxBuildHasher>>) -> Self {
         Self(map.into())
     }
@@ -41,7 +41,7 @@ impl BookSide {
     }
 
     /// Expected invocation form: `bids.crosses_up(asks)`
-    pub fn crosses_up(&self, other: &BookSide) -> bool {
+    pub fn crosses_up(&self, other: &BookSideMap) -> bool {
         let self_max_price = self.max_price();
         let other_min_price = other.min_price();
         match (self_max_price, other_min_price) {
@@ -52,19 +52,19 @@ impl BookSide {
     }
 }
 
-impl From<IndexMap<Price, Amount, FxBuildHasher>> for BookSide {
+impl From<IndexMap<Price, Amount, FxBuildHasher>> for BookSideMap {
     fn from(value: IndexMap<Price, Amount, FxBuildHasher>) -> Self {
         Self(value)
     }
 }
 
-impl From<&IndexMap<Price, Amount, FxBuildHasher>> for BookSide {
+impl From<&IndexMap<Price, Amount, FxBuildHasher>> for BookSideMap {
     fn from(value: &IndexMap<Price, Amount, FxBuildHasher>) -> Self {
         Self(value.clone())
     }
 }
 
-impl TryFrom<Vec<OrderSummary>> for BookSide {
+impl TryFrom<Vec<OrderSummary>> for BookSideMap {
     type Error = ConvertVecOrderSummaryToBookSideError;
 
     fn try_from(summaries: Vec<OrderSummary>) -> Result<Self, Self::Error> {
@@ -102,9 +102,9 @@ pub enum ConvertVecOrderSummaryToBookSideError {
     PriceLevelConflicts { price: Price, existing_size: Amount, incoming_size: Amount },
 }
 
-impl From<BookSide> for Vec<OrderSummary> {
-    fn from(value: BookSide) -> Self {
-        let BookSide(map) = value;
+impl From<BookSideMap> for Vec<OrderSummary> {
+    fn from(value: BookSideMap) -> Self {
+        let BookSideMap(map) = value;
         map.into_iter()
             .map(|(price, size)| OrderSummary::builder().price(price).size(size).build())
             .collect()

@@ -2,19 +2,20 @@ use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, Flank
 use alloy::primitives::Address;
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
-use rkyv::Archive;
 use rkyv::with::Map;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
-#[derive(From, Into, Serialize, Deserialize, Archive, PartialEq, Clone, Debug)]
+#[derive(From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Market {
     pub question: String,
     pub description: String,
     pub slug: String,
+    #[serde(with = "alloy::primitives::serde_hex")]
     pub condition_id: ConditionId,
+    #[serde(with = "alloy::primitives::serde_hex")]
     pub question_id: QuestionId,
     pub active: bool,
     pub closed: bool,
