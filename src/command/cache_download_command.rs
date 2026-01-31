@@ -315,7 +315,7 @@ impl CacheDownloadCommand {
             None => None,
             Some(result) => {
                 let market = handle!(result, MarketTryFromFailed, market_slug);
-                let market_key = market.condition_id.to_string();
+                let market_key = market.slug.to_string();
                 let market_bytes = handle!(
                     rkyv::to_bytes::<rkyv::rancor::Error>(&market),
                     SerializeMarketFailed,
@@ -471,12 +471,7 @@ where
 }
 
 #[derive(Error, Debug)]
-pub enum CacheDownloadCommandInsertEntryError {
-    #[error("failed to call contains_key for '{key}'")]
-    ContainsKeyFailed { source: fjall::Error, key: String, value: Vec<u8> },
-    #[error("key already exists: '{key}'")]
-    KeyAlreadyExists { key: String, value: Vec<u8> },
-}
+pub enum CacheDownloadCommandInsertEntryError {}
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandInsertOrderbookEntryError {
