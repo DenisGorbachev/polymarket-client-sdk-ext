@@ -133,3 +133,7 @@ pub use rkyv_ref_wrapper::*;
 mod rkyv_offset_date_time;
 
 pub use rkyv_offset_date_time::*;
+
+mod winner_id;
+
+pub use winner_id::*;

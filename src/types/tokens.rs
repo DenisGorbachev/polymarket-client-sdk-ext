@@ -1,4 +1,4 @@
-use crate::{Token, TokenId};
+use crate::{Token, TokenId, WinnerId};
 use derive_more::{From, Into};
 use derive_new::new;
 use errgonomic::{handle_bool, handle_opt};
@@ -14,13 +14,15 @@ pub struct Tokens {
 }
 
 impl Tokens {
-    /// `self.left.winner` and `self.right.winner` can be `true` at the same time if `market.is_50_50_outcome == true`
-    pub fn winner(&self) -> Option<Option<&Token>> {
+    /// `self.left.winner` and `self.right.winner` can be `true` at the same time if `market.is_50_50_outcome == true` (verified with [`crate::IfIs5050OutcomeThenBothTokensAreWinners`])
+    /// This function returns `Some(None)` if both tokens are winners
+    pub fn winner_id(&self) -> Option<WinnerId> {
+        use WinnerId::*;
         match (self.left.winner, self.right.winner) {
-            (true, true) => None,
-            (false, false) => Some(None),
-            (true, false) => Some(Some(&self.left)),
-            (false, true) => Some(Some(&self.right)),
+            (false, false) => None,
+            (true, false) => Some(One(self.left.token_id)),
+            (false, true) => Some(One(self.right.token_id)),
+            (true, true) => Some(Both),
         }
     }
 

@@ -3,11 +3,9 @@ use alloy::primitives::B256;
 use derive_more::{From, Into};
 use derive_new::new;
 use errgonomic::{handle_opt, handle_opt_take};
-use rkyv::Archive;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(new, From, Into, Serialize, Deserialize, Archive, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
+#[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
 pub struct NegRisk {
     /// Original name: `neg_risk_market_id`
     /// Examples: `0xe3b1bc389210504ebcb9cffe4b0ed06ccac50561e0f24abb6379984cec030f00`

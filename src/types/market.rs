@@ -1,4 +1,4 @@
-use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, Flank, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, from_chrono_date_time, into_chrono_date_time};
+use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, TryFromNegRiskTripleError, WinnerId, from_chrono_date_time, into_chrono_date_time};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
@@ -40,23 +40,152 @@ pub struct Market {
     pub taker_base_fee: Amount,
     pub left_token_id: TokenId,
     pub right_token_id: TokenId,
-    pub winner: Option<Flank>,
-    pub neg_risk: NegRisk,
+    pub winner_id: Option<WinnerId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub neg_risk: Option<NegRisk>,
     pub is_50_50_outcome: bool,
 }
 
 impl Market {
     pub fn maybe_try_from_market_response_precise(market_response: MarketResponsePrecise) -> Option<Result<Self, <Self as TryFrom<MarketResponsePrecise>>::Error>> {
-        if market_response.is_bogus() { None } else { Some(Self::try_from(market_response)) }
+        if market_response.is_skipped() { None } else { Some(Self::try_from(market_response)) }
     }
 }
 
 impl TryFrom<MarketResponsePrecise> for Market {
-    type Error = ();
+    type Error = MarketFallible;
 
-    fn try_from(_input: MarketResponsePrecise) -> Result<Self, Self::Error> {
-        todo!()
+    fn try_from(market_response: MarketResponsePrecise) -> Result<Self, Self::Error> {
+        let MarketResponsePrecise {
+            question,
+            description,
+            market_slug: slug,
+            icon,
+            image,
+            condition_id,
+            question_id,
+            active,
+            closed,
+            archived,
+            enable_order_book,
+            accepting_orders,
+            accepting_order_timestamp,
+            minimum_order_size,
+            minimum_tick_size,
+            end_date_iso,
+            game_start_time,
+            seconds_delay,
+            fpmm,
+            maker_base_fee,
+            taker_base_fee,
+            rewards,
+            tokens,
+            neg_risk: neg_risk_flag,
+            neg_risk_market_id,
+            neg_risk_request_id,
+            is_50_50_outcome,
+            notifications_enabled,
+            tags,
+        } = market_response;
+        let (left_token_id, right_token_id) = tokens.token_ids_tuple();
+        let winner_id = tokens.winner_id();
+        let neg_risk_result = NegRisk::try_from_neg_risk_triple(neg_risk_flag, neg_risk_market_id, neg_risk_request_id);
+        match (condition_id, question_id, neg_risk_result) {
+            (Some(condition_id), Some(question_id), Ok(neg_risk)) => Ok(Self {
+                question,
+                description,
+                slug,
+                condition_id,
+                question_id,
+                active,
+                closed,
+                archived,
+                enable_order_book,
+                accepting_orders,
+                accepting_order_timestamp,
+                minimum_order_size,
+                minimum_tick_size,
+                end_date_iso,
+                fpmm,
+                maker_base_fee,
+                taker_base_fee,
+                left_token_id,
+                right_token_id,
+                winner_id,
+                neg_risk,
+                is_50_50_outcome,
+            }),
+            (condition_id, question_id, neg_risk) => Err(MarketFallible {
+                question,
+                description,
+                market_slug: slug,
+                icon,
+                image,
+                condition_id,
+                question_id,
+                active,
+                closed,
+                archived,
+                enable_order_book,
+                accepting_orders,
+                accepting_order_timestamp,
+                minimum_order_size,
+                minimum_tick_size,
+                end_date_iso,
+                game_start_time,
+                seconds_delay,
+                fpmm,
+                maker_base_fee,
+                taker_base_fee,
+                rewards,
+                tokens,
+                neg_risk_flag,
+                winner_id,
+                neg_risk,
+                neg_risk_market_id,
+                neg_risk_request_id,
+                is_50_50_outcome,
+                notifications_enabled,
+                tags,
+            }),
+        }
     }
+}
+
+#[derive(Error, Debug)]
+#[error("failed to convert market response to market")]
+pub struct MarketFallible {
+    pub question: String,
+    pub description: String,
+    pub market_slug: String,
+    pub icon: String,
+    pub image: String,
+    pub condition_id: Option<ConditionId>,
+    pub question_id: Option<QuestionId>,
+    pub active: bool,
+    pub closed: bool,
+    pub archived: bool,
+    pub enable_order_book: bool,
+    pub accepting_orders: bool,
+    pub accepting_order_timestamp: Option<OffsetDateTime>,
+    pub minimum_order_size: Amount,
+    pub minimum_tick_size: Amount,
+    pub end_date_iso: Option<OffsetDateTime>,
+    pub game_start_time: Option<OffsetDateTime>,
+    pub seconds_delay: Duration,
+    pub fpmm: Option<Address>,
+    pub maker_base_fee: Amount,
+    pub taker_base_fee: Amount,
+    pub rewards: Rewards,
+    pub tokens: Tokens,
+    pub winner_id: Option<WinnerId>,
+    pub neg_risk_flag: bool,
+    pub neg_risk: Result<Option<NegRisk>, TryFromNegRiskTripleError>,
+    pub neg_risk_market_id: Option<QuestionId>,
+    pub neg_risk_request_id: Option<EventId>,
+    pub is_50_50_outcome: bool,
+    pub notifications_enabled: bool,
+    pub tags: Vec<String>,
 }
 
 #[derive(From, Into, Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -103,10 +232,18 @@ impl MarketResponsePrecise {
         self.active && !self.closed && !self.archived && self.accepting_orders && self.enable_order_book
     }
 
+    pub fn is_skipped(&self) -> bool {
+        self.is_bogus() || self.is_missing_ids()
+    }
+
     /// Only those two market ids have `m.question_id.is_none() != m.condition_id.is_none()`
     /// These markets are old (2021 and 2022) and `m.closed == true`
     pub fn is_bogus(&self) -> bool {
         self.market_slug == "dodgers" || self.market_slug == "will-it-snow-in-new-yorks-central-park-on-new-years-eve-dec-31"
+    }
+
+    pub fn is_missing_ids(&self) -> bool {
+        self.condition_id.is_none() && self.question_id.is_none()
     }
 
     pub fn token_ids_tuple(&self) -> (TokenId, TokenId) {
