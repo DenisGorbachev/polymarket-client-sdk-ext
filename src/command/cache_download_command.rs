@@ -4,6 +4,7 @@ use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
 use fjall::{PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use futures::future::join_all;
+use itertools::Itertools;
 use polymarket_client_sdk::clob::Client as ClobClient;
 use polymarket_client_sdk::clob::types::request::OrderBookSummaryRequest;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
@@ -95,13 +96,12 @@ impl CacheDownloadCommand {
             );
             let token_ids = market_entries
                 .iter()
-                .flat_map(|(_, _, token_ids)| token_ids.iter().copied())
-                .collect::<Vec<_>>();
+                .flat_map(|(_, _, token_ids)| token_ids.iter());
+            let orderbooks = handle!(Self::fetch_orderbooks_for_tokens(client, token_ids).await, FetchOrderbooksForTokensFailed);
             let markets_to_store = market_entries
                 .into_iter()
                 .map(|(market_slug, market, _)| (market_slug, market))
                 .collect::<Vec<_>>();
-            let orderbooks = handle!(Self::fetch_orderbooks_for_tokens(client, &token_ids).await, FetchOrderbooksForTokensFailed);
             handle!(Self::write_market_response_page_to_database(db, market_response_keyspace, market_keyspace, orderbook_keyspace, markets_to_store, orderbooks), WritePageToDatabaseFailed);
             offset = offset.saturating_add(market_count);
             page_offset = page_offset.saturating_add(1);
@@ -175,11 +175,12 @@ impl CacheDownloadCommand {
         Ok((event_id, event))
     }
 
-    async fn fetch_orderbooks_for_tokens(client: &ClobClient, token_ids: &[TokenId]) -> Result<Vec<OrderBookSummaryResponse>, CacheDownloadCommandFetchOrderbooksForTokensError> {
+    async fn fetch_orderbooks_for_tokens(client: &ClobClient, token_ids: impl Iterator<Item = &TokenId>) -> Result<Vec<OrderBookSummaryResponse>, CacheDownloadCommandFetchOrderbooksForTokensError> {
         use CacheDownloadCommandFetchOrderbooksForTokensError::*;
-        let futures = token_ids
-            .chunks(ORDERBOOKS_CHUNK_SIZE)
-            .map(|chunk| Self::fetch_orderbooks_chunk(client, chunk.iter()));
+        let chunks = token_ids.chunks(ORDERBOOKS_CHUNK_SIZE);
+        let futures = chunks
+            .into_iter()
+            .map(|chunk| Self::fetch_orderbooks_chunk(client, chunk));
         let results = join_all(futures).await;
         let orderbooks = handle_iter!(results.into_iter(), FetchOrderbooksChunkFailed);
         Ok(orderbooks.into_iter().flatten().collect())
