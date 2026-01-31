@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, MarketResponsePrecise, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, Market, MarketFallible, MarketResponsePrecise, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
@@ -18,6 +18,9 @@ use std::process::ExitCode;
 use thiserror::Error;
 
 const ORDERBOOKS_CHUNK_SIZE: usize = 500;
+type MarketResponseCacheEntry = (String, Vec<u8>);
+type MarketCacheEntry = (String, Vec<u8>);
+type MarketCacheEntries = (MarketResponseCacheEntry, Option<MarketCacheEntry>);
 
 #[derive(clap::Parser, Clone, Debug)]
 pub struct CacheDownloadCommand {
@@ -42,7 +45,8 @@ impl CacheDownloadCommand {
             dir,
         } = self;
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
-        let market_keyspace = handle!(open_keyspace(&db, CLOB_MARKET_RESPONSES_KEYSPACE), KeyspaceOpenFailed);
+        let market_response_keyspace = handle!(open_keyspace(&db, CLOB_MARKET_RESPONSES_KEYSPACE), KeyspaceOpenFailed);
+        let market_keyspace = handle!(open_keyspace(&db, CLOB_MARKETS_KEYSPACE), KeyspaceOpenFailed);
         let orderbook_keyspace = handle!(open_keyspace(&db, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE), KeyspaceOpenFailed);
         let event_keyspace = handle!(open_keyspace(&db, GAMMA_EVENTS_KEYSPACE), KeyspaceOpenFailed);
         let clob_client = ClobClient::default();
@@ -50,7 +54,7 @@ impl CacheDownloadCommand {
         let page_limit = page_limit.map(NonZeroUsize::get);
         let markets_download = async {
             use CacheDownloadCommandRunError::*;
-            map_err!(Self::download_market_responses(&db, &market_keyspace, &orderbook_keyspace, &clob_client, page_limit, offset).await, DownloadMarketResponsesFailed)
+            map_err!(Self::download_market_responses(&db, &market_response_keyspace, &market_keyspace, &orderbook_keyspace, &clob_client, page_limit, offset).await, DownloadMarketResponsesFailed)
         };
         let events_download = async {
             use CacheDownloadCommandRunError::*;
@@ -64,11 +68,11 @@ impl CacheDownloadCommand {
         Ok(ExitCode::SUCCESS)
     }
 
-    async fn download_market_responses(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, client: &ClobClient, page_limit: Option<usize>, offset: Option<usize>) -> Result<(), CacheDownloadCommandDownloadMarketResponsesError> {
+    async fn download_market_responses(db: &SingleWriterTxDatabase, market_response_keyspace: &SingleWriterTxKeyspace, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, client: &ClobClient, page_limit: Option<usize>, offset: Option<usize>) -> Result<(), CacheDownloadCommandDownloadMarketResponsesError> {
         use CacheDownloadCommandDownloadMarketResponsesError::*;
         let mut offset = match offset {
             Some(offset) => offset,
-            None => handle!(market_keyspace.as_ref().len(), MarketKeyspaceLenFailed),
+            None => handle!(market_response_keyspace.as_ref().len(), MarketKeyspaceLenFailed),
         };
         let mut next_cursor: NextCursor = STANDARD.encode(offset.to_string());
         let mut market_slugs = FxHashSet::default();
@@ -98,7 +102,7 @@ impl CacheDownloadCommand {
                 .map(|(market_slug, market, _)| (market_slug, market))
                 .collect::<Vec<_>>();
             let orderbooks = handle!(Self::fetch_orderbooks_for_tokens(client, &token_ids).await, FetchOrderbooksForTokensFailed);
-            handle!(Self::write_market_response_page_to_database(db, market_keyspace, orderbook_keyspace, markets_to_store, orderbooks), WritePageToDatabaseFailed);
+            handle!(Self::write_market_response_page_to_database(db, market_response_keyspace, market_keyspace, orderbook_keyspace, markets_to_store, orderbooks), WritePageToDatabaseFailed);
             offset = offset.saturating_add(market_count);
             page_offset = page_offset.saturating_add(1);
             next_cursor = next_cursor_new;
@@ -195,14 +199,32 @@ impl CacheDownloadCommand {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn write_market_response_page_to_database(db: &SingleWriterTxDatabase, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, markets: Vec<(String, MarketResponse)>, orderbooks: Vec<OrderBookSummaryResponse>) -> Result<(), CacheDownloadCommandWritePageToDatabaseError> {
+    fn write_market_response_page_to_database(db: &SingleWriterTxDatabase, market_response_keyspace: &SingleWriterTxKeyspace, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, markets: Vec<(String, MarketResponse)>, orderbooks: Vec<OrderBookSummaryResponse>) -> Result<(), CacheDownloadCommandWritePageToDatabaseError> {
         use CacheDownloadCommandWritePageToDatabaseError::*;
-        let serialized_markets = handle_iter!(markets.into_iter().map(Self::serialize_market_entry), SerializeMarketEntryFailed);
+        let serialized_market_entries = handle_iter!(markets.into_iter().map(Self::serialize_market_entry), SerializeMarketEntryFailed);
+        let (serialized_market_responses, serialized_markets) = serialized_market_entries
+            .into_iter()
+            .fold((Vec::new(), Vec::new()), |(mut responses, mut markets), (response_entry, market_entry_opt)| {
+                responses.push(response_entry);
+                if let Some(market_entry) = market_entry_opt {
+                    markets.push(market_entry);
+                }
+                (responses, markets)
+            });
         let serialized_orderbooks = handle_iter!(orderbooks.into_iter().map(Self::serialize_orderbook_entry), SerializeOrderbookEntryFailed);
         let mut tx = db.write_tx();
+        let _market_response_inserts = handle_iter!(
+            serialized_market_responses
+                .into_iter()
+                .map(|(market_slug, bytes)| {
+                    tx.insert(market_response_keyspace, market_slug, bytes);
+                    Ok(())
+                }),
+            InsertMarketResponseEntriesFailed
+        );
         let _market_inserts = handle_iter!(
-            serialized_markets.into_iter().map(|(market_slug, bytes)| {
-                tx.insert(market_keyspace, market_slug, bytes);
+            serialized_markets.into_iter().map(|(market_key, bytes)| {
+                tx.insert(market_keyspace, market_key, bytes);
                 Ok(())
             }),
             InsertMarketEntriesFailed
@@ -269,15 +291,40 @@ impl CacheDownloadCommand {
     //     Ok(())
     // }
 
-    fn serialize_market_entry((market_slug, market): (String, MarketResponse)) -> Result<(String, Vec<u8>), CacheDownloadCommandSerializeMarketEntryError> {
+    fn serialize_market_entry((market_slug, market): (String, MarketResponse)) -> Result<MarketCacheEntries, CacheDownloadCommandSerializeMarketEntryError> {
         use CacheDownloadCommandSerializeMarketEntryError::*;
-        let market = handle!(Self::round_trip_entry::<MarketResponse, MarketResponsePrecise, ConvertMarketResponseToMarketError>(market), RoundTripEntryFailed);
-        let bytes = handle!(
-            bitcode::serialize(&market),
-            SerializeFailed,
+        let market_precise = handle!(
+            MarketResponsePrecise::try_from(market.clone()),
+            MarketResponseTryFromFailed,
             market: Box::new(market)
         );
-        Ok((market_slug, bytes))
+        let market_round_trip = MarketResponse::from(market_precise.clone());
+        handle_bool!(
+            market != market_round_trip,
+            RoundTripFailed,
+            diff: format_debug_diff(&market, &market_round_trip, "market", "market_round_trip"),
+            market: Box::new(market),
+            market_round_trip: Box::new(market_round_trip)
+        );
+        let market_response_bytes = handle!(
+            bitcode::serialize(&market),
+            SerializeMarketResponseFailed,
+            market: Box::new(market)
+        );
+        let market_entry_opt = match Market::maybe_try_from_market_response_precise(market_precise) {
+            None => None,
+            Some(result) => {
+                let market = handle!(result, MarketTryFromFailed, market_slug);
+                let market_key = market.condition_id.to_string();
+                let market_bytes = handle!(
+                    rkyv::to_bytes::<rkyv::rancor::Error>(&market),
+                    SerializeMarketFailed,
+                    market: Box::new(market)
+                );
+                Some((market_key, market_bytes.into_vec()))
+            }
+        };
+        Ok(((market_slug, market_response_bytes), market_entry_opt))
     }
 
     fn serialize_orderbook_entry(orderbook: OrderBookSummaryResponse) -> Result<(TokenId, Vec<u8>), CacheDownloadCommandSerializeOrderbookEntryError> {
@@ -381,10 +428,12 @@ pub enum CacheDownloadCommandFetchOrderbooksChunkError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandWritePageToDatabaseError {
-    #[error("failed to serialize '{len}' market responses", len = source.len())]
+    #[error("failed to serialize '{len}' market entries", len = source.len())]
     SerializeMarketEntryFailed { source: ErrVec<CacheDownloadCommandSerializeMarketEntryError> },
     #[error("failed to serialize '{len}' order book summaries", len = source.len())]
     SerializeOrderbookEntryFailed { source: ErrVec<CacheDownloadCommandSerializeOrderbookEntryError> },
+    #[error("failed to insert '{len}' market response entries", len = source.len())]
+    InsertMarketResponseEntriesFailed { source: ErrVec<CacheDownloadCommandInsertEntryError> },
     #[error("failed to insert '{len}' market entries", len = source.len())]
     InsertMarketEntriesFailed { source: ErrVec<CacheDownloadCommandInsertEntryError> },
     #[error("failed to insert '{len}' order book entries", len = source.len())]
@@ -439,10 +488,16 @@ pub enum CacheDownloadCommandInsertOrderbookEntryError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandSerializeMarketEntryError {
-    #[error("failed to round-trip market response")]
-    RoundTripEntryFailed { source: Box<CacheDownloadCommandRoundTripEntryError<MarketResponse, ConvertMarketResponseToMarketError>> },
+    #[error("failed to convert market response to precise type")]
+    MarketResponseTryFromFailed { source: Box<ConvertMarketResponseToMarketError>, market: Box<MarketResponse> },
+    #[error("round-tripped market response does not match original: '{diff}'")]
+    RoundTripFailed { market: Box<MarketResponse>, market_round_trip: Box<MarketResponse>, diff: String },
     #[error("failed to serialize market response")]
-    SerializeFailed { source: bitcode::Error, market: Box<MarketResponse> },
+    SerializeMarketResponseFailed { source: bitcode::Error, market: Box<MarketResponse> },
+    #[error("failed to convert market response to market for slug '{market_slug}'")]
+    MarketTryFromFailed { source: Box<MarketFallible>, market_slug: String },
+    #[error("failed to serialize market")]
+    SerializeMarketFailed { source: rkyv::rancor::Error, market: Box<Market> },
 }
 
 #[derive(Error, Debug)]

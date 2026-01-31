@@ -25,9 +25,9 @@ mod question_id_is_none_iff_condition_id_is_none;
 
 pub use question_id_is_none_iff_condition_id_is_none::*;
 
-mod if_is_50_50_outcome_then_both_tokens_are_losers;
+mod if_is5050outcome_then_both_tokens_are_winners;
 
-pub use if_is_50_50_outcome_then_both_tokens_are_losers::*;
+pub use if_is5050outcome_then_both_tokens_are_winners::*;
 
 mod tokens_len_is_two;
 
