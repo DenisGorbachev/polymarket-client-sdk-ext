@@ -1,4 +1,4 @@
-use crate::types::market_response_precise::{MarketResponsePrecise, MarketResponsePreciseFallible};
+use crate::types::market_response_precise::MarketResponsePrecise;
 use crate::{Amount, ConditionId, EventId, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, TryFromNegRiskTripleError, WinnerId};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
@@ -185,10 +185,4 @@ pub struct MarketFallible {
     pub is_50_50_outcome: bool,
     pub notifications_enabled: bool,
     pub tags: Vec<String>,
-}
-
-#[derive(Error, Debug)]
-pub enum ConvertMarketResponseToMarketError {
-    #[error("failed to convert market response")]
-    ConversionFailed { fallible_market: MarketResponsePreciseFallible },
 }
