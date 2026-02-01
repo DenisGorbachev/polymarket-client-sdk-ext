@@ -12,7 +12,7 @@ pub const GAMMA_EVENTS_KEYSPACE: &str = "gamma_events";
 pub const CLOB_MARKET_RESPONSES_KEYSPACE: &str = "clob_market_responses";
 pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "clob_order_book_summary_responses";
 
-/// The keyspace for [`Market`](crate::Market)
+/// The keyspace for [`Market`](crate::ClobMarket)
 pub const CLOB_MARKETS_KEYSPACE: &str = "clob_markets";
 
 // /// The keyspace for [`OrderBook`](crate::OrderBook)

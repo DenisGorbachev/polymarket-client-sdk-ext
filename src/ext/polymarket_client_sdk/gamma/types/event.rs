@@ -142,3 +142,5 @@ mod tests {
         assert_eq!(diffs, expected);
     }
 }
+mod slug_is_none;
+pub use slug_is_none::*;

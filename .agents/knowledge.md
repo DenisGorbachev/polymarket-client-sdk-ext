@@ -11,7 +11,19 @@
 - Market's primary key is `condition_id`
 - Orderbook's primary key is `asset_id` (aka `token_id`)
 
-## Market fields
+## Markets
+
+- Market slug may change (Gamma `Market` has a `past_slugs` field)
+- Gamma `Market` is not a superset of CLOB `MarketResponse`. Several CLOB fields are missing or lossy in Gamma:
+  - fpmm (FPMM contract address) exists in CLOB but there’s no equivalent address in Gamma; Gamma only has fpmm_live
+  - is_50_50_outcome exists only in CLOB and is absent from Gamma’s field list
+  - tokens: Vec<Token> with token_id/outcome/price/winner is in CLOB, while Gamma only has separate outcomes, outcome_prices, and clob_token_ids
+    arrays (no winner)
+  - rewards: Rewards (including rates) exists in CLOB; Gamma only provides rewards_min_size, rewards_max_spread, and optional clob_rewards,
+    which is a different shape
+  - end_date_iso is Option<DateTime<Utc>> in CLOB but only Option<NaiveDate> in Gamma, so time-of-day info can’t be represented
+
+## CLOB Market fields
 
 - `neg_risk_market_id` does not identify one specific binary market. It identifies the multi‑outcome "negative‑risk market" group (the whole event’s mutually exclusive set) in the NegRiskAdapter contract. Every market/outcome in that negative‑risk event shares the same `neg_risk_market_id`; the per‑market identifier is instead the market’s own `condition_id` (CLOB) and, on the neg‑risk adapter side, its `neg_risk_request_id`/`questionId` (which is derived from the group ID + an index).
   - Negative‑risk links all markets within an event, allowing NO in one market to convert into YES across the others—so the “market” that matters for neg‑risk is the event‑level grouping, not a single binary market.

@@ -2,9 +2,9 @@ mod clob_client;
 
 pub use clob_client::*;
 
-mod market;
+mod clob_market;
 
-pub use market::*;
+pub use clob_market::*;
 
 mod amount;
 
@@ -149,3 +149,11 @@ pub use transcode_format::*;
 mod transcode_typ;
 
 pub use transcode_typ::*;
+
+mod event;
+
+pub use event::*;
+
+mod market_response_precise;
+
+pub use market_response_precise::*;
