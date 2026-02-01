@@ -1,7 +1,7 @@
 use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, Market, MarketFallible, MarketResponsePrecise, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
+use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, handle_opt, handle_opt_take, map_err};
 use fjall::{PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace, SingleWriterWriteTx, UserKey};
 use futures::future::join_all;
 use itertools::Itertools;
@@ -86,9 +86,23 @@ impl CacheDownloadCommand {
             }
             let market_count = markets.len();
             let market_entries = handle_iter!(
-                markets
-                    .into_iter()
-                    .map(|market| Self::market_entry_from_response(market, &mut market_slugs)),
+                markets.into_iter().map(|market| {
+                    use CacheDownloadCommandMarketEntryFromResponseError::*;
+                    let market_slug = market.market_slug.clone();
+                    handle_bool!(market_slug.trim().is_empty(), MarketSlugInvalid, market);
+                    let mut duplicate_slug = Self::check_duplicates(core::iter::once(market_slug.clone()), &mut market_slugs);
+                    handle_opt_take!(duplicate_slug, MarketSlugDuplicateInvalid, market_slug);
+                    let token_ids = if market.should_download_orderbooks() {
+                        market
+                            .tokens
+                            .iter()
+                            .map(|token| token.token_id)
+                            .collect::<Vec<_>>()
+                    } else {
+                        Vec::new()
+                    };
+                    Ok((market_slug, market, token_ids))
+                }),
                 MarketEntryFromResponseFailed
             );
             let token_ids = market_entries
@@ -128,7 +142,7 @@ impl CacheDownloadCommand {
                 .limit(GAMMA_EVENTS_PAGE_SIZE as i32)
                 .offset(offset as i32)
                 .build();
-            let events = handle!(client.events(&request).await, FetchEventsFailed, request: Box::new(request));
+            let events = handle!(client.events(&request).await, FetchEventsFailed, request);
             if events.is_empty() {
                 break;
             }
@@ -141,35 +155,6 @@ impl CacheDownloadCommand {
             }
         }
         Ok(())
-    }
-
-    fn market_entry_from_response(market: MarketResponse, market_slugs: &mut FxHashSet<String>) -> Result<(String, MarketResponse, Vec<TokenId>), CacheDownloadCommandMarketEntryFromResponseError> {
-        use CacheDownloadCommandMarketEntryFromResponseError::*;
-        let market_slug = market.market_slug.clone();
-        handle_bool!(market_slug.trim().is_empty(), MarketSlugInvalid, market: Box::new(market));
-        let is_duplicate = !market_slugs.insert(market_slug.clone());
-        handle_bool!(is_duplicate, MarketSlugDuplicateInvalid, market_slug);
-        let token_ids = if market.should_download_orderbooks() {
-            market
-                .tokens
-                .iter()
-                .map(|token| token.token_id)
-                .collect::<Vec<_>>()
-        } else {
-            Vec::new()
-        };
-        Ok((market_slug, market, token_ids))
-    }
-
-    fn event_entry_from_response(event: Event, event_slugs: &mut FxHashSet<String>) -> Result<(String, Event), CacheDownloadCommandEventEntryFromResponseError> {
-        use CacheDownloadCommandEventEntryFromResponseError::*;
-        let event_id = event.id.clone();
-        handle_bool!(event_id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
-        let event_slug = handle_opt!(event.slug.clone(), EventSlugMissingInvalid, event: Box::new(event));
-        handle_bool!(event_slug.trim().is_empty(), EventSlugInvalid, event_slug);
-        let is_duplicate = !event_slugs.insert(event_slug.clone());
-        handle_bool!(is_duplicate, EventSlugDuplicateInvalid, event_slug);
-        Ok((event_id, event))
     }
 
     async fn fetch_orderbooks_for_tokens(client: &ClobClient, token_ids: impl Iterator<Item = TokenId>) -> Result<Vec<OrderBookSummaryResponse>, CacheDownloadCommandFetchOrderbooksForTokensError> {
@@ -199,7 +184,21 @@ impl CacheDownloadCommand {
     #[allow(clippy::too_many_arguments)]
     fn write_market_response_page_to_database(db: &SingleWriterTxDatabase, market_response_keyspace: &SingleWriterTxKeyspace, market_keyspace: &SingleWriterTxKeyspace, orderbook_keyspace: &SingleWriterTxKeyspace, markets: Vec<(String, MarketResponse)>, orderbooks: Vec<OrderBookSummaryResponse>) -> Result<(), CacheDownloadCommandWritePageToDatabaseError> {
         use CacheDownloadCommandWritePageToDatabaseError::*;
-        let market_entries = handle_iter!(markets.into_iter().map(Self::market_entries_from_response), MarketEntriesFromResponseFailed);
+        let market_entries = handle_iter!(
+            markets.into_iter().map(|(market_slug, market)| {
+                use CacheDownloadCommandMarketEntriesFromResponseError::*;
+                let (market, market_precise) = handle!(Self::round_trip_entry::<MarketResponse, MarketResponsePrecise, ConvertMarketResponseToMarketError>(market), RoundTripEntryFailed);
+                let market_entry_opt = match Market::maybe_try_from_market_response_precise(market_precise) {
+                    None => None,
+                    Some(result) => {
+                        let market = handle!(result, MarketTryFromFailed, market_slug);
+                        Some(market)
+                    }
+                };
+                Ok(((market_slug, market), market_entry_opt))
+            }),
+            MarketEntriesFromResponseFailed
+        );
         let (market_responses, markets) = market_entries
             .into_iter()
             .fold((Vec::new(), Vec::new()), |(mut responses, mut markets), (response_entry, market_entry_opt)| {
@@ -210,9 +209,9 @@ impl CacheDownloadCommand {
                 (responses, markets)
             });
         let mut tx = db.write_tx();
-        handle!(Self::insert_iter(&mut tx, market_response_keyspace, market_responses, |(market_slug, _)| market_slug.as_str().into(), |(_market_slug, market)| Self::market_response_bytes(market)), InsertMarketResponseEntriesFailed);
-        handle!(Self::insert_iter(&mut tx, market_keyspace, markets, |market| market.slug.as_str().into(), Self::market_bytes), InsertMarketEntriesFailed);
-        handle!(Self::insert_iter(&mut tx, orderbook_keyspace, orderbooks, |orderbook| orderbook.asset_id.to_string().into(), Self::orderbook_bytes), InsertOrderbookEntriesFailed);
+        let _market_response_inserts = handle_iter!(Self::insert_iter(&mut tx, market_response_keyspace, market_responses, |(market_slug, _)| market_slug.as_str().into(), |(_market_slug, market)| Self::market_response_bytes(market)), InsertMarketResponseEntriesFailed);
+        let _market_inserts = handle_iter!(Self::insert_iter(&mut tx, market_keyspace, markets, |market| market.slug.as_str().into(), Self::market_bytes), InsertMarketEntriesFailed);
+        let _orderbook_inserts = handle_iter!(Self::insert_iter(&mut tx, orderbook_keyspace, orderbooks, |orderbook| orderbook.asset_id.to_string().into(), Self::orderbook_bytes), InsertOrderbookEntriesFailed);
         handle!(tx.commit(), CommitTransactionFailed);
         handle!(db.persist(PersistMode::SyncAll), PersistDatabaseFailed);
         Ok(())
@@ -221,13 +220,17 @@ impl CacheDownloadCommand {
     fn write_events_to_database(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, event_slugs: &mut FxHashSet<String>, events: Vec<Event>) -> Result<(), CacheDownloadCommandWriteEventsToDatabaseError> {
         use CacheDownloadCommandWriteEventsToDatabaseError::*;
         let event_entries = handle_iter!(
-            events
-                .into_iter()
-                .map(|event| Self::event_entry_from_response(event, event_slugs)),
+            events.into_iter().map(|event| {
+                use CacheDownloadCommandEventEntryFromResponseError::*;
+                let event_slug = handle_opt!(event.slug.clone(), EventSlugMissingInvalid, event);
+                let mut duplicate_slug = Self::check_duplicates(core::iter::once(event_slug.clone()), event_slugs);
+                handle_opt_take!(duplicate_slug, EventSlugDuplicateInvalid, event_slug);
+                Ok((event_slug, event))
+            }),
             EventEntryFromResponseFailed
         );
         let mut tx = db.write_tx();
-        handle!(Self::insert_iter(&mut tx, event_keyspace, event_entries, |(event_id, _)| event_id.as_str().into(), |(_event_id, event)| Self::event_bytes(event)), InsertEventEntriesFailed);
+        let _event_inserts = handle_iter!(Self::insert_iter(&mut tx, event_keyspace, event_entries, |(event_slug, _)| event_slug.as_str().into(), |(_event_slug, event)| Self::event_bytes(event)), InsertEventEntriesFailed);
         handle!(tx.commit(), CommitTransactionFailed);
         handle!(db.persist(PersistMode::SyncAll), PersistDatabaseFailed);
         Ok(())
@@ -241,14 +244,14 @@ impl CacheDownloadCommand {
         E: StdError + Send + Sync + 'static,
     {
         use CacheDownloadCommandRoundTripEntryError::*;
-        let output = handle!(U::try_from(input.clone()), TryFromFailed, input: Box::new(input));
+        let output = handle!(U::try_from(input.clone()), TryFromFailed, input);
         let input_round_trip = T::from(output.clone());
         handle_bool!(
             input != input_round_trip,
             RoundTripFailed,
             diff: format_debug_diff(&input, &input_round_trip, "input", "input_round_trip"),
-            input: Box::new(input),
-            input_round_trip: Box::new(input_round_trip)
+            input,
+            input_round_trip
         );
         Ok((input, output))
     }
@@ -263,58 +266,48 @@ impl CacheDownloadCommand {
         Ok(())
     }
 
-    fn insert_iter<T, E>(tx: &mut SingleWriterWriteTx, keyspace: &SingleWriterTxKeyspace, values: impl IntoIterator<Item = T>, mut get_key: impl FnMut(&T) -> UserKey, mut serialize: impl FnMut(T) -> Result<Vec<u8>, E>) -> Result<(), CacheDownloadCommandInsertIterError<E>>
+    fn insert_iter<T, E>(tx: &mut SingleWriterWriteTx, keyspace: &SingleWriterTxKeyspace, values: impl IntoIterator<Item = T>, mut get_key: impl FnMut(&T) -> UserKey, mut serialize: impl FnMut(T) -> Result<Vec<u8>, E>) -> impl Iterator<Item = Result<(), CacheDownloadCommandInsertError<E>>>
     where
         E: StdError + Send + Sync + 'static,
     {
-        use CacheDownloadCommandInsertIterError::*;
-        let results = values.into_iter().map(|value| {
+        values.into_iter().map(move |value| {
             let key = get_key(&value);
             Self::insert(tx, keyspace, key, value, &mut serialize)
-        });
-        let _inserted = handle_iter!(results, InsertFailed);
-        Ok(())
+        })
     }
 
-    fn market_entries_from_response((market_slug, market): (String, MarketResponse)) -> Result<((String, MarketResponse), Option<Market>), CacheDownloadCommandMarketEntriesFromResponseError> {
-        use CacheDownloadCommandMarketEntriesFromResponseError::*;
-        let (market, market_precise) = handle!(Self::round_trip_entry::<MarketResponse, MarketResponsePrecise, ConvertMarketResponseToMarketError>(market), RoundTripEntryFailed);
-        let market_entry_opt = match Market::maybe_try_from_market_response_precise(market_precise) {
-            None => None,
-            Some(result) => {
-                let market = handle!(result, MarketTryFromFailed, market_slug);
-                Some(market)
-            }
-        };
-        Ok(((market_slug, market), market_entry_opt))
+    fn check_duplicates<T>(values: impl Iterator<Item = T>, seen: &mut FxHashSet<String>) -> Option<String>
+    where
+        T: Into<String>,
+    {
+        values
+            .into_iter()
+            .map(Into::into)
+            .find(|value| !seen.insert(value.clone()))
     }
 
     fn market_response_bytes(market: MarketResponse) -> Result<Vec<u8>, CacheDownloadCommandMarketResponseBytesError> {
         use CacheDownloadCommandMarketResponseBytesError::*;
-        let bytes = handle!(bitcode::serialize(&market), SerializeFailed, market: Box::new(market));
+        let bytes = handle!(bitcode::serialize(&market), SerializeFailed, market);
         Ok(bytes)
     }
 
     fn market_bytes(market: Market) -> Result<Vec<u8>, CacheDownloadCommandMarketBytesError> {
         use CacheDownloadCommandMarketBytesError::*;
-        let bytes = handle!(
-            rkyv::to_bytes::<rkyv::rancor::Error>(&market),
-            SerializeFailed,
-            market: Box::new(market)
-        );
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&market), SerializeFailed, market);
         Ok(bytes.into_vec())
     }
 
     fn orderbook_bytes(orderbook: OrderBookSummaryResponse) -> Result<Vec<u8>, CacheDownloadCommandOrderbookBytesError> {
         use CacheDownloadCommandOrderbookBytesError::*;
         let (orderbook, _orderbook_precise) = handle!(Self::round_trip_entry::<OrderBookSummaryResponse, OrderBookSummaryResponsePrecise, ConvertOrderBookSummaryResponseToOrderbookError>(orderbook), RoundTripEntryFailed);
-        let bytes = handle!(bitcode::serialize(&orderbook), SerializeFailed, orderbook: Box::new(orderbook));
+        let bytes = handle!(bitcode::serialize(&orderbook), SerializeFailed, orderbook);
         Ok(bytes)
     }
 
     fn event_bytes(event: Event) -> Result<Vec<u8>, CacheDownloadCommandEventBytesError> {
         use CacheDownloadCommandEventBytesError::*;
-        let bytes = handle!(bitcode::serialize(&event), SerializeFailed, event: Box::new(event));
+        let bytes = handle!(bitcode::serialize(&event), SerializeFailed, event);
         Ok(bytes)
     }
 
@@ -374,12 +367,8 @@ pub enum CacheDownloadCommandMarketEntryFromResponseError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandEventEntryFromResponseError {
-    #[error("event response has empty event id")]
-    EventIdInvalid { event: Box<Event> },
     #[error("event response has missing event slug")]
     EventSlugMissingInvalid { event: Box<Event> },
-    #[error("event response has empty event slug '{event_slug}'")]
-    EventSlugInvalid { event_slug: String },
     #[error("event response has duplicate event slug '{event_slug}'")]
     EventSlugDuplicateInvalid { event_slug: String },
 }
@@ -401,11 +390,11 @@ pub enum CacheDownloadCommandWritePageToDatabaseError {
     #[error("failed to parse '{len}' market responses", len = source.len())]
     MarketEntriesFromResponseFailed { source: ErrVec<CacheDownloadCommandMarketEntriesFromResponseError> },
     #[error("failed to insert market response entries")]
-    InsertMarketResponseEntriesFailed { source: CacheDownloadCommandInsertIterError<CacheDownloadCommandMarketResponseBytesError> },
+    InsertMarketResponseEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandMarketResponseBytesError>> },
     #[error("failed to insert market entries")]
-    InsertMarketEntriesFailed { source: CacheDownloadCommandInsertIterError<CacheDownloadCommandMarketBytesError> },
+    InsertMarketEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandMarketBytesError>> },
     #[error("failed to insert order book entries")]
-    InsertOrderbookEntriesFailed { source: CacheDownloadCommandInsertIterError<CacheDownloadCommandOrderbookBytesError> },
+    InsertOrderbookEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandOrderbookBytesError>> },
     #[error("failed to commit database transaction")]
     CommitTransactionFailed { source: fjall::Error },
     #[error("failed to persist database changes")]
@@ -417,7 +406,7 @@ pub enum CacheDownloadCommandWriteEventsToDatabaseError {
     #[error("failed to parse '{len}' event responses", len = source.len())]
     EventEntryFromResponseFailed { source: ErrVec<CacheDownloadCommandEventEntryFromResponseError> },
     #[error("failed to insert event entries")]
-    InsertEventEntriesFailed { source: CacheDownloadCommandInsertIterError<CacheDownloadCommandEventBytesError> },
+    InsertEventEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandEventBytesError>> },
     #[error("failed to commit database transaction")]
     CommitTransactionFailed { source: fjall::Error },
     #[error("failed to persist database changes")]
@@ -451,15 +440,6 @@ where
 {
     #[error("failed to serialize entry for key '{key}'")]
     SerializeFailed { source: E, key: DisplayAsDebug<UserKey> },
-}
-
-#[derive(Error, Debug)]
-pub enum CacheDownloadCommandInsertIterError<E>
-where
-    E: StdError + Send + Sync + 'static,
-{
-    #[error("failed to insert '{len}' entries", len = source.len())]
-    InsertFailed { source: ErrVec<CacheDownloadCommandInsertError<E>> },
 }
 
 #[derive(Error, Debug)]
