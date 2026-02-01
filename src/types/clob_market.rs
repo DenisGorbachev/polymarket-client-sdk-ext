@@ -52,7 +52,7 @@ impl ClobMarket {
 }
 
 impl TryFrom<MarketResponsePrecise> for ClobMarket {
-    type Error = MarketFallible;
+    type Error = ClobMarketFallible;
 
     fn try_from(market_response: MarketResponsePrecise) -> Result<Self, Self::Error> {
         let MarketResponsePrecise {
@@ -114,7 +114,7 @@ impl TryFrom<MarketResponsePrecise> for ClobMarket {
                 neg_risk,
                 is_50_50_outcome,
             }),
-            (condition_id, question_id, neg_risk) => Err(MarketFallible {
+            (condition_id, question_id, neg_risk) => Err(ClobMarketFallible {
                 question,
                 description,
                 market_slug: slug,
@@ -153,7 +153,7 @@ impl TryFrom<MarketResponsePrecise> for ClobMarket {
 
 #[derive(Error, Debug)]
 #[error("failed to convert market response to market")]
-pub struct MarketFallible {
+pub struct ClobMarketFallible {
     pub question: String,
     pub description: String,
     pub market_slug: String,
