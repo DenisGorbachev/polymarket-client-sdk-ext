@@ -197,18 +197,18 @@ impl CacheDownloadCommand {
         Ok(())
     }
 
-    fn write_events_to_database(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, _event_slugs: &mut FxHashSet<String>, events: Vec<Event>) -> Result<(), CacheDownloadCommandWriteEventsToDatabaseError> {
+    fn write_events_to_database(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, event_slugs: &mut FxHashSet<String>, events: Vec<Event>) -> Result<(), CacheDownloadCommandWriteEventsToDatabaseError> {
         use CacheDownloadCommandWriteEventsToDatabaseError::*;
         let event_entries = handle_iter!(
             events.into_iter().map(|event| {
                 use CacheDownloadCommandEventEntryFromResponseError::*;
                 let event_slug = handle_opt!(event.slug.clone(), EventSlugMissingInvalid, event);
-                // let mut duplicate_slug = Self::get_duplicates(core::iter::once(event_slug.clone()), event_slugs);
-                // handle_opt_take!(duplicate_slug, EventSlugDuplicateInvalid, event_slug);
                 Ok((event_slug, event))
             }),
             EventEntryFromResponseFailed
         );
+        let duplicates = Self::get_duplicates(&event_entries, |(event_slug, _)| event_slug.clone(), event_slugs).collect_vec();
+        handle_bool!(!duplicates.is_empty(), DuplicatesFound, duplicates);
         let mut tx = db.write_tx();
         let _event_inserts = handle_iter!(Self::insert_iter(&mut tx, event_keyspace, event_entries, |(event_slug, _)| event_slug.as_str().into(), |(_event_slug, event)| Self::event_bytes(event)), InsertEventEntriesFailed);
         handle!(tx.commit(), CommitTransactionFailed);
@@ -379,6 +379,8 @@ pub enum CacheDownloadCommandWritePageToDatabaseError {
 pub enum CacheDownloadCommandWriteEventsToDatabaseError {
     #[error("failed to parse '{len}' event responses", len = source.len())]
     EventEntryFromResponseFailed { source: ErrVec<CacheDownloadCommandEventEntryFromResponseError> },
+    #[error("found '{len}' duplicates", len = duplicates.len())]
+    DuplicatesFound { duplicates: Vec<String> },
     #[error("failed to insert event entries")]
     InsertEventEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandEventBytesError>> },
     #[error("failed to commit database transaction")]
