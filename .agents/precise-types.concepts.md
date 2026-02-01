@@ -7,9 +7,9 @@
 * Conversion from A to B to A is identity
 * Conversion from B to A to B is identity
 
-## Injection on Collection of Type A between Type A and Type B
+## Injection on specific `List<A>` between Type A and Type B
 
-"Injection on Collection of Type A between Type A and Type B" is a relation that holds if for every element in Collection of Type A the conversion from A to B to A is identity.
+"Injection on specific `List<A>` between Type A and Type B" is a relation that holds if for every element in specific `List<A>` the conversion from A to B to A is identity.
 
 ## Type A is clarified by Type B
 
@@ -35,8 +35,16 @@ Requirements:
 
 * Must have an `impl From<B> for A`
 * If Type B imposes constraints:
-  * Then: Must have an `impl TryFrom<A> for B` ([fallible clarification impl](#fallible-clarification-impl))
-  * Else: Must have an `impl From<A> for B`
+  * Then:
+    * Must have an `impl TryFrom<A> for B` ([fallible clarification impl](#fallible-clarification-impl))
+    * Must pass the identity test: `assert_eq!(Ok(b), B::try_from(A::from(b.clone())))`
+  * Else:
+    * Must have an `impl From<A> for B`
+    * Must pass the identity test: `assert_eq!(b, B::from(A::from(b.clone())))`
+
+Notes:
+
+* The requirements assume that `impl From<B> for A` exists
 
 ## Fallible clarification impl
 
@@ -63,32 +71,28 @@ Requirements:
       * The fields with `Result` type must have `_result` suffix
       * The fields with `Option` type must have `_option` suffix
       * Must return all variables, even those that are `Copy` (because the caller loses ownership of the whole input when it's passed into the `try_from` call)
+        * Note: the variables are part of the input, not the whole input, so the rule "If an argument of callee implements `Copy`, the callee must not include it in the list of error enum variant fields" does not apply here (it only applies to arguments, not parts of arguments).
 
 Example:
 
 ```rust
 use derive_getters::Getters;
 use derive_more::Deref;
+use errgonomic::handle_bool;
 use thiserror::Error;
 
 #[derive(Deref, Clone, Debug)]
 pub struct NonEmptyString(String);
 
 /// This is an example of a "simple" fallible conversion
-/// `if` is used instead of `match` because there's only one boolean constraint
-/// `handle_bool!` is not used because there's only one boolean constraint
+/// `handle_bool!` is used because there's only one boolean constraint
 impl TryFrom<String> for NonEmptyString {
     type Error = ConvertStringToNonEmptyStringError;
 
     fn try_from(input: String) -> Result<Self, Self::Error> {
         use ConvertStringToNonEmptyStringError::*;
-        if input.is_empty() {
-            Err(EmptyInput {
-                input,
-            })
-        } else {
-            Ok(Self(input))
-        }
+        handle_bool!(input.is_empty(), EmptyInput, input);
+        Ok(Self(input))
     }
 }
 
