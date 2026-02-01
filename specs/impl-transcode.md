@@ -22,7 +22,7 @@ Requirements:
 
 Examples:
 
-* `fjall list --prefix len-u64-le clob_markets --limit 10 | cargo run -- transcode --input rkyv --output serde_json --suffix "\n" --type Market`
+* `fjall list --kind value --value-prefix len-u64-le clob_markets --limit 10 | cargo run -- transcode --input rkyv --output serde_json --suffix "\n" --type Market`
 
 Notes:
 
