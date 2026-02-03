@@ -150,12 +150,14 @@ mod transcode_typ;
 
 pub use transcode_typ::*;
 
-mod event;
+mod gamma_event;
 
-pub use event::*;
+pub use gamma_event::*;
 
 mod market_response_precise;
 
 pub use market_response_precise::*;
+
 mod gamma_market;
+
 pub use gamma_market::*;

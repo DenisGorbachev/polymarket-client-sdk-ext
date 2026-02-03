@@ -1,7 +1,7 @@
 use crate::{RkyvOffsetDateTime, from_chrono_naive_date};
 use derive_more::{From, Into};
 use derive_new::new;
-use polymarket_client_sdk::gamma::types::response::Market as RawGammaMarket;
+use polymarket_client_sdk::gamma::types::response::Market as GammaMarketRaw;
 use rkyv::with::Map;
 use time::OffsetDateTime;
 
@@ -18,11 +18,11 @@ pub struct GammaMarket {
 impl GammaMarket {}
 
 // TODO: Fix error handling
-impl TryFrom<RawGammaMarket> for GammaMarket {
+impl TryFrom<GammaMarketRaw> for GammaMarket {
     type Error = ();
 
-    fn try_from(raw_gamma_market: RawGammaMarket) -> Result<Self, Self::Error> {
-        let RawGammaMarket {
+    fn try_from(raw_gamma_market: GammaMarketRaw) -> Result<Self, Self::Error> {
+        let GammaMarketRaw {
             question,
             end_date_iso,
             ..
