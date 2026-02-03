@@ -1940,6 +1940,7 @@ clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic", features = ["futures"] }
+subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 fjall = "3.0.1"
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
