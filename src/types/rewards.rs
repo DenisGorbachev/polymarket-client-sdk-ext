@@ -1,15 +1,16 @@
-use crate::{Amount, RewardRate};
+use crate::{Amount, RewardRate, RkyvDecimal};
 use derive_more::{From, Into};
 use derive_new::new;
 use polymarket_client_sdk::clob::types::response::Rewards as RewardsRaw;
-use serde::{Deserialize, Serialize};
 
 /// Using our own `Rewards` to gain `Eq` and `Hash`
-#[derive(new, From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
+#[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Rewards {
     pub rates: Vec<RewardRate>,
+    #[rkyv(with = RkyvDecimal)]
     pub min_size: Amount,
+    #[rkyv(with = RkyvDecimal)]
     pub max_spread: Amount,
 }
 

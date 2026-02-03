@@ -1,12 +1,12 @@
-use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, QuestionId, Rewards, TokenId, Tokens, into_chrono_date_time};
+use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, QuestionId, Rewards, RkyvDecimal, RkyvDuration, RkyvOffsetDateTime, TokenId, Tokens, into_chrono_date_time};
 use alloy_primitives::Address;
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
+use rkyv::with::Map;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
-// TODO: rkyv::Archive, rkyv::Serialize, rkyv::Deserialize
-#[derive(From, Into, serde::Serialize, serde::Deserialize, PartialEq, Clone, Debug)]
+#[derive(From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct ClobMarketResponsePrecise {
     pub question: String,
@@ -22,18 +22,26 @@ pub struct ClobMarketResponsePrecise {
     pub archived: bool,
     pub enable_order_book: bool,
     pub accepting_orders: bool,
+    #[rkyv(with = Map<RkyvOffsetDateTime>)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub accepting_order_timestamp: Option<OffsetDateTime>,
+    #[rkyv(with = RkyvDecimal)]
     pub minimum_order_size: Amount,
+    #[rkyv(with = RkyvDecimal)]
     pub minimum_tick_size: Amount,
+    #[rkyv(with = Map<RkyvOffsetDateTime>)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub end_date_iso: Option<OffsetDateTime>,
+    #[rkyv(with = Map<RkyvOffsetDateTime>)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_start_time: Option<OffsetDateTime>,
+    #[rkyv(with = RkyvDuration)]
     pub seconds_delay: Duration,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fpmm: Option<Address>,
+    #[rkyv(with = RkyvDecimal)]
     pub maker_base_fee: Amount,
+    #[rkyv(with = RkyvDecimal)]
     pub taker_base_fee: Amount,
     pub rewards: Rewards,
     pub tokens: Tokens,

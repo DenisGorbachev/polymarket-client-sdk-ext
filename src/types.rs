@@ -161,3 +161,7 @@ pub use clob_market_response_precise::*;
 mod gamma_market;
 
 pub use gamma_market::*;
+
+mod rkyv_duration;
+
+pub use rkyv_duration::*;

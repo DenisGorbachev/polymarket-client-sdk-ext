@@ -3,11 +3,10 @@ use derive_more::{From, Into};
 use derive_new::new;
 use errgonomic::{handle_bool, handle_opt};
 use polymarket_client_sdk::clob::types::response::Token as TokenRaw;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 /// IMPORTANT: Do not assume that `self.left.outcome == "Yes"` or `self.right.outcome == "No"`
-#[derive(new, From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
+#[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
 pub struct Tokens {
     pub left: Token,
     pub right: Token,

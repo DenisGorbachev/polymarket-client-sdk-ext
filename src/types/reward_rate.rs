@@ -1,14 +1,14 @@
-use crate::Amount;
+use crate::{Amount, RkyvDecimal};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
 use derive_new::new;
 use polymarket_client_sdk::clob::types::response::RewardRate as RewardRateRaw;
-use serde::{Deserialize, Serialize};
 
-#[derive(new, From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
+#[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct RewardRate {
     pub asset_address: Address,
+    #[rkyv(with = RkyvDecimal)]
     pub rewards_daily_rate: Amount,
 }
 
