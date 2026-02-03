@@ -30,7 +30,7 @@ pub struct ClobMarket {
     pub minimum_tick_size: Amount,
     #[rkyv(with = Map<RkyvOffsetDateTime>)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub end_date_iso: Option<OffsetDateTime>,
+    pub end_date: Option<OffsetDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fpmm: Option<Address>,
     #[rkyv(with = RkyvDecimal)]
@@ -58,7 +58,7 @@ impl TryFrom<MarketResponsePrecise> for ClobMarket {
         let MarketResponsePrecise {
             question,
             description,
-            market_slug: slug,
+            market_slug,
             icon,
             image,
             condition_id,
@@ -93,7 +93,7 @@ impl TryFrom<MarketResponsePrecise> for ClobMarket {
             (Some(condition_id), Some(question_id), Ok(neg_risk)) => Ok(Self {
                 question,
                 description,
-                slug,
+                slug: market_slug,
                 condition_id,
                 question_id,
                 active,
@@ -104,7 +104,7 @@ impl TryFrom<MarketResponsePrecise> for ClobMarket {
                 accepting_order_timestamp,
                 minimum_order_size,
                 minimum_tick_size,
-                end_date_iso,
+                end_date: end_date_iso,
                 fpmm,
                 maker_base_fee,
                 taker_base_fee,
@@ -117,7 +117,7 @@ impl TryFrom<MarketResponsePrecise> for ClobMarket {
             (condition_id, question_id, neg_risk) => Err(ClobMarketFallible {
                 question,
                 description,
-                market_slug: slug,
+                market_slug,
                 icon,
                 image,
                 condition_id,

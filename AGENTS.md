@@ -27,7 +27,13 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 ### Review workflow
 
-* Output a numbered list of issues (I will reference the issues by number in my answer)
+* Output a full list of issues (not a shortlist)
+* Every issue in the full list must be formatted as `{number}. [{severity}] {description} ({references})` (I will identify the issues by number in my answer)
+  * `severity` must be one of `High`, `Medium`, `Low`.
+  * `references` must be a comma-separated list of `reference`
+  * `reference` must must be formatted as `{path}:{line}`
+  * `path` must be a file path relative to your working directory
+  * `line` must be the first line of the relevant code or text block
 * If there are no issues, then start your reply with "No issues found"
 
 ### Commands
@@ -314,7 +320,8 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 You are running in a sandbox with limited network access.
 
-* See the list of allowed domains in /etc/dnsmasq.d/allowed\_domains.conf
+* The list of allowed domains is available in /etc/dnsmasq.d/allowed\_domains.conf
+* If you need to run a network command, just do it without checking permissions (they will be enforced automatically)
 * If you need to read the data from other domains, use the web search tool (this tool is executed outside of sandbox)
 
 ## Project concepts
@@ -1928,7 +1935,7 @@ alloy-primitives = { version = "1.5.4", features = ["rkyv"] }
 async-stream = { version = "0.3.6" }
 base64 = "0.22.1"
 bitcode = { version = "0.6.9", features = ["serde", "rust_decimal", "time"] }
-chrono = "0.4.43"
+chrono = { version = "0.4.43" }
 clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }

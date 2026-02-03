@@ -157,3 +157,5 @@ pub use event::*;
 mod market_response_precise;
 
 pub use market_response_precise::*;
+mod gamma_market;
+pub use gamma_market::*;

@@ -1,4 +1,4 @@
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDate, TimeZone, Utc};
 use std::num::TryFromIntError;
 use time::OffsetDateTime;
 
@@ -9,6 +9,11 @@ pub fn from_chrono_date_time<Tz: TimeZone>(datetime: DateTime<Tz>) -> Result<Off
     let subsec_nanos = datetime.timestamp_subsec_nanos() as i128;
     let unix_nanos = secs * 1_000_000_000 + subsec_nanos;
     OffsetDateTime::from_unix_timestamp_nanos(unix_nanos)
+}
+
+/// Assumes UTC offset
+pub fn from_chrono_naive_date(_date: NaiveDate) -> Result<OffsetDateTime, time::error::ComponentRange> {
+    todo!()
 }
 
 pub fn into_chrono_date_time(offset_date_time: OffsetDateTime) -> Result<DateTime<Utc>, TryFromIntError> {
