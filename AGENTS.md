@@ -1929,7 +1929,7 @@ summary = ""
 announcement = ""
 
 [dependencies]
-alloy = { version = "1.4.0", default-features = false, features = ["std", "serde"] }
+alloy = { version = "1.5.2", default-features = false, features = ["std", "serde"] }
 # alloy-primitives is needed to enable the "rkyv" feature
 alloy-primitives = { version = "1.5.4", features = ["rkyv"] }
 async-stream = { version = "0.3.6" }
