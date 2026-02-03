@@ -102,13 +102,13 @@ mod market_response;
 
 pub use market_response::*;
 
-mod property_stats;
-
-pub use property_stats::*;
-
 mod property_name;
 
 pub use property_name::*;
+
+mod property_stats;
+
+pub use property_stats::*;
 
 mod output_kind;
 
