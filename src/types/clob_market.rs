@@ -1,5 +1,4 @@
-use crate::types::market_response_precise::ClobMarketResponsePrecise;
-use crate::{Amount, ConditionId, EventId, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, TryFromNegRiskTripleError, WinnerId};
+use crate::{Amount, ClobMarketResponsePrecise, ConditionId, EventId, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, TryFromNegRiskTripleError, WinnerId};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
 use rkyv::with::Map;

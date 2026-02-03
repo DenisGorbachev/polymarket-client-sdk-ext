@@ -154,9 +154,9 @@ mod gamma_event;
 
 pub use gamma_event::*;
 
-mod market_response_precise;
+mod clob_market_response_precise;
 
-pub use market_response_precise::*;
+pub use clob_market_response_precise::*;
 
 mod gamma_market;
 

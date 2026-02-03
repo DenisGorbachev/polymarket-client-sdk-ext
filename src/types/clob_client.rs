@@ -1,5 +1,4 @@
-use crate::types::market_response_precise::ClobMarketResponsePrecise;
-use crate::{ClobMarketResponsePreciseFallible, NEXT_CURSOR_START, NextCursor, TokenId, get_page_stream, is_launched};
+use crate::{ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, NEXT_CURSOR_START, NextCursor, TokenId, get_page_stream, is_launched};
 use derive_more::{Deref, DerefMut};
 use derive_new::new;
 use errgonomic::{ErrVec, handle, handle_iter};
