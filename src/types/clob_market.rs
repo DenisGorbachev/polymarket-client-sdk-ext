@@ -1,4 +1,4 @@
-use crate::types::market_response_precise::MarketResponsePrecise;
+use crate::types::market_response_precise::ClobMarketResponsePrecise;
 use crate::{Amount, ConditionId, EventId, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, TryFromNegRiskTripleError, WinnerId};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
@@ -46,16 +46,16 @@ pub struct ClobMarket {
 }
 
 impl ClobMarket {
-    pub fn maybe_try_from_market_response_precise(market_response: MarketResponsePrecise) -> Option<Result<Self, <Self as TryFrom<MarketResponsePrecise>>::Error>> {
+    pub fn maybe_try_from_market_response_precise(market_response: ClobMarketResponsePrecise) -> Option<Result<Self, <Self as TryFrom<ClobMarketResponsePrecise>>::Error>> {
         if market_response.is_skipped() { None } else { Some(Self::try_from(market_response)) }
     }
 }
 
-impl TryFrom<MarketResponsePrecise> for ClobMarket {
+impl TryFrom<ClobMarketResponsePrecise> for ClobMarket {
     type Error = ClobMarketFallible;
 
-    fn try_from(market_response: MarketResponsePrecise) -> Result<Self, Self::Error> {
-        let MarketResponsePrecise {
+    fn try_from(market_response: ClobMarketResponsePrecise) -> Result<Self, Self::Error> {
+        let ClobMarketResponsePrecise {
             question,
             description,
             market_slug,

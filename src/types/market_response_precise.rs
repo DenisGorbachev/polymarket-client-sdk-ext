@@ -2,13 +2,13 @@ use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, Quest
 use alloy_primitives::Address;
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
-#[derive(From, Into, Serialize, Deserialize, PartialEq, Clone, Debug)]
+// TODO: rkyv::Archive, rkyv::Serialize, rkyv::Deserialize
+#[derive(From, Into, serde::Serialize, serde::Deserialize, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct MarketResponsePrecise {
+pub struct ClobMarketResponsePrecise {
     pub question: String,
     pub description: String,
     /// `market_slug` is unique according to check in [`crate::CacheDownloadCommand`]
@@ -45,7 +45,7 @@ pub struct MarketResponsePrecise {
     pub tags: Vec<String>,
 }
 
-impl MarketResponsePrecise {
+impl ClobMarketResponsePrecise {
     pub fn is_tradeable(&self) -> bool {
         self.active && !self.closed && !self.archived && self.accepting_orders && self.enable_order_book
     }
@@ -75,7 +75,7 @@ impl MarketResponsePrecise {
 
 #[derive(Error, Clone, Debug)]
 #[error("failed to convert MarketResponse to MarketResponsePrecise")]
-pub struct MarketResponsePreciseFallible {
+pub struct ClobMarketResponsePreciseFallible {
     pub question: String,
     pub description: String,
     pub market_slug: String,
@@ -110,8 +110,8 @@ pub struct MarketResponsePreciseFallible {
 }
 
 /// NOTE: Some markets have an invalid `neg_risk_market_id` (e.g. "0x12309") because they were created by Polymarket just for testing
-impl TryFrom<MarketResponse> for MarketResponsePrecise {
-    type Error = MarketResponsePreciseFallible;
+impl TryFrom<MarketResponse> for ClobMarketResponsePrecise {
+    type Error = ClobMarketResponsePreciseFallible;
 
     fn try_from(market_response: MarketResponse) -> Result<Self, Self::Error> {
         use crate::from_chrono_date_time;
@@ -187,7 +187,7 @@ impl TryFrom<MarketResponse> for MarketResponsePrecise {
                 notifications_enabled,
                 tags,
             }),
-            (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, tokens) => Err(MarketResponsePreciseFallible {
+            (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, tokens) => Err(ClobMarketResponsePreciseFallible {
                 question,
                 description,
                 market_slug,
@@ -222,9 +222,9 @@ impl TryFrom<MarketResponse> for MarketResponsePrecise {
     }
 }
 
-impl From<MarketResponsePrecise> for MarketResponse {
-    fn from(market: MarketResponsePrecise) -> Self {
-        let MarketResponsePrecise {
+impl From<ClobMarketResponsePrecise> for MarketResponse {
+    fn from(market: ClobMarketResponsePrecise) -> Self {
+        let ClobMarketResponsePrecise {
             question,
             description,
             market_slug,
@@ -308,7 +308,7 @@ mod tests {
         use MustRoundTripFixtureError::*;
         let input = include_str!("../../fixtures/market.json");
         let market_response: MarketResponse = handle!(serde_json::de::from_str(input), DeserializeFailed);
-        let market = handle!(MarketResponsePrecise::try_from(market_response.clone()), TryFromFailed);
+        let market = handle!(ClobMarketResponsePrecise::try_from(market_response.clone()), TryFromFailed);
         let expected_question = "Will Donald Trump win the 2024 US Presidential Election?".to_string();
         handle_bool!(
             market.question != expected_question,
@@ -327,7 +327,7 @@ mod tests {
         #[error("failed to deserialize market fixture")]
         DeserializeFailed { source: serde_json::Error },
         #[error("failed to convert market response")]
-        TryFromFailed { source: Box<MarketResponsePreciseFallible> },
+        TryFromFailed { source: Box<ClobMarketResponsePreciseFallible> },
         #[error("market question mismatch")]
         QuestionMismatch { actual: String, expected: String },
         #[error("round-tripped market response does not match original")]

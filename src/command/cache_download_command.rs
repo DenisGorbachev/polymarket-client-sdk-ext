@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, MarketResponsePrecise, MarketResponsePreciseFallible, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
@@ -167,7 +167,7 @@ impl CacheDownloadCommand {
         let market_entries = handle_iter!(
             markets.into_iter().map(|market_response| {
                 use CacheDownloadCommandMarketEntriesFromResponseError::*;
-                let (market_response, market_precise) = handle!(Self::round_trip_entry::<MarketResponse, MarketResponsePrecise, MarketResponsePreciseFallible>(market_response), RoundTripEntryFailed);
+                let (market_response, market_precise) = handle!(Self::round_trip_entry::<MarketResponse, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible>(market_response), RoundTripEntryFailed);
                 let market_entry_opt = match ClobMarket::maybe_try_from_market_response_precise(market_precise) {
                     None => None,
                     Some(result) => {
@@ -404,7 +404,7 @@ where
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandMarketEntriesFromResponseError {
     #[error("failed to round-trip market response")]
-    RoundTripEntryFailed { source: Box<CacheDownloadCommandRoundTripEntryError<MarketResponse, MarketResponsePreciseFallible>> },
+    RoundTripEntryFailed { source: Box<CacheDownloadCommandRoundTripEntryError<MarketResponse, ClobMarketResponsePreciseFallible>> },
     #[error("failed to convert market response to market")]
     MarketTryFromFailed { source: Box<ClobMarketFallible> },
 }

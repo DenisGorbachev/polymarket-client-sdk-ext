@@ -1,4 +1,4 @@
-use crate::{ClobClient, MarketResponsePrecise};
+use crate::{ClobClient, ClobMarketResponsePrecise};
 use futures::{StreamExt, TryStreamExt};
 use std::future::ready;
 use tokio::pin;
@@ -13,7 +13,7 @@ async fn test_orderbooks() {
         let markets = markets
             .into_iter()
             .filter(|m| m.enable_order_book)
-            .collect::<Vec<MarketResponsePrecise>>();
+            .collect::<Vec<ClobMarketResponsePrecise>>();
         let output = if markets.is_empty() { None } else { Some(markets) };
         ready(Ok(output))
     });
