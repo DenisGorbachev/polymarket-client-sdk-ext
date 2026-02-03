@@ -1940,7 +1940,6 @@ clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"
 derive_more = { version = "2.1.1", features = ["full"] }
 errgonomic = { git = "https://github.com/DenisGorbachev/errgonomic", features = ["futures"] }
-subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 fjall = "3.0.1"
 fmt-derive = { version = "0.1.2" }
 futures = { version = "0.3.30" }
@@ -1958,6 +1957,7 @@ similar-asserts = "1.7.0"
 strum = { version = "0.27.2", features = ["derive"] }
 #standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 stub-macro = "0.2.1"
+subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
 time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
