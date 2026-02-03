@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ConvertMarketResponseToMarketError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, Market, MarketFallible, MarketResponsePrecise, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, MarketResponsePrecise, MarketResponsePreciseFallible, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
@@ -167,8 +167,8 @@ impl CacheDownloadCommand {
         let market_entries = handle_iter!(
             markets.into_iter().map(|market_response| {
                 use CacheDownloadCommandMarketEntriesFromResponseError::*;
-                let (market_response, market_precise) = handle!(Self::round_trip_entry::<MarketResponse, MarketResponsePrecise, ConvertMarketResponseToMarketError>(market_response), RoundTripEntryFailed);
-                let market_entry_opt = match Market::maybe_try_from_market_response_precise(market_precise) {
+                let (market_response, market_precise) = handle!(Self::round_trip_entry::<MarketResponse, MarketResponsePrecise, MarketResponsePreciseFallible>(market_response), RoundTripEntryFailed);
+                let market_entry_opt = match ClobMarket::maybe_try_from_market_response_precise(market_precise) {
                     None => None,
                     Some(result) => {
                         let market = handle!(result, MarketTryFromFailed);
@@ -274,7 +274,7 @@ impl CacheDownloadCommand {
         Ok(bytes)
     }
 
-    fn market_bytes(market: Market) -> Result<Vec<u8>, CacheDownloadCommandMarketBytesError> {
+    fn market_bytes(market: ClobMarket) -> Result<Vec<u8>, CacheDownloadCommandMarketBytesError> {
         use CacheDownloadCommandMarketBytesError::*;
         let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&market), SerializeFailed, market);
         Ok(bytes.into_vec())
@@ -404,9 +404,9 @@ where
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandMarketEntriesFromResponseError {
     #[error("failed to round-trip market response")]
-    RoundTripEntryFailed { source: Box<CacheDownloadCommandRoundTripEntryError<MarketResponse, ConvertMarketResponseToMarketError>> },
+    RoundTripEntryFailed { source: Box<CacheDownloadCommandRoundTripEntryError<MarketResponse, MarketResponsePreciseFallible>> },
     #[error("failed to convert market response to market")]
-    MarketTryFromFailed { source: Box<MarketFallible> },
+    MarketTryFromFailed { source: Box<ClobMarketFallible> },
 }
 
 #[derive(Error, Debug)]
@@ -427,7 +427,7 @@ pub enum CacheDownloadCommandMarketResponseBytesError {
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandMarketBytesError {
     #[error("failed to serialize market")]
-    SerializeFailed { source: rkyv::rancor::Error, market: Box<Market> },
+    SerializeFailed { source: rkyv::rancor::Error, market: Box<ClobMarket> },
 }
 
 #[derive(Error, Debug)]

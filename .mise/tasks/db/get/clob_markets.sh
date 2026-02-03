@@ -3,4 +3,6 @@
 
 set -euo pipefail
 
-fjall get clob_markets "$@" | cargo run --quiet -- transcode --input rkyv --output serde_json --suffix "\n" --type Market | jq
+fjall get --value-prefix len-u64-le clob_markets "$@" |
+  cargo run --quiet -- transcode --input rkyv --output serde_json --suffix $'\n' --type Market |
+  jq

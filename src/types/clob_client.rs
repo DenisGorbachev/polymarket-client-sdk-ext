@@ -1,4 +1,5 @@
-use crate::{ConvertMarketResponseToMarketError, MarketResponsePrecise, NEXT_CURSOR_START, NextCursor, TokenId, get_page_stream, is_launched};
+use crate::types::market_response_precise::MarketResponsePrecise;
+use crate::{MarketResponsePreciseFallible, NEXT_CURSOR_START, NextCursor, TokenId, get_page_stream, is_launched};
 use derive_more::{Deref, DerefMut};
 use derive_new::new;
 use errgonomic::{ErrVec, handle, handle_iter};
@@ -56,5 +57,5 @@ pub enum ClobClientMarketsError {
     #[error("failed to fetch markets page")]
     MarketsFailed { source: polymarket_client_sdk::error::Error, next_cursor: Option<String> },
     #[error("failed to convert '{len}' markets", len = source.len())]
-    MarketTryFromFailed { source: ErrVec<ConvertMarketResponseToMarketError> },
+    MarketTryFromFailed { source: ErrVec<MarketResponsePreciseFallible> },
 }

@@ -24,11 +24,11 @@ impl CacheCheckCommand {
             dir,
         } = self;
         let db = handle!(SingleWriterTxDatabase::builder(&dir).open(), OpenDatabaseFailed, dir);
-        let keyspace = handle!(open_keyspace(&db, CLOB_MARKET_RESPONSES_KEYSPACE), OpenMarketKeyspaceFailed);
+        let clob_market_responses_keyspace = handle!(open_keyspace(&db, CLOB_MARKET_RESPONSES_KEYSPACE), OpenMarketKeyspaceFailed);
         let snapshot = db.read_tx();
         let mut properties = Self::named_properties();
         let mut violations = Self::init_violations(&properties);
-        let iter = snapshot.iter(&keyspace);
+        let iter = snapshot.iter(&clob_market_responses_keyspace);
         let _processed = handle_iter!(iter.map(|guard| Self::process_entry(&mut violations, &mut properties, &snapshot, guard)), ProcessMarketEntryFailed);
         handle!(Self::write_violations(&violations), WriteViolationsFailed);
         Ok(ExitCode::SUCCESS)

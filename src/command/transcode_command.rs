@@ -1,4 +1,4 @@
-use crate::{Market as MarketType, PrefixKind, TranscodeFormat, TranscodeFormatDecodeError, TranscodeFormatEncodeError, TranscodeTyp};
+use crate::{ClobMarket as MarketType, PrefixKind, TranscodeFormat, TranscodeFormatDecodeError, TranscodeFormatEncodeError, TranscodeTyp};
 use core::num::TryFromIntError;
 use errgonomic::handle;
 use std::io::{self, Read, Write, stdin, stdout};
