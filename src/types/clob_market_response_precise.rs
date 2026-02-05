@@ -1,10 +1,10 @@
-use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, EventId, QuestionId, Rewards, RkyvDecimal, RkyvDuration, RkyvOffsetDateTime, TokenId, Tokens, into_chrono_date_time};
+use crate::{Amount, ConditionId, ConvertVecTokenRawToTokensError, DurationPositiveSeconds, EventId, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, into_chrono_date_time};
 use alloy_primitives::Address;
 use derive_more::{From, Into};
 use polymarket_client_sdk::clob::types::response::{MarketResponse, Rewards as RewardsRaw, Token as TokenRaw};
 use rkyv::with::Map;
 use thiserror::Error;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 #[derive(From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
@@ -35,8 +35,7 @@ pub struct ClobMarketResponsePrecise {
     #[rkyv(with = Map<RkyvOffsetDateTime>)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub game_start_time: Option<OffsetDateTime>,
-    #[rkyv(with = RkyvDuration)]
-    pub seconds_delay: Duration,
+    pub seconds_delay: DurationPositiveSeconds,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fpmm: Option<Address>,
     #[rkyv(with = RkyvDecimal)]
@@ -103,7 +102,7 @@ pub struct ClobMarketResponsePreciseFallible {
     pub minimum_tick_size: Amount,
     pub end_date_iso: Result<Option<OffsetDateTime>, time::error::ComponentRange>,
     pub game_start_time: Result<Option<OffsetDateTime>, time::error::ComponentRange>,
-    pub seconds_delay: Result<Duration, core::num::TryFromIntError>,
+    pub seconds_delay: DurationPositiveSeconds,
     pub fpmm: Option<Address>,
     pub maker_base_fee: Amount,
     pub taker_base_fee: Amount,
@@ -161,10 +160,10 @@ impl TryFrom<MarketResponse> for ClobMarketResponsePrecise {
             .transpose();
         let end_date_iso = end_date_iso.map(from_chrono_date_time).transpose();
         let game_start_time = game_start_time.map(from_chrono_date_time).transpose();
-        let seconds_delay = i64::try_from(seconds_delay).map(Duration::seconds);
+        let seconds_delay = DurationPositiveSeconds::new(seconds_delay);
         let tokens = Tokens::try_from(tokens);
-        match (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, tokens) {
-            (Ok(accepting_order_timestamp), Ok(end_date_iso), Ok(game_start_time), Ok(seconds_delay), Ok(tokens)) => Ok(Self {
+        match (accepting_order_timestamp, end_date_iso, game_start_time, tokens) {
+            (Ok(accepting_order_timestamp), Ok(end_date_iso), Ok(game_start_time), Ok(tokens)) => Ok(Self {
                 question,
                 description,
                 market_slug,
@@ -195,7 +194,7 @@ impl TryFrom<MarketResponse> for ClobMarketResponsePrecise {
                 notifications_enabled,
                 tags,
             }),
-            (accepting_order_timestamp, end_date_iso, game_start_time, seconds_delay, tokens) => Err(ClobMarketResponsePreciseFallible {
+            (accepting_order_timestamp, end_date_iso, game_start_time, tokens) => Err(ClobMarketResponsePreciseFallible {
                 question,
                 description,
                 market_slug,
@@ -266,8 +265,7 @@ impl From<ClobMarketResponsePrecise> for MarketResponse {
         let accepting_order_timestamp = accepting_order_timestamp.map(|timestamp| into_chrono_date_time(timestamp).expect("accepting_order_timestamp should convert because it originated from TryFrom"));
         let end_date_iso = end_date_iso.map(|timestamp| into_chrono_date_time(timestamp).expect("end_date_iso should convert because it originated from TryFrom"));
         let game_start_time = game_start_time.map(|timestamp| into_chrono_date_time(timestamp).expect("game_start_time should convert because it originated from TryFrom"));
-        let seconds_delay = seconds_delay.whole_seconds();
-        let seconds_delay = u64::try_from(seconds_delay).map_or(0, |value| value);
+        let seconds_delay = seconds_delay.into_inner();
         let rewards: RewardsRaw = rewards.into();
         let tokens: Vec<TokenRaw> = tokens.into();
         MarketResponse::builder()
