@@ -139,6 +139,10 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 * When writing code related to enums, bring the variants in scope with `use Enum::*;` statement at the top of the file or function (prefer "at the top of the file" for data enums, prefer "at the top of the function" for error enums).
 
+### Package features
+
+* Don't define package features in `Cargo.toml` that contain only a single optional dependency (such features are defined by cargo automatically)
+
 ### Code style
 
 * Implement proper error handling instead of `unwrap` or `expect` (in normal code and in tests)
