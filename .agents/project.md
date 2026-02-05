@@ -95,3 +95,13 @@ A type that carries the same data as the type from [foundational crate](#foundat
 ## Polymarket CLOB read method
 
 A method that reads the data from a Polymarket CLOB API.
+
+## CacheCheckCommand
+
+A command that outputs statistics for a dataset.
+
+Requirements:
+
+* Must support a `--view` (`PropertyDistributionViewName`)
+* Must build an iter of `PropertyDistribution` (note: the previous version of the command used `ViolationStatsMap`)
+* Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines 
