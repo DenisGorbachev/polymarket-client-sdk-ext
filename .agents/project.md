@@ -104,4 +104,4 @@ Requirements:
 
 * Must support a `--view` (`PropertyDistributionViewName`)
 * Must build an iter of `PropertyDistribution` (note: the previous version of the command used `ViolationStatsMap`)
-* Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines 
+* Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines
