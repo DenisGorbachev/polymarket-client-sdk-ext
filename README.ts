@@ -33,7 +33,7 @@ const CargoTomlSchema = z.object({
         peers: z.array(z.string()).default([]).describe("Packages that should be installed alongside this package"),
       }).default({}),
     }).default({}),
-  }),
+  }).optional(),
 })
 
 type CargoToml = z.infer<typeof CargoTomlSchema>
@@ -128,6 +128,11 @@ const nail = (str: string) => {
 const theCargoTomlText = await Deno.readTextFile(`${dirname}/Cargo.toml`)
 // deno-lint-ignore no-explicit-any
 const theCargoTomlRaw = parseToml(theCargoTomlText) as any
+
+// If Cargo.toml is not a package manifest (e.g. a virtual workspace manifest), just exit successfully
+if (!theCargoTomlRaw.package) {
+  Deno.exit(0)
+}
 
 // If README generation is manually disabled in the Cargo.toml, just exit successfully
 if (theCargoTomlRaw.package?.metadata?.details?.readme?.generate === false) {
