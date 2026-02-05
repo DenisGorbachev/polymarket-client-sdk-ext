@@ -102,11 +102,10 @@ Write code to minimize losses.
 
 Kinds of losses:
 
-* External loss incurred by the users
+* External losses incurred by users
+* Internal losses incurred by developers
 
-Your goal is to minimize loss.
-
-Kinds of losses:
+Types of losses:
 
 * Unavoidable losses (costs).
 * Avoidable losses (mistakes).
