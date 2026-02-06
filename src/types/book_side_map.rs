@@ -4,7 +4,6 @@ use core::str::FromStr;
 use derive_more::{AsRef, Deref, DerefMut, Into};
 use indexmap::IndexMap;
 use polymarket_client_sdk::clob::types::response::OrderSummary;
-use rkyv::Archive;
 use rustc_hash::FxBuildHasher;
 use serde::de::{Error as DeError, MapAccess, Visitor};
 use serde::ser::SerializeMap;
@@ -12,7 +11,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 /// The orderbook is represented as two `BookSide` (`bids` and `asks`) because some APIs may return a crossed book during fast moves (max bid price ≥ min ask price).
-#[derive(Archive, PartialEq, Eq, Clone, Debug, Deref, DerefMut, AsRef, Into)]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Eq, Clone, Debug, Deref, DerefMut, AsRef, Into)]
 pub struct BookSideMap(#[rkyv(with = RkyvIndexMapDecimal)] IndexMap<Price, Amount, FxBuildHasher>);
 
 impl Serialize for BookSideMap {

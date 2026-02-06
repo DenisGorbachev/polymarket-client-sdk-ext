@@ -271,8 +271,8 @@ impl CacheDownloadCommand {
 
     fn market_response_bytes(market: ClobMarketResponsePrecise) -> Result<Vec<u8>, CacheDownloadCommandMarketResponseBytesError> {
         use CacheDownloadCommandMarketResponseBytesError::*;
-        let bytes = handle!(postcard::to_stdvec(&market), SerializeFailed, market);
-        Ok(bytes)
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&market), SerializeFailed, market);
+        Ok(bytes.into_vec())
     }
 
     fn market_bytes(market: ClobMarket) -> Result<Vec<u8>, CacheDownloadCommandMarketBytesError> {
@@ -284,14 +284,14 @@ impl CacheDownloadCommand {
     fn orderbook_bytes(orderbook: OrderBookSummaryResponse) -> Result<Vec<u8>, CacheDownloadCommandOrderbookBytesError> {
         use CacheDownloadCommandOrderbookBytesError::*;
         let (_orderbook, orderbook_precise) = handle!(Self::round_trip_entry::<OrderBookSummaryResponse, OrderBookSummaryResponsePrecise, ConvertOrderBookSummaryResponseToOrderbookError>(orderbook), RoundTripEntryFailed);
-        let bytes = handle!(postcard::to_stdvec(&orderbook_precise), SerializeFailed, orderbook: Box::new(orderbook_precise));
-        Ok(bytes)
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&orderbook_precise), SerializeFailed, orderbook: Box::new(orderbook_precise));
+        Ok(bytes.into_vec())
     }
 
     fn event_bytes(event: GammaEvent) -> Result<Vec<u8>, CacheDownloadCommandEventBytesError> {
         use CacheDownloadCommandEventBytesError::*;
-        let bytes = handle!(postcard::to_stdvec(&event), SerializeFailed, event);
-        Ok(bytes)
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&event), SerializeFailed, event);
+        Ok(bytes.into_vec())
     }
 
     fn limit_reached(offset: usize, limit: Option<usize>) -> bool {
@@ -422,7 +422,7 @@ where
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandMarketResponseBytesError {
     #[error("failed to serialize market response")]
-    SerializeFailed { source: postcard::Error, market: Box<ClobMarketResponsePrecise> },
+    SerializeFailed { source: rkyv::rancor::Error, market: Box<ClobMarketResponsePrecise> },
 }
 
 #[derive(Error, Debug)]
@@ -436,11 +436,11 @@ pub enum CacheDownloadCommandOrderbookBytesError {
     #[error("failed to round-trip order book summary response")]
     RoundTripEntryFailed { source: CacheDownloadCommandRoundTripEntryError<OrderBookSummaryResponse, ConvertOrderBookSummaryResponseToOrderbookError> },
     #[error("failed to serialize order book summary")]
-    SerializeFailed { source: postcard::Error, orderbook: Box<OrderBookSummaryResponsePrecise> },
+    SerializeFailed { source: rkyv::rancor::Error, orderbook: Box<OrderBookSummaryResponsePrecise> },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandEventBytesError {
     #[error("failed to serialize event response")]
-    SerializeFailed { source: postcard::Error, event: Box<GammaEvent> },
+    SerializeFailed { source: rkyv::rancor::Error, event: Box<GammaEvent> },
 }

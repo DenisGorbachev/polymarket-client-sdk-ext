@@ -4,14 +4,12 @@ use derive_more::{From, Into};
 use errgonomic::handle;
 use polymarket_client_sdk::clob::types::TickSize;
 use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
-use rkyv::Archive;
 use rkyv::with::Map;
 use rust_decimal::Decimal;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use time::OffsetDateTime;
 
-#[derive(From, Into, Serialize, Deserialize, Archive, Eq, PartialEq, Clone, Debug)]
+#[derive(From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Eq, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct OrderBookSummaryResponsePrecise {
     /// `condition_id` uniquely identifies the market

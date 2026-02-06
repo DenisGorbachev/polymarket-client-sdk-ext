@@ -54,7 +54,7 @@ impl CacheCheckCommand {
     fn process_entry(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<MarketResponse>>)], snapshot: &Snapshot, guard: fjall::Guard) -> Result<(), CacheCheckCommandProcessMarketEntryError> {
         use CacheCheckCommandProcessMarketEntryError::*;
         let (key_slice, value_slice) = handle!(guard.into_inner(), ReadEntryFailed);
-        let value = handle!(postcard::from_bytes::<ClobMarketResponsePrecise>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
+        let value = handle!(rkyv::from_bytes::<ClobMarketResponsePrecise, rkyv::rancor::Error>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
         let market_response = MarketResponse::from(value);
         Self::record_violations(violations, properties, snapshot, key_slice, &market_response);
         Ok(())
@@ -97,7 +97,7 @@ pub enum CacheCheckCommandProcessMarketEntryError {
     #[error("failed to read cache entry")]
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize market response")]
-    DeserializeFailed { source: postcard::Error, value: fjall::Slice },
+    DeserializeFailed { source: rkyv::rancor::Error, value: fjall::Slice },
 }
 
 #[derive(Error, Debug)]

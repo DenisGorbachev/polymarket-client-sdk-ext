@@ -60,7 +60,7 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
     fn date_cascade_event_id_from_guard(guard: fjall::Guard) -> Result<Option<String>, CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError> {
         use CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError::*;
         let (_key, value) = handle!(guard.into_inner(), ReadEntryFailed);
-        let event = handle!(postcard::from_bytes::<GammaEvent>(value.as_ref()), DeserializeFailed, value);
+        let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value.as_ref()), DeserializeFailed, value);
         let is_date_cascade = event.is_date_cascade().is_some_and(|value| value);
         if is_date_cascade {
             handle_bool!(event.id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
@@ -109,8 +109,8 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
         use CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError::*;
         let event = handle!(GammaEvent::try_from(event), TryFromFailed);
         let event_id = event.id.clone();
-        let bytes = handle!(postcard::to_stdvec(&event), SerializeFailed, event: Box::new(event));
-        Ok((event_id, bytes))
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&event), SerializeFailed, event: Box::new(event));
+        Ok((event_id, bytes.into_vec()))
     }
 }
 
@@ -137,7 +137,7 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardEr
     #[error("failed to read cache entry")]
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize event entry")]
-    DeserializeFailed { source: postcard::Error, value: fjall::Slice },
+    DeserializeFailed { source: rkyv::rancor::Error, value: fjall::Slice },
     #[error("event response has empty event id")]
     EventIdInvalid { event: Box<GammaEvent> },
 }
@@ -171,5 +171,5 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError {
     #[error("failed to convert gamma event response")]
     TryFromFailed { source: crate::ConvertGammaEventRawToGammaEventError },
     #[error("failed to serialize event response")]
-    SerializeFailed { source: postcard::Error, event: Box<GammaEvent> },
+    SerializeFailed { source: rkyv::rancor::Error, event: Box<GammaEvent> },
 }
