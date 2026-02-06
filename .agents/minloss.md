@@ -56,6 +56,7 @@ Examples:
 Notes:
 
 * The "source API", "target API", "description" are not defined yet.
+* The example for "Types that provide compile-time safety for arithmetic operations and conversions between units-of-measurement" doesn't match the proposed formalization
 
 ## Implementation
 
