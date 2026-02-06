@@ -142,6 +142,13 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 * When writing code related to enums, bring the variants in scope with `use Enum::*;` statement at the top of the file or function (prefer "at the top of the file" for data enums, prefer "at the top of the function" for error enums).
 
+## Arithmetics
+
+* Every crate must have a `#![deny(clippy::arithmetic_side_effects)]` attribute
+* Prefer `checked` versions of arithmetic operations
+* Every call to an `overflowing`, `saturating`, `wrapping` version must have a single-line comment above it that starts with "SAFETY: " and describes why calling this version is safe in this specific case
+* Use `num` crate items if necessary (for example, to implement a function that calls arithmetic methods on a generic type)
+
 ## Package features
 
 * Don't define package features in `Cargo.toml` that contain only a single optional dependency (such features are defined by cargo automatically)
