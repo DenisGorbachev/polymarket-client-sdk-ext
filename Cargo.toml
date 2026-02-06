@@ -63,7 +63,7 @@ strum = { version = "0.27.2", features = ["derive"] }
 stub-macro = "0.2.1"
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
-time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
+time = { version = "0.3.47", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
 url = { version = "2.5.2", features = ["serde"] }
 
