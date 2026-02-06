@@ -12,6 +12,7 @@ pub struct Token {
     /// Amount of nominal units of the quote currency (e.g. USDC)
     /// Examples: `0.5845`
     #[rkyv(with = RkyvDecimal)]
+    #[serde(with = "rust_decimal::serde::str")]
     pub price: Amount,
     /// Examples: `true`, `false`
     pub winner: bool,

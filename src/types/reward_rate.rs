@@ -9,6 +9,7 @@ use polymarket_client_sdk::clob::types::response::RewardRate as RewardRateRaw;
 pub struct RewardRate {
     pub asset_address: Address,
     #[rkyv(with = RkyvDecimal)]
+    #[serde(with = "rust_decimal::serde::str")]
     pub rewards_daily_rate: Amount,
 }
 

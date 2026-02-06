@@ -1,9 +1,8 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, OpenKeyspaceError, Property, PropertyName, PropertyStats, open_keyspace};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, ClobMarketResponsePrecise, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, OpenKeyspaceError, Property, PropertyName, PropertyStats, open_keyspace};
 use errgonomic::{handle, handle_iter};
 use fjall::{Readable, SingleWriterTxDatabase, Snapshot, UserKey};
 use polymarket_client_sdk::clob::types::response::MarketResponse;
 use rustc_hash::FxHashMap;
-use serde::de::DeserializeOwned;
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -52,11 +51,12 @@ impl CacheCheckCommand {
             .collect()
     }
 
-    fn process_entry<T: DeserializeOwned>(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<T>>)], snapshot: &Snapshot, guard: fjall::Guard) -> Result<(), CacheCheckCommandProcessMarketEntryError> {
+    fn process_entry(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<MarketResponse>>)], snapshot: &Snapshot, guard: fjall::Guard) -> Result<(), CacheCheckCommandProcessMarketEntryError> {
         use CacheCheckCommandProcessMarketEntryError::*;
         let (key_slice, value_slice) = handle!(guard.into_inner(), ReadEntryFailed);
-        let value = handle!(bitcode::deserialize::<T>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
-        Self::record_violations(violations, properties, snapshot, key_slice, &value);
+        let value = handle!(postcard::from_bytes::<ClobMarketResponsePrecise>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
+        let market_response = MarketResponse::from(value);
+        Self::record_violations(violations, properties, snapshot, key_slice, &market_response);
         Ok(())
     }
 
@@ -97,7 +97,7 @@ pub enum CacheCheckCommandProcessMarketEntryError {
     #[error("failed to read cache entry")]
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize market response")]
-    DeserializeFailed { source: bitcode::Error, value: fjall::Slice },
+    DeserializeFailed { source: postcard::Error, value: fjall::Slice },
 }
 
 #[derive(Error, Debug)]

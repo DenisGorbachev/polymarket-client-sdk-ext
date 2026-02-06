@@ -23,24 +23,24 @@ pub struct ClobMarketResponsePrecise {
     pub enable_order_book: bool,
     pub accepting_orders: bool,
     #[rkyv(with = Map<RkyvOffsetDateTime>)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub accepting_order_timestamp: Option<OffsetDateTime>,
     #[rkyv(with = RkyvDecimal)]
+    #[serde(with = "rust_decimal::serde::str")]
     pub minimum_order_size: Amount,
     #[rkyv(with = RkyvDecimal)]
+    #[serde(with = "rust_decimal::serde::str")]
     pub minimum_tick_size: Amount,
     #[rkyv(with = Map<RkyvOffsetDateTime>)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub end_date_iso: Option<OffsetDateTime>,
     #[rkyv(with = Map<RkyvOffsetDateTime>)]
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub game_start_time: Option<OffsetDateTime>,
     pub seconds_delay: DurationPositiveSeconds,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub fpmm: Option<Address>,
     #[rkyv(with = RkyvDecimal)]
+    #[serde(with = "rust_decimal::serde::str")]
     pub maker_base_fee: Amount,
     #[rkyv(with = RkyvDecimal)]
+    #[serde(with = "rust_decimal::serde::str")]
     pub taker_base_fee: Amount,
     pub rewards: Rewards,
     pub tokens: Tokens,

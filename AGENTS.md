@@ -429,9 +429,33 @@ Examples:
 
 A type that carries the same data as the type from [foundational crate](#foundational-crate).
 
+Requirements:
+
+* Must derive the following traits: serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug
+
+Example names:
+
+* `ClobMarketResponsePrecise`
+* `GammaEventPrecise` (note: this type may not exist yet)
+
+Notes:
+
+* Extension type can be more precise than the original type.
+* As of now, the extension types have a `Precise` suffix
+
 ### Polymarket CLOB read method
 
 A method that reads the data from a Polymarket CLOB API.
+
+### CacheDownloadCommand
+
+A command that downloads the data from the API and stores it in a local database.
+
+* Must convert the original types to [extension types](#extension-type)
+* Must validate that the value of extension type can be losslessly converted back into original type, and the converted value is equal to original value
+* Must serialize the extension types via `rkyv` (note: the previous version of `CacheDownloadCommand` used postcard)
+* Must save the serialized data to database
+  * Must use the same keyspace name as the type name
 
 ### CacheCheckCommand
 
@@ -1955,7 +1979,6 @@ alloy = { version = "1.5.2", default-features = false, features = ["std", "serde
 alloy-primitives = { version = "1.5.4", features = ["rkyv"] }
 async-stream = { version = "0.3.6" }
 base64 = "0.22.1"
-bitcode = { version = "0.6.9", features = ["serde", "rust_decimal", "time"] }
 chrono = { version = "0.4.43" }
 clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"
@@ -1968,9 +1991,10 @@ indexmap = { version = "2.6.0", features = ["serde"] }
 itertools = "0.14.0"
 linkme = "0.3.35"
 polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"], git = "https://github.com/DenisGorbachev/rs-clob-client" }
+postcard = { version = "1.1.3", features = ["use-std"] }
 reqwest = { version = "0.13.1", features = ["json"] }
 rkyv = { version = "0.8.14", features = ["unaligned", "indexmap-2"] }
-rust_decimal = { version = "1.36.0", features = ["serde"] }
+rust_decimal = { version = "1.36.0", features = ["serde", "serde-with-str"] }
 rustc-hash = { version = "2.0.0" }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.132" }

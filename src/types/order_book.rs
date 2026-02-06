@@ -22,13 +22,14 @@ pub struct OrderBookSummaryResponsePrecise {
     #[serde(with = "TimestampVisitor")]
     #[rkyv(with = RkyvOffsetDateTime)]
     pub updated_at: OffsetDateTime,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "rust_decimal::serde::str_option")]
     #[rkyv(with = Map<RkyvDecimal>)]
     pub last_trade_price: Option<Decimal>,
+    #[serde(with = "rust_decimal::serde::str")]
     #[rkyv(with = RkyvDecimal)]
     pub min_order_size: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
     #[rkyv(with = RkyvDecimal)]
     pub min_tick_size: Decimal,
     pub neg_risk: bool,

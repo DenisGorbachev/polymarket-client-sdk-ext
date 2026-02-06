@@ -1,5 +1,8 @@
 use alloy::primitives::Uint;
-use serde::{Deserialize, Deserializer, Serializer};
+use core::fmt;
+use core::str::FromStr;
+use serde::de::{Error, Visitor};
+use serde::{Deserializer, Serializer};
 
 pub struct UintAsString;
 
@@ -16,6 +19,20 @@ impl UintAsString {
     where
         D: Deserializer<'de>,
     {
-        Uint::<BITS, LIMBS>::deserialize(deserializer)
+        struct UintVisitor<const BITS: usize, const LIMBS: usize>;
+
+        impl<'de, const BITS: usize, const LIMBS: usize> Visitor<'de> for UintVisitor<BITS, LIMBS> {
+            type Value = Uint<BITS, LIMBS>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a decimal string representing a uint")
+            }
+
+            fn visit_str<E: Error>(self, value: &str) -> Result<Self::Value, E> {
+                Uint::<BITS, LIMBS>::from_str(value).map_err(E::custom)
+            }
+        }
+
+        deserializer.deserialize_str(UintVisitor::<BITS, LIMBS>)
     }
 }

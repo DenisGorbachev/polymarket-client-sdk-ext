@@ -8,36 +8,46 @@ use std::ops::Deref;
 ///
 /// Returns a vec of prices
 pub fn get_date_cascade_opportunity(event: &Event) -> Option<Vec<rust_decimal::Decimal>> {
-    let _prices = event
-        .markets
-        .as_ref()?
-        .iter()
-        .map(|x| x.outcome_prices.as_ref());
-    todo!()
+    event.markets.as_ref().map(|markets| {
+        let _prices = markets.iter().map(|x| x.outcome_prices.as_ref());
+        todo!()
+    })
 }
 
 /// This function assumes that prev `Market` ends before next `Market`
 pub fn is_inverted_pricing(prev: &Market, next: &Market) -> Option<bool> {
     debug_assert!(prev.end_date < next.end_date);
-    let prev_outcomes = prev.outcomes.as_ref()?;
-    let next_outcomes = next.outcomes.as_ref()?;
-    debug_assert_eq!(prev_outcomes, BOOLEAN_OUTCOMES.deref());
-    debug_assert_eq!(next_outcomes, BOOLEAN_OUTCOMES.deref());
-    let prev_yes_price = prev.outcome_prices.as_ref()?.first()?;
-    let next_yes_price = next.outcome_prices.as_ref()?.first()?;
-    Some(prev_yes_price > next_yes_price)
+    prev.outcomes
+        .as_ref()
+        .zip(next.outcomes.as_ref())
+        .and_then(|(prev_outcomes, next_outcomes)| {
+            debug_assert_eq!(prev_outcomes, BOOLEAN_OUTCOMES.deref());
+            debug_assert_eq!(next_outcomes, BOOLEAN_OUTCOMES.deref());
+            prev.outcome_prices
+                .as_ref()
+                .zip(next.outcome_prices.as_ref())
+                .and_then(|(prev_outcome_prices, next_outcome_prices)| {
+                    prev_outcome_prices
+                        .first()
+                        .zip(next_outcome_prices.first())
+                        .map(|(prev_yes_price, next_yes_price)| prev_yes_price > next_yes_price)
+                })
+        })
+}
+
+pub fn are_questions_date_cascade<'a>(questions: impl IntoIterator<Item = &'a str>) -> bool {
+    let mut diffs = get_middle_diffs(questions);
+    diffs.all(is_date_like)
 }
 
 pub fn is_date_cascade(event: &Event) -> Option<bool> {
-    let questions = event
-        .markets
-        .as_ref()?
-        .iter()
-        .map(|x| x.question.as_deref())
-        .collect::<Option<Vec<_>>>()?;
-    let mut diffs = get_middle_diffs(questions);
-    let all_diffs_are_date_like = diffs.all(is_date_like);
-    Some(all_diffs_are_date_like)
+    event.markets.as_ref().and_then(|markets| {
+        markets
+            .iter()
+            .map(|x| x.question.as_deref())
+            .collect::<Option<Vec<_>>>()
+            .map(are_questions_date_cascade)
+    })
 }
 
 fn get_middle_diffs<'a>(inputs: impl IntoIterator<Item = &'a str>) -> impl Iterator<Item = &'a str> {

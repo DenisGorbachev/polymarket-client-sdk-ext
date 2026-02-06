@@ -12,8 +12,12 @@ pub fn from_chrono_date_time<Tz: TimeZone>(datetime: DateTime<Tz>) -> Result<Off
 }
 
 /// Assumes UTC offset
-pub fn from_chrono_naive_date(_date: NaiveDate) -> Result<OffsetDateTime, time::error::ComponentRange> {
-    todo!()
+pub fn from_chrono_naive_date(date: NaiveDate) -> Result<OffsetDateTime, time::error::ComponentRange> {
+    let midnight = date
+        .and_hms_opt(0, 0, 0)
+        .expect("always succeeds because 00:00:00 is a valid time");
+    let datetime = DateTime::<Utc>::from_naive_utc_and_offset(midnight, Utc);
+    from_chrono_date_time(datetime)
 }
 
 pub fn into_chrono_date_time(offset_date_time: OffsetDateTime) -> Result<DateTime<Utc>, TryFromIntError> {
