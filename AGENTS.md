@@ -34,14 +34,18 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 ### Review workflow
 
-* Output a full list of issues (not a shortlist)
-* Every issue in the full list must be formatted as `{number}. [{severity}] {description} ({references})` (I will identify the issues by number in my answer)
-  * `severity` must be one of `High`, `Medium`, `Low`.
+* Output a full list of findings (not a shortlist)
+* Every finding in the full list must be formatted as `{number}. [{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}` (I will identify the findings by number in my answer)
+  * `priority` must be one of `P0`, `P1`, `P2`, `P3`.
   * `references` must be a comma-separated list of `reference`
   * `reference` must must be formatted as `{path}:{line}`
   * `path` must be a file path relative to your working directory
   * `line` must be the first line of the relevant code or text block
-* If there are no issues, then start your reply with "No issues found"
+  * `fixes` must be one of the following:
+    * If there is at least one proposed fix:
+      * Then: newline and a Markdown nested list of fixes where each fix must have a format `{number}. {description}` (the numbers should start from 1 for each list of fixes)
+      * Else: the exact text "none."
+* If there are no findings, then start your reply with "No findings"
 
 ### Commands
 
@@ -145,6 +149,25 @@ You are a senior Rust software architect. You write high-quality, production-rea
 ### Enums
 
 * When writing code related to enums, bring the variants in scope with `use Enum::*;` statement at the top of the file or function (prefer "at the top of the file" for data enums, prefer "at the top of the function" for error enums).
+
+### Arithmetics
+
+* Never use the following operators: `+, +=, -, -=, *, *=, /, /=, %, %=, -, <<, <<=, >>, >>=`
+* Never use the following traits: `core::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Rem, RemAssign, Neg, Shl, ShlAssign, Shr, ShrAssign}`
+* Every crate must have a `#![deny(clippy::arithmetic_side_effects)]` attribute
+* Prefer `checked` versions of arithmetic operations
+* Every call to an `overflowing`, `saturating`, `wrapping` version must have a single-line comment above it that starts with "SAFETY: " and describes why calling this version is safe in this specific case
+* Use `num` crate items if necessary (for example, to implement a function that calls arithmetic methods on a generic type)
+
+Note: the arithmetic operators and traits are banned because they may panic or silently overflow.
+
+### Index access
+
+* Never use the following operators: `[], []=`
+* Never use the following traits: `core::ops::{Index, IndexMut}`
+* If you are sure that `get` or `get_mut` will never panic, use `expect` with a proof message (as described in [Code style](#code-style))
+
+Note: the index access operators and traits are banned because they may panic.
 
 ### Package features
 
@@ -573,6 +596,7 @@ Read the extra docs from the dirs below if they are relevant to your current tas
   * If the `#[error]` attribute contains fields, then those fields must be wrapped in single quotes. This is necessary to correctly display fields that may contain spaces.
     * Good: `#[error("user '{name}' not found")]`
     * Bad: `#[error("user {name} not found")]`
+* If you see a function that returns a `Result` whose last argument is `()` (e.g. `Result<(), ()>`, `Result<T, ()>`, `Result<u32, ()>`), then you must fix the error handling in this function according to the guidelines and replace `()` with a proper error type
 
 ### Files
 
@@ -2003,7 +2027,7 @@ strum = { version = "0.27.2", features = ["derive"] }
 stub-macro = "0.2.1"
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
-time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
+time = { version = "0.3.47", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
 url = { version = "2.5.2", features = ["serde"] }
 

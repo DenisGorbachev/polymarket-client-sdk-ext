@@ -1,9 +1,9 @@
 use async_jsonl::{Jsonl, JsonlDeserialize};
-use core::error::Error as StdError;
-use errgonomic::{handle, handle_bool};
+use errgonomic::{handle, handle_bool, map_err};
 use futures::{Stream, StreamExt};
 use serde::Deserialize;
-use std::env;
+use std::env::{VarError, var};
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -12,28 +12,15 @@ pub const CACHE_DIR: &str = ".cache";
 pub const MARKET_RESPONSE_CACHE_PATH: &str = "market_response.all.jsonl";
 pub const ORDERBOOK_SUMMARY_RESPONSE_CACHE_PATH: &str = "orderbook_summary_response.all.jsonl";
 
-pub fn parse_env_var<T, E>(var: &str, parse: impl FnOnce(String) -> Result<T, E>) -> Result<Option<T>, ParseEnvVarError<E>>
-where
-    E: StdError,
-{
+pub fn parse_env_var<K: AsRef<OsStr>, T, E>(key: K, parse: impl FnOnce(String) -> Result<T, E>) -> Result<Option<T>, ParseEnvVarError<E>> {
     use ParseEnvVarError::*;
-    let value_opt_result = match env::var(var) {
-        Ok(value) => Ok(Some(value)),
-        Err(env::VarError::NotPresent) => Ok(None),
-        Err(source) => Err(source),
-    };
-    let value_opt = handle!(value_opt_result, ReadEnvVarFailed, var: var.to_string());
-    let Some(value) = value_opt else {
-        return Ok(None);
-    };
-    let value_for_parse = value.clone();
-    let parsed = handle!(
-        parse(value_for_parse),
-        ParseValueFailed,
-        var: var.to_string(),
-        value
-    );
-    Ok(Some(parsed))
+    match var(key) {
+        Ok(value) => map_err!(parse(value), ParseValueFailed).map(Some),
+        Err(VarError::NotPresent) => Ok(None),
+        Err(VarError::NotUnicode(value)) => Err(NotUnicode {
+            value,
+        }),
+    }
 }
 
 pub fn parse_boolish(value: &str) -> Result<bool, ParseBoolishError> {
@@ -42,9 +29,7 @@ pub fn parse_boolish(value: &str) -> Result<bool, ParseBoolishError> {
     match normalized.as_str() {
         "1" | "true" | "t" | "yes" | "y" | "on" => Ok(true),
         "0" | "false" | "f" | "no" | "n" | "off" => Ok(false),
-        _ => Err(InvalidValue {
-            value: value.to_string(),
-        }),
+        _ => Err(InvalidValue),
     }
 }
 
@@ -83,16 +68,16 @@ where
 
 #[derive(Error, Debug)]
 pub enum ParseBoolishError {
-    #[error("invalid boolish value '{value}'")]
-    InvalidValue { value: String },
+    #[error("invalid boolish value")]
+    InvalidValue,
 }
 
 #[derive(Error, Debug)]
-pub enum ParseEnvVarError<E: StdError> {
-    #[error("failed to read env var '{var}'")]
-    ReadEnvVarFailed { source: env::VarError, var: String },
-    #[error("failed to parse env var '{var}' with value '{value}'")]
-    ParseValueFailed { source: E, var: String, value: String },
+pub enum ParseEnvVarError<E> {
+    #[error("env var is not Unicode: '{}'", value.to_string_lossy())]
+    NotUnicode { value: OsString },
+    #[error("failed to parse env var")]
+    ParseValueFailed { source: E },
 }
 
 #[derive(Error, Debug)]
