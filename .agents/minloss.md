@@ -125,3 +125,11 @@ There is a hierarchy of costs and hard constraints. Every host environment impos
 Costs can also be shifted over time. We can accept a one-time setup cost in order to reduce ongoing costs. This is what programming is: we pay the upfront cost of writing software to reduce the recurring cost of executing a process in the future.
 
 A concrete example: a program that reads an entire dataset into memory and processes it all at once may crash if there is not enough memory. For a large enough dataset, this crash is guaranteed. A crash is an extreme form of loss: time is wasted, work may be discarded, and data may be corrupted or left in an inconsistent state. The better design is one that respects constraints—streaming, batching, incremental processing, backpressure, and explicit resource bounds—so the program continues to produce results instead of failing catastrophically.
+
+---
+
+Another important point: don't make up the data.
+
+Examples:
+
+* When parsing a date without timezone: don't assume UTC, return error. 
