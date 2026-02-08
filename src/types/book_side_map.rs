@@ -1,15 +1,84 @@
 use crate::{Amount, Level, Price, RkyvIndexMapDecimal};
+use core::fmt;
+use core::str::FromStr;
 use derive_more::{AsRef, Deref, DerefMut, Into};
 use indexmap::IndexMap;
 use polymarket_client_sdk::clob::types::response::OrderSummary;
-use rkyv::Archive;
 use rustc_hash::FxBuildHasher;
-use serde::{Deserialize, Serialize};
+use serde::de::{Error as DeError, MapAccess, Visitor};
+use serde::ser::SerializeMap;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
 /// The orderbook is represented as two `BookSide` (`bids` and `asks`) because some APIs may return a crossed book during fast moves (max bid price ≥ min ask price).
-#[derive(Archive, Serialize, Deserialize, PartialEq, Eq, Clone, Debug, Deref, DerefMut, AsRef, Into)]
+#[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Eq, Clone, Debug, Deref, DerefMut, AsRef, Into)]
 pub struct BookSideMap(#[rkyv(with = RkyvIndexMapDecimal)] IndexMap<Price, Amount, FxBuildHasher>);
+
+impl Serialize for BookSideMap {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer
+            .serialize_map(Some(self.len()))
+            .and_then(|mut map| {
+                let result = self.iter().try_for_each(|(price, size)| {
+                    let price_string = price.to_string();
+                    let size_string = size.to_string();
+                    map.serialize_entry(&price_string, &size_string)
+                });
+                result.and_then(|()| map.end())
+            })
+    }
+}
+
+impl<'de> Deserialize<'de> for BookSideMap {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct BookSideMapVisitor;
+
+        impl<'de> Visitor<'de> for BookSideMapVisitor {
+            type Value = BookSideMap;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("a map of decimal prices to decimal sizes")
+            }
+
+            fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
+                let mut map = IndexMap::with_capacity_and_hasher(access.size_hint().unwrap_or(0), FxBuildHasher);
+                let mut entries = core::iter::from_fn(|| match access.next_entry::<String, String>() {
+                    Ok(Some(entry)) => Some(Ok(entry)),
+                    Ok(None) => None,
+                    Err(error) => Some(Err(error)),
+                });
+                let result = entries.try_for_each(|entry| {
+                    let (price_string, size_string) = match entry {
+                        Ok(entry) => entry,
+                        Err(error) => return Err(error),
+                    };
+                    let price = match Price::from_str(&price_string) {
+                        Ok(price) => price,
+                        Err(error) => return Err(A::Error::custom(error)),
+                    };
+                    let size = match Amount::from_str(&size_string) {
+                        Ok(size) => size,
+                        Err(error) => return Err(A::Error::custom(error)),
+                    };
+                    match map.get(&price) {
+                        Some(existing_size) if *existing_size != size => Err(A::Error::custom("price level conflicts with existing size")),
+                        Some(_) => Ok(()),
+                        None => {
+                            map.insert(price, size);
+                            Ok(())
+                        }
+                    }
+                });
+                match result {
+                    Ok(()) => Ok(BookSideMap(map)),
+                    Err(error) => Err(error),
+                }
+            }
+        }
+
+        deserializer.deserialize_map(BookSideMapVisitor)
+    }
+}
 
 impl BookSideMap {
     pub fn new(map: impl Into<IndexMap<Price, Amount, FxBuildHasher>>) -> Self {

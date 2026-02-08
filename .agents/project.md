@@ -92,6 +92,40 @@ Examples:
 
 A type that carries the same data as the type from [foundational crate](#foundational-crate).
 
+Requirements:
+
+* Must derive the following traits: serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug
+
+Example names:
+
+* `ClobMarketResponsePrecise`
+* `GammaEventPrecise` (note: this type may not exist yet)
+
+Notes:
+
+* Extension type can be more precise than the original type.
+* As of now, the extension types have a `Precise` suffix
+
 ## Polymarket CLOB read method
 
 A method that reads the data from a Polymarket CLOB API.
+
+## CacheDownloadCommand
+
+A command that downloads the data from the API and stores it in a local database.
+
+* Must convert the original types to [extension types](#extension-type)
+* Must validate that the value of extension type can be losslessly converted back into original type, and the converted value is equal to original value
+* Must serialize the extension types via `rkyv` (note: the previous version of `CacheDownloadCommand` used postcard)
+* Must save the serialized data to database
+  * Must use the same keyspace name as the type name
+
+## CacheCheckCommand
+
+A command that outputs statistics for a dataset.
+
+Requirements:
+
+* Must support a `--view` (`PropertyDistributionViewName`)
+* Must build an iter of `PropertyDistribution` (note: the previous version of the command used `ViolationStatsMap`)
+* Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines

@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 #[derive(From, Into, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Level {
+    #[serde(with = "rust_decimal::serde::str")]
     pub price: Price,
+    #[serde(with = "rust_decimal::serde::str")]
     pub size: Amount,
 }
 

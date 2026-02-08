@@ -38,7 +38,6 @@ alloy = { version = "1.5.2", default-features = false, features = ["std", "serde
 alloy-primitives = { version = "1.5.4", features = ["rkyv"] }
 async-stream = { version = "0.3.6" }
 base64 = "0.22.1"
-bitcode = { version = "0.6.9", features = ["serde", "rust_decimal", "time"] }
 chrono = { version = "0.4.43" }
 clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"
@@ -53,7 +52,7 @@ linkme = "0.3.35"
 polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"], git = "https://github.com/DenisGorbachev/rs-clob-client" }
 reqwest = { version = "0.13.1", features = ["json"] }
 rkyv = { version = "0.8.14", features = ["unaligned", "indexmap-2"] }
-rust_decimal = { version = "1.36.0", features = ["serde"] }
+rust_decimal = { version = "1.36.0", features = ["serde", "serde-with-str"] }
 rustc-hash = { version = "2.0.0" }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.132" }
@@ -63,7 +62,7 @@ strum = { version = "0.27.2", features = ["derive"] }
 stub-macro = "0.2.1"
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
 thiserror = "2.0.17"
-time = { version = "0.3.36", features = ["serde", "macros", "formatting", "parsing"] }
+time = { version = "0.3.47", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }
 url = { version = "2.5.2", features = ["serde"] }
 

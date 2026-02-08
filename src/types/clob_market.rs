@@ -1,9 +1,9 @@
-use crate::{Amount, ClobMarketResponsePrecise, ConditionId, EventId, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, TryFromNegRiskTripleError, WinnerId};
+use crate::{Amount, ClobMarketResponsePrecise, ConditionId, DurationPositiveSeconds, EventId, NegRisk, QuestionId, Rewards, RkyvDecimal, RkyvOffsetDateTime, TokenId, Tokens, TryFromNegRiskTripleError, WinnerId};
 use alloy::primitives::Address;
 use derive_more::{From, Into};
 use rkyv::with::Map;
 use thiserror::Error;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 
 #[derive(From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
@@ -170,7 +170,7 @@ pub struct ClobMarketFallible {
     pub minimum_tick_size: Amount,
     pub end_date_iso: Option<OffsetDateTime>,
     pub game_start_time: Option<OffsetDateTime>,
-    pub seconds_delay: Duration,
+    pub seconds_delay: DurationPositiveSeconds,
     pub fpmm: Option<Address>,
     pub maker_base_fee: Amount,
     pub taker_base_fee: Amount,

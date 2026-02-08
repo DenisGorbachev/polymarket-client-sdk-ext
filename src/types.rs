@@ -169,3 +169,5 @@ pub use rkyv_duration::*;
 mod duration_positive_seconds;
 
 pub use duration_positive_seconds::*;
+mod property_distribution;
+pub use property_distribution::*;

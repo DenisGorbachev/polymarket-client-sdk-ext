@@ -8,12 +8,12 @@ pub const NO: &str = "No";
 /// Must be explicitly set in order to take effect
 pub const GAMMA_EVENTS_PAGE_SIZE: usize = 500;
 
-pub const GAMMA_EVENTS_KEYSPACE: &str = "gamma_events";
-pub const CLOB_MARKET_RESPONSES_KEYSPACE: &str = "clob_market_responses";
-pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "clob_order_book_summary_responses";
+pub const GAMMA_EVENTS_KEYSPACE: &str = "GammaEvent";
+pub const CLOB_MARKET_RESPONSES_KEYSPACE: &str = "ClobMarketResponsePrecise";
+pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "OrderBookSummaryResponsePrecise";
 
 /// The keyspace for [`Market`](crate::ClobMarket)
-pub const CLOB_MARKETS_KEYSPACE: &str = "clob_markets";
+pub const CLOB_MARKETS_KEYSPACE: &str = "ClobMarket";
 
 // /// The keyspace for [`OrderBook`](crate::OrderBook)
 // pub const CLOB_ORDER_BOOKS_KEYSPACE: &str = "clob_order_books";

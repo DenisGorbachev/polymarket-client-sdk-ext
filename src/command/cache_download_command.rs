@@ -1,7 +1,7 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, handle_opt, map_err};
+use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, map_err};
 use fjall::{PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace, SingleWriterWriteTx, UserKey};
 use futures::future::join_all;
 use itertools::Itertools;
@@ -167,15 +167,15 @@ impl CacheDownloadCommand {
         let market_entries = handle_iter!(
             markets.into_iter().map(|market_response| {
                 use CacheDownloadCommandMarketEntriesFromResponseError::*;
-                let (market_response, market_precise) = handle!(Self::round_trip_entry::<MarketResponse, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible>(market_response), RoundTripEntryFailed);
-                let market_entry_opt = match ClobMarket::maybe_try_from_market_response_precise(market_precise) {
+                let (_market_response, market_precise) = handle!(Self::round_trip_entry::<MarketResponse, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible>(market_response), RoundTripEntryFailed);
+                let market_entry_opt = match ClobMarket::maybe_try_from_market_response_precise(market_precise.clone()) {
                     None => None,
                     Some(result) => {
                         let market = handle!(result, MarketTryFromFailed);
                         Some(market)
                     }
                 };
-                Ok((market_response, market_entry_opt))
+                Ok((market_precise, market_entry_opt))
             }),
             MarketEntriesFromResponseFailed
         );
@@ -202,7 +202,8 @@ impl CacheDownloadCommand {
         let event_entries = handle_iter!(
             events.into_iter().map(|event| {
                 use CacheDownloadCommandEventEntryFromResponseError::*;
-                let event_slug = handle_opt!(event.slug.clone(), EventSlugMissingInvalid, event);
+                let event = handle!(GammaEvent::try_from(event), TryFromFailed);
+                let event_slug = event.slug.clone();
                 Ok((event_slug, event))
             }),
             EventEntryFromResponseFailed
@@ -268,10 +269,10 @@ impl CacheDownloadCommand {
         })
     }
 
-    fn market_response_bytes(market: MarketResponse) -> Result<Vec<u8>, CacheDownloadCommandMarketResponseBytesError> {
+    fn market_response_bytes(market: ClobMarketResponsePrecise) -> Result<Vec<u8>, CacheDownloadCommandMarketResponseBytesError> {
         use CacheDownloadCommandMarketResponseBytesError::*;
-        let bytes = handle!(bitcode::serialize(&market), SerializeFailed, market);
-        Ok(bytes)
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&market), SerializeFailed, market);
+        Ok(bytes.into_vec())
     }
 
     fn market_bytes(market: ClobMarket) -> Result<Vec<u8>, CacheDownloadCommandMarketBytesError> {
@@ -282,15 +283,15 @@ impl CacheDownloadCommand {
 
     fn orderbook_bytes(orderbook: OrderBookSummaryResponse) -> Result<Vec<u8>, CacheDownloadCommandOrderbookBytesError> {
         use CacheDownloadCommandOrderbookBytesError::*;
-        let (orderbook, _orderbook_precise) = handle!(Self::round_trip_entry::<OrderBookSummaryResponse, OrderBookSummaryResponsePrecise, ConvertOrderBookSummaryResponseToOrderbookError>(orderbook), RoundTripEntryFailed);
-        let bytes = handle!(bitcode::serialize(&orderbook), SerializeFailed, orderbook);
-        Ok(bytes)
+        let (_orderbook, orderbook_precise) = handle!(Self::round_trip_entry::<OrderBookSummaryResponse, OrderBookSummaryResponsePrecise, ConvertOrderBookSummaryResponseToOrderbookError>(orderbook), RoundTripEntryFailed);
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&orderbook_precise), SerializeFailed, orderbook: Box::new(orderbook_precise));
+        Ok(bytes.into_vec())
     }
 
-    fn event_bytes(event: Event) -> Result<Vec<u8>, CacheDownloadCommandEventBytesError> {
+    fn event_bytes(event: GammaEvent) -> Result<Vec<u8>, CacheDownloadCommandEventBytesError> {
         use CacheDownloadCommandEventBytesError::*;
-        let bytes = handle!(bitcode::serialize(&event), SerializeFailed, event);
-        Ok(bytes)
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&event), SerializeFailed, event);
+        Ok(bytes.into_vec())
     }
 
     fn limit_reached(offset: usize, limit: Option<usize>) -> bool {
@@ -341,8 +342,8 @@ pub enum CacheDownloadCommandDownloadGammaEventsError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandEventEntryFromResponseError {
-    #[error("event response has missing event slug")]
-    EventSlugMissingInvalid { event: Box<Event> },
+    #[error("failed to convert gamma event response")]
+    TryFromFailed { source: crate::ConvertGammaEventRawToGammaEventError },
     #[error("event response has duplicate event slug '{event_slug}'")]
     EventSlugDuplicateInvalid { event_slug: String },
 }
@@ -421,7 +422,7 @@ where
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandMarketResponseBytesError {
     #[error("failed to serialize market response")]
-    SerializeFailed { source: bitcode::Error, market: Box<MarketResponse> },
+    SerializeFailed { source: rkyv::rancor::Error, market: Box<ClobMarketResponsePrecise> },
 }
 
 #[derive(Error, Debug)]
@@ -435,11 +436,11 @@ pub enum CacheDownloadCommandOrderbookBytesError {
     #[error("failed to round-trip order book summary response")]
     RoundTripEntryFailed { source: CacheDownloadCommandRoundTripEntryError<OrderBookSummaryResponse, ConvertOrderBookSummaryResponseToOrderbookError> },
     #[error("failed to serialize order book summary")]
-    SerializeFailed { source: bitcode::Error, orderbook: Box<OrderBookSummaryResponse> },
+    SerializeFailed { source: rkyv::rancor::Error, orderbook: Box<OrderBookSummaryResponsePrecise> },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandEventBytesError {
     #[error("failed to serialize event response")]
-    SerializeFailed { source: bitcode::Error, event: Box<Event> },
+    SerializeFailed { source: rkyv::rancor::Error, event: Box<GammaEvent> },
 }

@@ -9,8 +9,10 @@ use polymarket_client_sdk::clob::types::response::Rewards as RewardsRaw;
 pub struct Rewards {
     pub rates: Vec<RewardRate>,
     #[rkyv(with = RkyvDecimal)]
+    #[serde(with = "rust_decimal::serde::str")]
     pub min_size: Amount,
     #[rkyv(with = RkyvDecimal)]
+    #[serde(with = "rust_decimal::serde::str")]
     pub max_spread: Amount,
 }
 

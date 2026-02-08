@@ -24,6 +24,13 @@ You are a senior Rust software architect. You write high-quality, production-rea
 * Don't write the tests unless I ask you explicitly
 * If you need to patch a dependency, tell me about it, but don't do it without my explicit permission
 * If you notice unexpected edits, keep them
+* If you can't complete the task exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), `touch` the blockers.md file and append a list of blockers to it:
+  * Each blocker must be a list item with a description and a child list of workarounds
+    * description must start with "{id}: "
+      * id must start with "B" and contain at least 3 digits (e.g. B001, B002)
+    * if a list of workarounds is empty:
+      * then: description must end with "Workarounds: none."
+      * else: description must end with "Workarounds: " (the list of workarounds should follow)
 
 ### Review workflow
 
@@ -422,9 +429,43 @@ Examples:
 
 A type that carries the same data as the type from [foundational crate](#foundational-crate).
 
+Requirements:
+
+* Must derive the following traits: serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug
+
+Example names:
+
+* `ClobMarketResponsePrecise`
+* `GammaEventPrecise` (note: this type may not exist yet)
+
+Notes:
+
+* Extension type can be more precise than the original type.
+* As of now, the extension types have a `Precise` suffix
+
 ### Polymarket CLOB read method
 
 A method that reads the data from a Polymarket CLOB API.
+
+### CacheDownloadCommand
+
+A command that downloads the data from the API and stores it in a local database.
+
+* Must convert the original types to [extension types](#extension-type)
+* Must validate that the value of extension type can be losslessly converted back into original type, and the converted value is equal to original value
+* Must serialize the extension types via `rkyv` (note: the previous version of `CacheDownloadCommand` used postcard)
+* Must save the serialized data to database
+  * Must use the same keyspace name as the type name
+
+### CacheCheckCommand
+
+A command that outputs statistics for a dataset.
+
+Requirements:
+
+* Must support a `--view` (`PropertyDistributionViewName`)
+* Must build an iter of `PropertyDistribution` (note: the previous version of the command used `ViolationStatsMap`)
+* Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines
 
 ## Polymarket knowledge
 
@@ -1938,7 +1979,6 @@ alloy = { version = "1.5.2", default-features = false, features = ["std", "serde
 alloy-primitives = { version = "1.5.4", features = ["rkyv"] }
 async-stream = { version = "0.3.6" }
 base64 = "0.22.1"
-bitcode = { version = "0.6.9", features = ["serde", "rust_decimal", "time"] }
 chrono = { version = "0.4.43" }
 clap = { version = "4.5.54", features = ["derive", "env"] }
 derive-new = "0.7.0"
@@ -1953,7 +1993,7 @@ linkme = "0.3.35"
 polymarket-client-sdk = { version = "0.4.1", features = ["clob", "gamma", "data", "tracing"], git = "https://github.com/DenisGorbachev/rs-clob-client" }
 reqwest = { version = "0.13.1", features = ["json"] }
 rkyv = { version = "0.8.14", features = ["unaligned", "indexmap-2"] }
-rust_decimal = { version = "1.36.0", features = ["serde"] }
+rust_decimal = { version = "1.36.0", features = ["serde", "serde-with-str"] }
 rustc-hash = { version = "2.0.0" }
 serde = { version = "1.0.204", features = ["derive"] }
 serde_json = { version = "1.0.132" }

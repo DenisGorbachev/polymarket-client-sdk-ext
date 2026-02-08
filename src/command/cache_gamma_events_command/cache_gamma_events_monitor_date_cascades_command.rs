@@ -1,4 +1,4 @@
-use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, OpenKeyspaceError, is_date_cascade, open_keyspace};
+use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, OpenKeyspaceError, open_keyspace};
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter};
 use fjall::{PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use polymarket_client_sdk::gamma::Client as GammaClient;
@@ -60,8 +60,8 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
     fn date_cascade_event_id_from_guard(guard: fjall::Guard) -> Result<Option<String>, CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError> {
         use CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError::*;
         let (_key, value) = handle!(guard.into_inner(), ReadEntryFailed);
-        let event = handle!(bitcode::deserialize::<Event>(value.as_ref()), DeserializeFailed, value);
-        let is_date_cascade = is_date_cascade(&event).is_some_and(|value| value);
+        let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value.as_ref()), DeserializeFailed, value);
+        let is_date_cascade = event.is_date_cascade().is_some_and(|value| value);
         if is_date_cascade {
             handle_bool!(event.id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
             Ok(Some(event.id))
@@ -107,9 +107,10 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
 
     fn serialize_event_entry(event: Event) -> Result<(String, Vec<u8>), CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError> {
         use CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError::*;
-        handle_bool!(event.id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
-        let bytes = handle!(bitcode::serialize(&event), SerializeFailed, event: Box::new(event));
-        Ok((event.id, bytes))
+        let event = handle!(GammaEvent::try_from(event), TryFromFailed);
+        let event_id = event.id.clone();
+        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&event), SerializeFailed, event: Box::new(event));
+        Ok((event_id, bytes.into_vec()))
     }
 }
 
@@ -136,9 +137,9 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardEr
     #[error("failed to read cache entry")]
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize event entry")]
-    DeserializeFailed { source: bitcode::Error, value: fjall::Slice },
+    DeserializeFailed { source: rkyv::rancor::Error, value: fjall::Slice },
     #[error("event response has empty event id")]
-    EventIdInvalid { event: Box<Event> },
+    EventIdInvalid { event: Box<GammaEvent> },
 }
 
 #[derive(Error, Debug)]
@@ -167,8 +168,8 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandWriteEventsToDatabaseError {
 
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError {
-    #[error("event response has empty event id")]
-    EventIdInvalid { event: Box<Event> },
+    #[error("failed to convert gamma event response")]
+    TryFromFailed { source: crate::ConvertGammaEventRawToGammaEventError },
     #[error("failed to serialize event response")]
-    SerializeFailed { source: bitcode::Error, event: Box<Event> },
+    SerializeFailed { source: rkyv::rancor::Error, event: Box<GammaEvent> },
 }
