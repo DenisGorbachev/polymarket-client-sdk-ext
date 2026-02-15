@@ -42,7 +42,7 @@ Notes:
     * When in doubt, prefer accepting a parameter instead of defining a constant
 * Follow the requirements in "Producing expression of type T" (see below)
 
-## Workflow
+## Development workflow
 
 * After finishing the task: run `mise run agent:on:stop` (this command runs the lints and tests)
   * `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
@@ -83,7 +83,7 @@ Notes:
 
 * Use `fd` and `rg` instead of `find` and `grep`
 * Use `cargo add` to add dependencies at their latest versions
-* Set the timeout to 300000ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
+* Set the timeout to 300000 ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
 
 ## Files
 
@@ -106,6 +106,10 @@ Notes:
   use crate::foo;
   ```
 
+## Items
+
+* Prefer `pub` instead of `pub(crate)` or private.
+
 ## Types
 
 * Always use the most specific types (enforce semantic difference through syntactic difference):
@@ -121,74 +125,35 @@ Notes:
   * Error types that implement `Error` must be in the same files as the functions that return them
 * Prefer attaching the types as child modules to src/types.rs
 
-## Memory usage
+## Functions
 
-* Prefer streaming and iterating (avoid large in-memory `Vec`)
-
-## Conversions
-
-* Implement `From` or `TryFrom` for conversions between types (instead of converting in-place)
-
-## Struct derives
-
-* Derive `new` from `derive_new` crate for types that need `fn new`
-* If the struct derives `Getters`, then each field whose type implements `Copy` must have a `#[getter(copy)]` annotation. For example:
-  * Good (note that `username` doesn't have `#[getter(copy)]` because its type is `String` which doesn't implement `Copy`, but `age` has `#[getter(copy)]`, because its type is `u64` which implements `Copy`):
-    ```rust
-    #[derive(Getters, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
-    pub struct User {
-      username: String,
-      #[getter(copy)]
-      age: u64,
-    }
-    ```
-
-## Visibility
-
-* By default, every type, function and struct field should be `pub`
-* Use `pub` instead of `pub(crate)`
-* The code must always call the `new` method to enforce validation
-
-## Setters
-
-* Use setters that take `&mut self` instead of setters that take `self` and return `Self` (because passing a `foo: &mut Foo` is better than passing `foo: Foo` and returning `Foo` through the call stack)
-
-## Newtypes
-
-* The macro calls that begin with `subtype` (for example, `subtype!` and `subtype_string!`) expand to newtypes
-
-## Enums
-
-* When writing code related to enums, bring the variants in scope with `use Enum::*;` statement at the top of the file or function (prefer "at the top of the file" for data enums, prefer "at the top of the function" for error enums).
-
-## Arithmetics
-
-* Never use the following operators: `+, +=, -, -=, *, *=, /, /=, %, %=, -, <<, <<=, >>, >>=`
-* Never use the following traits: `core::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Rem, RemAssign, Neg, Shl, ShlAssign, Shr, ShrAssign}`
-* Every crate must have a `#![deny(clippy::arithmetic_side_effects)]` attribute
-* Prefer `checked` versions of arithmetic operations
-* Every call to an `overflowing`, `saturating`, `wrapping` version must have a single-line comment above it that starts with "SAFETY: " and describes why calling this version is safe in this specific case
-* Use `num` crate items if necessary (for example, to implement a function that calls arithmetic methods on a generic type)
-
-Note: the arithmetic operators and traits are banned because they may panic or silently overflow.
-
-## Index access
-
-* Never use the following operators: `[], []=`
-* Never use the following traits: `core::ops::{Index, IndexMut}`
-* If you are sure that `get` or `get_mut` will never panic, use `expect` with a proof message (as described in [Code style](#code-style))
-
-Note: the index access operators and traits are banned because they may panic.
-
-## Package features
-
-* Don't define package features in `Cargo.toml` that contain only a single optional dependency (such features are defined by cargo automatically)
-
-## Code style
-
+* Prefer streams and iterators:
+  * Specifics:
+    * Prefer `impl Stream` or `impl IntoIterator` for collection inputs
+    * Prefer `impl Iterator` for collection outputs (avoid large in-memory `Vec`)
+  * Examples:
+    * Good:
+      ```rust
+      pub fn foo<'a>(inputs: impl IntoIterator<Item = &'a str>) -> impl Iterator<Item = &'a str> {
+          // do something
+      }
+    
+      pub fn bar(inputs: impl IntoIterator<Item = String>) -> impl Iterator<Item = String> {
+          // do something
+      }
+      ```
+    * Bad:
+      ```rust
+      /// This is bad because it is not general enough
+      pub fn foo(inputs: &[str]) -> Vec<&'a str> {}
+    
+      /// This is bad because it is not general enough and also forces the caller to collect the strings into a vec, which is bad for performance
+      pub fn bar(inputs: Vec<String>) -> Vec<String> {}
+      ```
+* Prefer implementing and use `From` or `TryFrom` for conversions between types (instead of converting in-place)
+* Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
 * Implement proper error handling instead of `unwrap` or `expect` (in normal code and in tests)
   * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
-* Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
 * Use iterators instead of for loops. For example:
   * Good:
     ```rust
@@ -282,25 +247,6 @@ Note: the index access operators and traits are banned because they may panic.
     /// This is bad because the callsite may have to call .as_ref() when passing the input argument
     pub fn baz(input: &str) {}
     ```
-* Generalize fn signatures by accepting `impl IntoIterator` instead of slice or `Vec`. For example:
-  * Good:
-    ```rust
-    pub fn foo<'a>(inputs: impl IntoIterator<Item = &'a str>) {
-        // do something
-    }
-    
-    pub fn bar(inputs: impl IntoIterator<Item = String>) {
-        // do something
-    }
-    ```
-  * Bad:
-    ```rust
-    /// This is bad because it is not general enough
-    pub fn foo(inputs: &[str]) {}
-    
-    /// This is bad because it is not general enough and also forces the caller to collect the strings into a vec, which is bad for performance
-    pub fn bar(inputs: impl IntoIterator<Item = String>) {}
-    ```
 * Prefer `.map()` instead of `match` when you need to modify the value in the `Option` or `Result`. For example:
   * Good:
     ```rust
@@ -355,6 +301,54 @@ Note: the index access operators and traits are banned because they may panic.
       }
   }
   ```
+
+## Struct derives
+
+* Derive `new` from `derive_new` crate for types that need `fn new`
+* If the struct derives `Getters`, then each field whose type implements `Copy` must have a `#[getter(copy)]` annotation. For example:
+  * Good (note that `username` doesn't have `#[getter(copy)]` because its type is `String` which doesn't implement `Copy`, but `age` has `#[getter(copy)]`, because its type is `u64` which implements `Copy`):
+    ```rust
+    #[derive(Getters, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
+    pub struct User {
+      username: String,
+      #[getter(copy)]
+      age: u64,
+    }
+    ```
+
+## Setters
+
+* Use setters that take `&mut self` instead of setters that take `self` and return `Self` (because passing a `foo: &mut Foo` is more efficient than passing `foo: Foo` and returning `Foo` through the call stack)
+
+## Enums
+
+* When writing code related to enums, bring the variants in scope with `use Enum::*;` statement at the top of the file or function (prefer "at the top of the file" for data enums, prefer "at the top of the function" for error enums).
+
+## Arithmetics
+
+* Never use the following operators: `+, +=, -, -=, *, *=, /, /=, %, %=, -, <<, <<=, >>, >>=`
+* Never use the following traits: `core::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Rem, RemAssign, Neg, Shl, ShlAssign, Shr, ShrAssign}`
+* Every crate must have a `#![deny(clippy::arithmetic_side_effects)]` attribute
+* Prefer `checked` versions of arithmetic operations
+* Every call to an `overflowing`, `saturating`, `wrapping` version must have a single-line comment above it that starts with "SAFETY: " and describes why calling this version is safe in this specific case
+* Use `num` crate items if necessary (for example, to implement a function that calls arithmetic methods on a generic type)
+
+Note: the arithmetic operators and traits are banned because they may panic or silently overflow.
+
+## Index access
+
+* Never use the following operators: `[], []=`
+* Never use the following traits: `core::ops::{Index, IndexMut}`
+* If you are sure that `get` or `get_mut` will never panic, use `expect` with a proof message (as described in [Functions](#functions))
+
+Note: the index access operators and traits are banned because they may panic.
+
+## Cargo.toml
+
+* Don't define package features contain only a single optional dependency (such features are already defined by cargo automatically)
+
+## Macros
+
 * Write `macro_rules!` macros to reduce boilerplate
 * If you see similar code in different places, write a macro and replace the similar code with a macro call
 

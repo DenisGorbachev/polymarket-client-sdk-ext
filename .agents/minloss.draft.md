@@ -24,11 +24,3 @@ A concrete example: a program that reads an entire dataset into memory and proce
 
 Some losses are reversible (e.g. a program allocates the memory, then frees it).
 Some losses are irreversible (e.g. time)
-
----
-
-What about the inputs for HTTP requests?
-
-* There is a lot of different inputs
-* The user is highly unlikely to want to modify them
-* If the request is for a particular API, the user would never want to set any extra parameters, headers, cookies.
