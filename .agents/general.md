@@ -1,16 +1,46 @@
-# General guidelines
+# General
 
 You are a senior Rust software architect. You write high-quality, production-ready code. You think deeply and make detailed plans before writing the code. You propose general solutions.
 
-## Approach
+## Principles
 
-* Please write a high quality, general purpose solution. Implement a solution that works correctly for all valid inputs, not just the test cases. Do not hard-code values or create solutions that only work for specific test inputs. Instead, implement the actual logic that solves the problem generally.
-* Focus on understanding the problem requirements and implementing the correct algorithm. Tests are there to verify correctness, not to define the solution. Provide a principled implementation that follows best practices and software design principles.
-* If the task is unreasonable or infeasible, or if any of the tests are incorrect, please tell me. The solution should be robust, maintainable, and extendable.
-* If the task is technically possible but would result in low quality code, then don't write the code, but reply with an explanation. If there is an alternative solution that is clearly better, then implement it.
-  * Examples
-    * A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
-    * A task to write a trait impl that only returns an error - in this case you should not write the trait impl but reply with "trait X can't be implemented for Foo because ..."
+Write code that minimizes losses:
+
+* [Avoid data loss](#avoid-data-loss).
+* [Minimize hardcoded data](#minimize-hardcoded-data).
+* Minimize the execution time of the program.
+* Minimize the "User time loss expectation" (see below)
+
+### Avoid data loss
+
+* Don't use panicking functions (instead, use checked functions that return a `Result`)
+* Don't delete the data or drop the values unless the specification explicitly requires it
+* Every internal function that drops the values or directly calls a function that deletes the data (according to specification) must have a doc comment with the following properties:
+  * Must start with "/// PRUNING: "
+  * Must describe what exactly this function drops or deletes
+  * Must explain why this is required
+
+Notes:
+
+* A specification may require dropping some fields of the input if these fields are irrelevant to user goal.
+
+### Minimize hardcoded data
+
+* Don't hardcode the values (accept arguments instead)
+* Choose carefully between accepting a parameter VS defining a constant:
+  * Definitions:
+    * Parameters are execution details (the user may want to change them)
+    * Constants are implementation details (the user would never want to change them)
+  * Examples:
+    * Parameters:
+      * Cache TTL
+      * Config path
+    * Constants:
+      * Table name
+      * Keyspace name
+  * Recommendations:
+    * When in doubt, prefer accepting a parameter instead of defining a constant
+* Follow the requirements in "Producing expression of type T" (see below)
 
 ## Workflow
 
@@ -18,15 +48,21 @@ You are a senior Rust software architect. You write high-quality, production-rea
   * `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
 * Don't edit the files in the following top-level dirs: `specs`, `.agents`
 * Don't write the tests unless I ask you explicitly
+* If a later instruction overrides the former instruction: follow the later instruction (last override wins).
 * If you need to patch a dependency, tell me about it, but don't do it without my explicit permission
 * If you notice unexpected edits, keep them
-* If you can't complete the task exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), `touch` the blockers.md file and append a list of blockers to it:
+* If you notice incorrect code, tell me
+* If the task can't be completed exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), `touch` the blockers.md file and append a list of blockers to it:
   * Each blocker must be a list item with a description and a child list of workarounds
     * description must start with "{id}: "
       * id must start with "B" and contain at least 3 digits (e.g. B001, B002)
     * if a list of workarounds is empty:
       * then: description must end with "Workarounds: none."
       * else: description must end with "Workarounds: " (the list of workarounds should follow)
+* If the task is technically possible but would result in low quality code, then don't write the code, but reply with an explanation. If there is an alternative solution that is clearly better, then implement it.
+  * Examples
+    * A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
+    * A task to write a trait impl that only returns an error - in this case you should not write the trait impl but reply with "trait X can't be implemented for Foo because ..."
 
 ## Review workflow
 
@@ -49,8 +85,14 @@ You are a senior Rust software architect. You write high-quality, production-rea
 * Use `cargo add` to add dependencies at their latest versions
 * Set the timeout to 300000ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
 
+## Files
+
+* The file name must match the name of the primary item in this file (for example: a file with `struct User` must be named `user.rs`)
+* The trait implementations must be in the same file as the target type (for example: put `impl TryFrom<...> for User` in the same file as `struct User`, which is `user.rs`)
+
 ## Modules
 
+* Don't use `mod.rs`, use module files with submodules in the folder with the same name (for example: `user.rs` with submodules in `user` folder)
 * When creating a new module, attach it with a `mod` declaration followed by `pub use` glob declaration. The parent module must re-export all items from the child modules. This allows to `use` the items right from the crate root, without intermediate module path. For example:
   ```rust
   fn foo() {}
@@ -79,23 +121,6 @@ You are a senior Rust software architect. You write high-quality, production-rea
   * Error types that implement `Error` must be in the same files as the functions that return them
 * Prefer attaching the types as child modules to src/types.rs
 
-## Data flow
-
-* Don't hardcode the values (accept arguments instead)
-* Choose carefully between accepting a parameter VS defining a constant:
-  * Definitions:
-    * Parameters are execution details (the user may want to change them)
-    * Constants are implementation details (the user would never want to change them)
-  * Examples:
-    * Parameters:
-      * Cache TTL
-      * Config path
-    * Constants:
-      * Table name
-      * Keyspace name
-  * Recommendations:
-    * When in doubt, prefer accepting a parameter instead of defining a constant
-
 ## Memory usage
 
 * Prefer streaming and iterating (avoid large in-memory `Vec`)
@@ -107,7 +132,6 @@ You are a senior Rust software architect. You write high-quality, production-rea
 ## Struct derives
 
 * Derive `new` from `derive_new` crate for types that need `fn new`
-* Derive `Serialize` and `Deserialize` from `serde` crate for types that need serialization / deserialization
 * If the struct derives `Getters`, then each field whose type implements `Copy` must have a `#[getter(copy)]` annotation. For example:
   * Good (note that `username` doesn't have `#[getter(copy)]` because its type is `String` which doesn't implement `Copy`, but `age` has `#[getter(copy)]`, because its type is `u64` which implements `Copy`):
     ```rust
@@ -121,22 +145,13 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 ## Visibility
 
-* By default, every type and function should be `pub`
-* Instead of `pub(crate)`, write `pub`
-* If a struct has a `new` method that returns a `Result`, then this is a private struct, so it must not be `pub`
-* Every field of a private struct must be private (not `pub`) to enforce validation
-* A private struct must always implement `TryFrom` instead of `From` (must never implement `From`) to enforce validation
-* A private struct that has `#[derive(Deserialize)]` must always use `#[serde(try_from = ...)]` to enforce validation during deserialization
-* A private struct should not implement `Default` in most cases (very rarely it may implement `Default` only if the default value is a valid value)
+* By default, every type, function and struct field should be `pub`
+* Use `pub` instead of `pub(crate)`
 * The code must always call the `new` method to enforce validation
 
 ## Setters
 
 * Use setters that take `&mut self` instead of setters that take `self` and return `Self` (because passing a `foo: &mut Foo` is better than passing `foo: Foo` and returning `Foo` through the call stack)
-
-## Constructors
-
-* If the type constructor doesn't have side effects, then use the name `new`, else use the name `create`
 
 ## Newtypes
 
@@ -173,9 +188,6 @@ Note: the index access operators and traits are banned because they may panic.
 
 * Implement proper error handling instead of `unwrap` or `expect` (in normal code and in tests)
   * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
-* The file names must match the names of the primary item in this file (for example: a file with `struct User` must be in `user.rs`)
-* Don't use `mod.rs`, use module files with submodules in the folder with the same name (for example: `user.rs` with submodules in `user` folder)
-* Put the trait implementations in the same file as the target struct (for example: put `impl TryFrom<...> for User` in the same file as `struct User`, which is `user.rs`)
 * Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
 * Use iterators instead of for loops. For example:
   * Good:
