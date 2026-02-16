@@ -45,12 +45,9 @@ impl GammaEvent {
     }
 
     pub fn is_date_cascade(&self) -> Option<bool> {
-        self.markets.as_ref().and_then(|markets| {
-            markets
-                .iter()
-                .map(|market| market.question.as_deref())
-                .collect::<Option<Vec<_>>>()
-                .map(crate::are_questions_date_cascade)
+        self.markets.as_ref().map(|markets| {
+            let questions = markets.iter().map(|market| market.question.as_str());
+            crate::are_questions_date_cascade(questions)
         })
     }
 }
