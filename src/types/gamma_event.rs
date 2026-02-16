@@ -15,6 +15,35 @@ pub struct GammaEvent {
 }
 
 impl GammaEvent {
+    /// This function may return multiple opportunities because multiple adjacent markets may exhibit inverted pricing.
+    ///
+    /// This function assumes that `self` passes [`Self::is_date_cascade`].
+    ///
+    /// Returns a vec of positive price differences (`prev_yes_price - next_yes_price`).
+    pub fn get_time_spread_arbitrage_opportunity(&self) -> Option<Vec<rust_decimal::Decimal>> {
+        use itertools::Itertools;
+        self.markets.as_ref().map(|markets| {
+            markets
+                .iter()
+                .filter(|market| market.end_date.is_some())
+                .sorted_by(|left, right| left.end_date.cmp(&right.end_date))
+                .tuple_windows()
+                .filter_map(|(prev, next)| {
+                    GammaMarket::is_inverted_pricing(prev, next).and_then(|is_inverted| {
+                        if is_inverted {
+                            prev.yes_price
+                                .as_ref()
+                                .zip(next.yes_price.as_ref())
+                                .and_then(|(prev_yes_price, next_yes_price)| prev_yes_price.checked_sub(*next_yes_price))
+                        } else {
+                            None
+                        }
+                    })
+                })
+                .collect()
+        })
+    }
+
     pub fn is_date_cascade(&self) -> Option<bool> {
         self.markets.as_ref().and_then(|markets| {
             markets

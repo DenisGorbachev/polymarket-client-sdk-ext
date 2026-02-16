@@ -1,9 +1,10 @@
-use crate::{RkyvOffsetDateTime, from_chrono_naive_date};
+use crate::{BOOLEAN_OUTCOMES, RkyvDecimal, RkyvOffsetDateTime, from_chrono_naive_date};
 use derive_more::{From, Into};
 use derive_new::new;
 use errgonomic::handle;
 use polymarket_client_sdk::gamma::types::response::Market as GammaMarketRaw;
 use rkyv::with::Map;
+use rust_decimal::Decimal;
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -12,11 +13,36 @@ use time::OffsetDateTime;
 #[serde(deny_unknown_fields)]
 pub struct GammaMarket {
     pub question: Option<String>,
+    pub outcomes: Option<Vec<String>>,
+    #[serde(with = "rust_decimal::serde::str_option")]
+    #[rkyv(with = Map<RkyvDecimal>)]
+    pub yes_price: Option<Decimal>,
     #[rkyv(with = Map<RkyvOffsetDateTime>)]
     pub end_date: Option<OffsetDateTime>,
 }
 
-impl GammaMarket {}
+impl GammaMarket {
+    /// This function assumes that `prev` ends before `next`.
+    pub fn is_inverted_pricing(prev: &Self, next: &Self) -> Option<bool> {
+        debug_assert!(
+            prev.end_date
+                .as_ref()
+                .zip(next.end_date.as_ref())
+                .is_none_or(|(prev_end_date, next_end_date)| prev_end_date < next_end_date)
+        );
+        prev.outcomes
+            .as_ref()
+            .zip(next.outcomes.as_ref())
+            .and_then(|(prev_outcomes, next_outcomes)| {
+                debug_assert_eq!(prev_outcomes.as_slice(), BOOLEAN_OUTCOMES.as_slice());
+                debug_assert_eq!(next_outcomes.as_slice(), BOOLEAN_OUTCOMES.as_slice());
+                prev.yes_price
+                    .as_ref()
+                    .zip(next.yes_price.as_ref())
+                    .map(|(prev_yes_price, next_yes_price)| prev_yes_price > next_yes_price)
+            })
+    }
+}
 
 impl TryFrom<GammaMarketRaw> for GammaMarket {
     type Error = ConvertGammaMarketRawToGammaMarketError;
@@ -25,9 +51,12 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
         use ConvertGammaMarketRawToGammaMarketError::*;
         let GammaMarketRaw {
             question,
+            outcomes,
+            outcome_prices,
             end_date_iso,
             ..
         } = raw_gamma_market;
+        let yes_price = outcome_prices.and_then(|outcome_prices| outcome_prices.into_iter().next());
         let end_date = match end_date_iso {
             Some(end_date_iso) => {
                 let end_date = handle!(from_chrono_naive_date(end_date_iso), FromChronoNaiveDateFailed, end_date_iso);
@@ -37,6 +66,8 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
         };
         Ok(Self {
             question,
+            outcomes,
+            yes_price,
             end_date,
         })
     }

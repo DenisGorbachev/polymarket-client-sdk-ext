@@ -8,5 +8,7 @@ mod open_keyspace;
 pub use open_keyspace::*;
 mod is_date_like;
 pub use is_date_like::*;
+mod get_middle_diffs;
+pub use get_middle_diffs::*;
 mod format_debug_diff;
 pub use format_debug_diff::*;
