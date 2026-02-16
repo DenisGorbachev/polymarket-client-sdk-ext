@@ -2,35 +2,71 @@
 
 # Guidelines
 
-## General guidelines
+## General
 
 You are a senior Rust software architect. You write high-quality, production-ready code. You think deeply and make detailed plans before writing the code. You propose general solutions.
 
-### Approach
+### Principles
 
-* Please write a high quality, general purpose solution. Implement a solution that works correctly for all valid inputs, not just the test cases. Do not hard-code values or create solutions that only work for specific test inputs. Instead, implement the actual logic that solves the problem generally.
-* Focus on understanding the problem requirements and implementing the correct algorithm. Tests are there to verify correctness, not to define the solution. Provide a principled implementation that follows best practices and software design principles.
-* If the task is unreasonable or infeasible, or if any of the tests are incorrect, please tell me. The solution should be robust, maintainable, and extendable.
-* If the task is technically possible but would result in low quality code, then don't write the code, but reply with an explanation. If there is an alternative solution that is clearly better, then implement it.
-  * Examples
-    * A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
-    * A task to write a trait impl that only returns an error - in this case you should not write the trait impl but reply with "trait X can't be implemented for Foo because ..."
+Write code that minimizes losses:
 
-### Workflow
+* [Avoid data loss](#avoid-data-loss).
+* [Minimize hardcoded data](#minimize-hardcoded-data).
+* Minimize the execution time of the program.
+* Minimize the "User time loss expectation" (see below)
+
+#### Avoid data loss
+
+* Don't use panicking functions (instead, use checked functions that return a `Result`)
+* Don't delete the data or drop the values unless the specification explicitly requires it
+* Every internal function that drops the values or directly calls a function that deletes the data (according to specification) must have a doc comment with the following properties:
+  * Must start with "/// PRUNING: "
+  * Must describe what exactly this function drops or deletes
+  * Must explain why this is required
+
+Notes:
+
+* A specification may require dropping some fields of the input if these fields are irrelevant to user goal.
+
+#### Minimize hardcoded data
+
+* Don't hardcode the values (accept arguments instead)
+* Choose carefully between accepting a parameter VS defining a constant:
+  * Definitions:
+    * Parameters are execution details (the user may want to change them)
+    * Constants are implementation details (the user would never want to change them)
+  * Examples:
+    * Parameters:
+      * Cache TTL
+      * Config path
+    * Constants:
+      * Table name
+      * Keyspace name
+  * Recommendations:
+    * When in doubt, prefer accepting a parameter instead of defining a constant
+* Follow the requirements in "Producing expression of type T" (see below)
+
+### Development workflow
 
 * After finishing the task: run `mise run agent:on:stop` (this command runs the lints and tests)
   * `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
 * Don't edit the files in the following top-level dirs: `specs`, `.agents`
 * Don't write the tests unless I ask you explicitly
+* If a later instruction overrides the former instruction: follow the later instruction (last override wins).
 * If you need to patch a dependency, tell me about it, but don't do it without my explicit permission
 * If you notice unexpected edits, keep them
-* If you can't complete the task exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), `touch` the blockers.md file and append a list of blockers to it:
+* If you notice incorrect code, tell me
+* If the task can't be completed exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), `touch` the blockers.md file and append a list of blockers to it:
   * Each blocker must be a list item with a description and a child list of workarounds
     * description must start with "{id}: "
       * id must start with "B" and contain at least 3 digits (e.g. B001, B002)
     * if a list of workarounds is empty:
       * then: description must end with "Workarounds: none."
       * else: description must end with "Workarounds: " (the list of workarounds should follow)
+* If the task is technically possible but would result in low quality code, then don't write the code, but reply with an explanation. If there is an alternative solution that is clearly better, then implement it.
+  * Examples
+    * A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
+    * A task to write a trait impl that only returns an error - in this case you should not write the trait impl but reply with "trait X can't be implemented for Foo because ..."
 
 ### Review workflow
 
@@ -51,10 +87,16 @@ You are a senior Rust software architect. You write high-quality, production-rea
 
 * Use `fd` and `rg` instead of `find` and `grep`
 * Use `cargo add` to add dependencies at their latest versions
-* Set the timeout to 300000ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
+* Set the timeout to 300000 ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
+
+### Files
+
+* The file name must match the name of the primary item in this file (for example: a file with `struct User` must be named `user.rs`)
+* The trait implementations must be in the same file as the target type (for example: put `impl TryFrom<...> for User` in the same file as `struct User`, which is `user.rs`)
 
 ### Modules
 
+* Don't use `mod.rs`, use module files with submodules in the folder with the same name (for example: `user.rs` with submodules in `user` folder)
 * When creating a new module, attach it with a `mod` declaration followed by `pub use` glob declaration. The parent module must re-export all items from the child modules. This allows to `use` the items right from the crate root, without intermediate module path. For example:
   ```rust
   fn foo() {}
@@ -67,6 +109,10 @@ You are a senior Rust software architect. You write high-quality, production-rea
   ```rust
   use crate::foo;
   ```
+
+### Items
+
+* Prefer `pub` instead of `pub(crate)` or private.
 
 ### Types
 
@@ -83,104 +129,35 @@ You are a senior Rust software architect. You write high-quality, production-rea
   * Error types that implement `Error` must be in the same files as the functions that return them
 * Prefer attaching the types as child modules to src/types.rs
 
-### Data flow
+### Functions
 
-* Don't hardcode the values (accept arguments instead)
-* Choose carefully between accepting a parameter VS defining a constant:
-  * Definitions:
-    * Parameters are execution details (the user may want to change them)
-    * Constants are implementation details (the user would never want to change them)
+* Prefer streams and iterators:
+  * Specifics:
+    * Prefer `impl Stream` or `impl IntoIterator` for collection inputs
+    * Prefer `impl Iterator` for collection outputs (avoid large in-memory `Vec`)
   * Examples:
-    * Parameters:
-      * Cache TTL
-      * Config path
-    * Constants:
-      * Table name
-      * Keyspace name
-  * Recommendations:
-    * When in doubt, prefer accepting a parameter instead of defining a constant
+    * Good:
+      ```rust
+      pub fn foo<'a>(inputs: impl IntoIterator<Item = &'a str>) -> impl Iterator<Item = &'a str> {
+          // do something
+      }
 
-### Memory usage
+      pub fn bar(inputs: impl IntoIterator<Item = String>) -> impl Iterator<Item = String> {
+          // do something
+      }
+      ```
+    * Bad:
+      ```rust
+      /// This is bad because it is not general enough
+      pub fn foo(inputs: &[str]) -> Vec<&'a str> {}
 
-* Prefer streaming and iterating (avoid large in-memory `Vec`)
-
-### Conversions
-
-* Implement `From` or `TryFrom` for conversions between types (instead of converting in-place)
-
-### Struct derives
-
-* Derive `new` from `derive_new` crate for types that need `fn new`
-* Derive `Serialize` and `Deserialize` from `serde` crate for types that need serialization / deserialization
-* If the struct derives `Getters`, then each field whose type implements `Copy` must have a `#[getter(copy)]` annotation. For example:
-  * Good (note that `username` doesn't have `#[getter(copy)]` because its type is `String` which doesn't implement `Copy`, but `age` has `#[getter(copy)]`, because its type is `u64` which implements `Copy`):
-    ```rust
-    #[derive(Getters, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
-    pub struct User {
-      username: String,
-      #[getter(copy)]
-      age: u64,
-    }
-    ```
-
-### Visibility
-
-* By default, every type and function should be `pub`
-* Instead of `pub(crate)`, write `pub`
-* If a struct has a `new` method that returns a `Result`, then this is a private struct, so it must not be `pub`
-* Every field of a private struct must be private (not `pub`) to enforce validation
-* A private struct must always implement `TryFrom` instead of `From` (must never implement `From`) to enforce validation
-* A private struct that has `#[derive(Deserialize)]` must always use `#[serde(try_from = ...)]` to enforce validation during deserialization
-* A private struct should not implement `Default` in most cases (very rarely it may implement `Default` only if the default value is a valid value)
-* The code must always call the `new` method to enforce validation
-
-### Setters
-
-* Use setters that take `&mut self` instead of setters that take `self` and return `Self` (because passing a `foo: &mut Foo` is better than passing `foo: Foo` and returning `Foo` through the call stack)
-
-### Constructors
-
-* If the type constructor doesn't have side effects, then use the name `new`, else use the name `create`
-
-### Newtypes
-
-* The macro calls that begin with `subtype` (for example, `subtype!` and `subtype_string!`) expand to newtypes
-
-### Enums
-
-* When writing code related to enums, bring the variants in scope with `use Enum::*;` statement at the top of the file or function (prefer "at the top of the file" for data enums, prefer "at the top of the function" for error enums).
-
-### Arithmetics
-
-* Never use the following operators: `+, +=, -, -=, *, *=, /, /=, %, %=, -, <<, <<=, >>, >>=`
-* Never use the following traits: `core::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Rem, RemAssign, Neg, Shl, ShlAssign, Shr, ShrAssign}`
-* Every crate must have a `#![deny(clippy::arithmetic_side_effects)]` attribute
-* Prefer `checked` versions of arithmetic operations
-* Every call to an `overflowing`, `saturating`, `wrapping` version must have a single-line comment above it that starts with "SAFETY: " and describes why calling this version is safe in this specific case
-* Use `num` crate items if necessary (for example, to implement a function that calls arithmetic methods on a generic type)
-
-Note: the arithmetic operators and traits are banned because they may panic or silently overflow.
-
-### Index access
-
-* Never use the following operators: `[], []=`
-* Never use the following traits: `core::ops::{Index, IndexMut}`
-* If you are sure that `get` or `get_mut` will never panic, use `expect` with a proof message (as described in [Code style](#code-style))
-
-Note: the index access operators and traits are banned because they may panic.
-
-### Package features
-
-* Don't define package features in `Cargo.toml` that contain only a single optional dependency (such features are defined by cargo automatically)
-
-### Code style
-
+      /// This is bad because it is not general enough and also forces the caller to collect the strings into a vec, which is bad for performance
+      pub fn bar(inputs: Vec<String>) -> Vec<String> {}
+      ```
+* Prefer implementing and use `From` or `TryFrom` for conversions between types (instead of converting in-place)
+* Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
 * Implement proper error handling instead of `unwrap` or `expect` (in normal code and in tests)
   * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
-* The file names must match the names of the primary item in this file (for example: a file with `struct User` must be in `user.rs`)
-* Don't use `mod.rs`, use module files with submodules in the folder with the same name (for example: `user.rs` with submodules in `user` folder)
-* Put the trait implementations in the same file as the target struct (for example: put `impl TryFrom<...> for User` in the same file as `struct User`, which is `user.rs`)
-* Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
 * Use iterators instead of for loops. For example:
   * Good:
     ```rust
@@ -274,25 +251,6 @@ Note: the index access operators and traits are banned because they may panic.
     /// This is bad because the callsite may have to call .as_ref() when passing the input argument
     pub fn baz(input: &str) {}
     ```
-* Generalize fn signatures by accepting `impl IntoIterator` instead of slice or `Vec`. For example:
-  * Good:
-    ```rust
-    pub fn foo<'a>(inputs: impl IntoIterator<Item = &'a str>) {
-        // do something
-    }
-
-    pub fn bar(inputs: impl IntoIterator<Item = String>) {
-        // do something
-    }
-    ```
-  * Bad:
-    ```rust
-    /// This is bad because it is not general enough
-    pub fn foo(inputs: &[str]) {}
-
-    /// This is bad because it is not general enough and also forces the caller to collect the strings into a vec, which is bad for performance
-    pub fn bar(inputs: impl IntoIterator<Item = String>) {}
-    ```
 * Prefer `.map()` instead of `match` when you need to modify the value in the `Option` or `Result`. For example:
   * Good:
     ```rust
@@ -347,6 +305,54 @@ Note: the index access operators and traits are banned because they may panic.
       }
   }
   ```
+
+### Struct derives
+
+* Derive `new` from `derive_new` crate for types that need `fn new`
+* If the struct derives `Getters`, then each field whose type implements `Copy` must have a `#[getter(copy)]` annotation. For example:
+  * Good (note that `username` doesn't have `#[getter(copy)]` because its type is `String` which doesn't implement `Copy`, but `age` has `#[getter(copy)]`, because its type is `u64` which implements `Copy`):
+    ```rust
+    #[derive(Getters, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
+    pub struct User {
+      username: String,
+      #[getter(copy)]
+      age: u64,
+    }
+    ```
+
+### Setters
+
+* Use setters that take `&mut self` instead of setters that take `self` and return `Self` (because passing a `foo: &mut Foo` is more efficient than passing `foo: Foo` and returning `Foo` through the call stack)
+
+### Enums
+
+* When writing code related to enums, bring the variants in scope with `use Enum::*;` statement at the top of the file or function (prefer "at the top of the file" for data enums, prefer "at the top of the function" for error enums).
+
+### Arithmetics
+
+* Never use the following operators: `+, +=, -, -=, *, *=, /, /=, %, %=, -, <<, <<=, >>, >>=`
+* Never use the following traits: `core::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Rem, RemAssign, Neg, Shl, ShlAssign, Shr, ShrAssign}`
+* Every crate must have a `#![deny(clippy::arithmetic_side_effects)]` attribute
+* Prefer `checked` versions of arithmetic operations
+* Every call to an `overflowing`, `saturating`, `wrapping` version must have a single-line comment above it that starts with "SAFETY: " and describes why calling this version is safe in this specific case
+* Use `num` crate items if necessary (for example, to implement a function that calls arithmetic methods on a generic type)
+
+Note: the arithmetic operators and traits are banned because they may panic or silently overflow.
+
+### Index access
+
+* Never use the following operators: `[], []=`
+* Never use the following traits: `core::ops::{Index, IndexMut}`
+* If you are sure that `get` or `get_mut` will never panic, use `expect` with a proof message (as described in [Functions](#functions))
+
+Note: the index access operators and traits are banned because they may panic.
+
+### Cargo.toml
+
+* Don't define package features contain only a single optional dependency (such features are already defined by cargo automatically)
+
+### Macros
+
 * Write `macro_rules!` macros to reduce boilerplate
 * If you see similar code in different places, write a macro and replace the similar code with a macro call
 
@@ -357,6 +363,24 @@ You are running in a sandbox with limited network access.
 * The list of allowed domains is available in /etc/dnsmasq.d/allowed\_domains.conf
 * If you need to run a network command, just do it without checking permissions (they will be enforced automatically)
 * If you need to read the data from other domains, use the web search tool (this tool is executed outside of sandbox)
+
+## Guidelines for `serde`
+
+* Every input data type must derive `Serialize` and `Deserialize`
+* Every `Option`-wrapped field must have attributes:
+  * `#[serde(skip_serializing_if = "Option::is_none")]`
+* Every `OffsetDateTime` field must have attributes:
+  * `#[serde(with = "time::serde::rfc3339")]`
+* Every `Option<OffsetDateTime>` field must have attributes:
+  * `#[serde(with = "time::serde::rfc3339::option")]`
+* Every field that stores a physical value must be serialized as a map that includes at least two fields: `value` and `unit`
+  * `value` must be a primitive type
+  * `unit` must be a string that contains the unit name in singular form (for example: "nanosecond", "second", "minute", "kilogram", "meter")
+    * `unit` may contain a prefix (for example: "nano", "kilo")
+
+## Guidelines for `subtype`
+
+* The macro calls that begin with `subtype` (for example, `subtype!` and `subtype_string!`) expand to newtypes.
 
 ## Project concepts
 
@@ -559,20 +583,38 @@ Read the extra docs from the dirs below if they are relevant to your current tas
 
 * `.agents/docs/docs.polymarket.com` contains Polymarket API docs (Gamma, CLOB, WebSocket)
 
-## Error handling guidelines
+## Error handling
 
-* Don't use `?` try operator - use the macros that begin with `handle`
-* Use `handle!` to unwrap `Result` types
-* Use `handle_opt!` to unwrap `Option` types
-* Use `handle_bool!` to return an error if some condition is true
+### Princicle
+
+Every fallible function must return an error with enough data for the caller to retry the call.
+
+### Guidelines
+
+* Use `handle!` instead of `?` try operator to unwrap `Result` types
+* Use `handle!` instead of `Result::map_err`
+* Use `handle_opt!` instead of `?` try operator to unwrap `Option` types
+* Use `handle_opt!` instead of `Option::ok_or` and `Option::ok_or_else`
+* Use `handle_bool!` instead of `if condition { return Err(...) }` to return an error if some condition is true
 * Use `handle_iter!` or `handle_iter_of_refs!` to collect and return errors from iterators
-* Note that macros that begin with `handle` already contain a `return` statement
-* Don't call `.clone()` on the variables passed into error handling macros (there is no need to clone the variables because the macros consume them only in the error branch). The macros do not consume the variables that are passed into them in the success branch. If you call a macro, you can always use the variables that are passed into the macro call in the subsequent code as if they haven't been moved (because they actually are not moved in the success branch, only in the error branch).
+* Use `handle_into_iter!` to handle errors in collections that implement `IntoIterator` (including `Vec` and `HashMap`)
+* Calls to macros that begin with `handle` must not contain calls to `clone` (must not contain `.clone()`)
+  * Rationale: there is no need to clone the variables because the macros consume them only in the error branch, and the error branch contains a `return` statement. The variables are not consumed in the success branch, so you can always use them in the subsequent code.
 * Don't convert a `Result` into an `Option`, always propagate the error up the call stack
-* Use `thiserror` to derive `Error`
-* Use `thiserror` version `2.0`
-* Do not annotate any error enum variant fields with a `#[from]` attribute
-* Do annotate every error enum variant with an `#[error]` attribute
+* Don't use `unwrap` or `expect`
+* Don't return strings as errors
+* Every fallible function must return a unique error type, even if it contains only one fallible expression
+* Every call to another fallible function must be wrapped in a unique error enum variant
+* Every fallible function body must begin with `use ThisFunctionError::*;`, where `ThisFunctionError` must be the name of this function's error enum (for example: `use ParseConfigError::*;`)
+* Every fallible function body must use the error enum variant names without the error enum name prefix (for example: `ReadFileFailed` instead of `ParseConfigError::ReadFileFailed`)
+* Every error type must be an enum
+* Every error type must derive `Error` via `thiserror` v2
+* Every error type must be located below the function that returns it (in the same file)
+* Every error enum variant must be a struct variant
+* Every error enum variant must contain one field per owned variable that is relevant to the fallible expression that this variant wraps
+  * The relevant variable is a variable whose value determines whether the fallible expression returns an `Ok` or an `Err`
+* Every error enum variant must have fields only for [`data types`](#data-type), not for [`non-data types`](#non-data-type)
+* Every error enum variant must have an `#[error]` attribute
   * The `#[error]` attribute must contain the error message displayed for the user
   * The `#[error]` attribute must not contain the `source` field
   * The `#[error]` attribute should contain only those fields that can be displayed on one line
@@ -596,7 +638,51 @@ Read the extra docs from the dirs below if they are relevant to your current tas
   * If the `#[error]` attribute contains fields, then those fields must be wrapped in single quotes. This is necessary to correctly display fields that may contain spaces.
     * Good: `#[error("user '{name}' not found")]`
     * Bad: `#[error("user {name} not found")]`
+* If the error enum variant has a `source` field, then this field must be the first field
+* If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
+* Every error enum variant field must have an owned type (not a reference)
+* Every error enum variant field must not have a `#[from]` attribute
+* Every variable that contains secret data (the one which must not be displayed or logged, e.g. password, API key, personally identifying information) must have a type that doesn't output the underlying data in the `Debug` and `Display` impls (e.g. `secrecy::SecretBox`)
+* The code that calls a fallible function on each element of a collection should return an `impl Iterator<Item = Result<T, E>>` instead of short-circuiting on the first error
+* If Clippy outputs a `result_large_err` warning, then the large fields of the error enum must be wrapped in a `Box`
+* If an argument of callee implements `Copy`, the callee should not include it in the list of error enum variant fields (the caller must include it because of the rule to include all relevant owned variables)
 * If you see a function that returns a `Result` whose last argument is `()` (e.g. `Result<(), ()>`, `Result<T, ()>`, `Result<u32, ()>`), then you must fix the error handling in this function according to the guidelines and replace `()` with a proper error type
+
+#### Naming
+
+* The name of the error enum must end with `Error` (for example: `ParseConfigError`)
+* The name of the error enum variant should end with `Failed` or `NotFound` or `Invalid` (for example: `ReadFileFailed`, `UserNotFound`, `PasswordInvalid`)
+* If the error variant name is associated with a child function call, the name of the error variant must be equal to the name of the function converted to CamelCase concatenated with `Failed` (for example: if the parent function calls `read_file`, then it should call it like this: `handle!(read_file(&path), ReadFileFailed, path)`
+* The name of the error enum must include the name of the function converted to CamelCase
+  * If the function is a freestanding function, the name of the error type must be exactly equal to the name of the function converted to CamelCase concatenated with `Error`
+  * If the function is an associated function, the name of the error type must be exactly equal to the name of the type without generics concatenated with the name of the function in CamelCase concatenated with `Error`
+  * If the error is specified as an associated type of a foreign trait with multiple functions that return this associated error type, then the name of the error type must be exactly equal to the name of the trait including generics concatenated with the name of the type for which this trait is implemented concatenated with `Error`
+* If the error enum is defined for a `TryFrom<A> for B` impl, then its name must be equal to "Convert{A}To{B}Error"
+
+### Definitions
+
+#### Fallible expression
+
+An expression that returns a `Result`.
+
+#### Data type
+
+A type that holds the actual data.
+
+Examples:
+
+* `bool`
+* `String`
+* `PathBuf`
+
+#### Non-data type
+
+A type that doesn't hold the actual data.
+
+Examples:
+
+* `RestClient` doesn't point to the actual data, it only allows querying it.
+* `DatabaseConnection` doesn't hold the actual data, it only allows querying it.
 
 ### Files
 
@@ -1238,84 +1324,6 @@ cfg_if::cfg_if! {
 #![doc = include_str!("./functions/writeln_error/fixtures/must_write_error.txt")]
 #![doc = "```"]
 //!
-//! ## Better error handling
-//!
-//! **Goal**: Help the caller diagnose the issue, fix it, and retry the call.
-//!
-//! **Approach**: Every error must be represented by a unique enum variant with relevant fields.
-//!
-//! ### Guidelines
-//!
-//! * Every error type must be an enum
-//! * Every error enum variant must be a struct variant
-//! * Every error enum variant must contain one field per owned variable that is relevant to the fallible expression that this variant wraps
-//!   * The relevant variable is a variable whose value determines whether the fallible expression returns an [`Ok`] or an [`Err`]
-//! * Every error enum variant must have fields only for [`data types`](#data-type), not for [`non-data types`](#non-data-type)
-//! * Every error enum variant field must have an owned type (not a reference)
-//! * Every error enum should be located below the function that returns it (in the same file)
-//! * Every fallible function must return a unique error type
-//! * Every call to another fallible function must be wrapped in a unique error enum variant
-//! * If the function contains only one fallible expression, this expression must still be wrapped in an error enum variant
-//! * Every variable that contains secret data (the one which must not be displayed or logged, e.g. password, API key, personally identifying information) must have a type that doesn't output the underlying data in the Debug and Display impls (e.g. [`secrecy::SecretBox`](https://docs.rs/secrecy/latest/secrecy/struct.SecretBox.html))
-//! * The code that calls a fallible function on each element of a collection should return an `impl Iterator<Item = Result<T, E>>` instead of short-circuiting on the first error
-//! * If Clippy outputs a `result_large_err` warning, then the large fields of the error enum must be wrapped in a `Box`
-//! * If the error enum variant has a `source` field, then this field must be the first field
-//! * The code must not use strings for error messages
-//! * The code must not use `unwrap` or `expect`
-//! * If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
-//! * If an argument of callee implements `Copy`, the callee must not include it in the list of error enum variant fields (the caller must include it because of the rule to include all relevant owned variables)
-//!
-//! ### Conveniences
-//!
-//! * Every fallible function body must begin with `use ThisFunctionError::*;`, where `ThisFunctionError` must be the name of this function's error enum (for example: `use ParseConfigError::*;`)
-//! * The error handling code must use the error enum variant names without the error enum name prefix (for example: `ReadFileFailed` instead of `ParseConfigError::ReadFileFailed`)
-//!
-//! ### Naming
-//!
-//! * The name of the error enum must end with `Error` (for example: `ParseConfigError`)
-//! * The name of the error enum variant should end with `Failed` or `NotFound` or `Invalid` (for example: `ReadFileFailed`, `UserNotFound`, `PasswordInvalid`)
-//! * If the error variant name is associated with a child function call, the name of the error variant must be equal to the name of the function converted to CamelCase concatenated with `Failed` (for example: if the parent function calls `read_file`, then it should call it like this: `handle!(read_file(&path), ReadFileFailed, path)`
-//! * The name of the error enum must include the name of the function converted to CamelCase
-//!   * If the function is a freestanding function, the name of the error type must be exactly equal to the name of the function converted to CamelCase concatenated with `Error`
-//!   * If the function is an associated function, the name of the error type must be exactly equal to the name of the type without generics concatenated with the name of the function in CamelCase concatenated with `Error`
-//!   * If the error is specified as an associated type of a foreign trait with multiple functions that return this associated error type, then the name of the error type must be exactly equal to the name of the trait including generics concatenated with the name of the type for which this trait is implemented concatenated with `Error`
-//! * If the error enum is defined for a `TryFrom<A> for B` impl, then its name must be equal to "Convert{A}To{B}Error"
-//!
-//! ## Macros
-//!
-//! Use the following macros for more concise error handling:
-//!
-//! * [`handle!`] instead of [`Result::map_err`]
-//! * [`handle_opt!`] instead of [`Option::ok_or`] and [`Option::ok_or_else`]
-//! * [`handle_bool!`] instead of `if condition { return Err(...) }`
-//! * [`handle_iter!`] instead of code that handles errors in iterators
-//! * [`handle_iter_of_refs!`] instead of code that handles errors in iterators of references (where the values are still being owned by the underlying collection)
-//! * [`handle_into_iter!`] instead of code that handles errors in collections that implement [`IntoIterator`] (including [`Vec`] and [`HashMap`](std::collections::HashMap)
-//!
-//! ## Definitions
-//!
-//! ### Fallible expression
-//!
-//! An expression that returns a [`Result`].
-//!
-//! ### Data type
-//!
-//! A type that holds the actual data.
-//!
-//! For example:
-//!
-//! * `bool`
-//! * `String`
-//! * `PathBuf`
-//!
-//! ### Non-data type
-//!
-//! A type that doesn't hold the actual data.
-//!
-//! For example:
-//!
-//! * `RestClient` doesn't point to the actual data, it only allows querying it.
-//! * `DatabaseConnection` doesn't hold the actual data, it only allows querying it.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
