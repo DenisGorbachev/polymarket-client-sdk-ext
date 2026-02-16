@@ -7,7 +7,7 @@ use std::ops::Deref;
 /// This function assumes that the `event` passes [`is_date_cascade`] check
 ///
 /// Returns a vec of prices
-pub fn get_date_cascade_opportunity(event: &Event) -> Option<Vec<rust_decimal::Decimal>> {
+pub fn get_time_spread_arbitrage_opportunity(event: &Event) -> Option<Vec<rust_decimal::Decimal>> {
     event.markets.as_ref().map(|markets| {
         let _prices = markets.iter().map(|x| x.outcome_prices.as_ref());
         todo!()
@@ -153,4 +153,5 @@ mod tests {
     }
 }
 mod slug_is_none;
+
 pub use slug_is_none::*;

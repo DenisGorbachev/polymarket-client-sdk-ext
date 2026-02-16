@@ -38,9 +38,9 @@ mod next_cursor;
 
 pub use next_cursor::*;
 
-mod order_book;
+mod order_book_summary_response_precise;
 
-pub use order_book::*;
+pub use order_book_summary_response_precise::*;
 
 mod level;
 
@@ -169,5 +169,7 @@ pub use rkyv_duration::*;
 mod duration_positive_seconds;
 
 pub use duration_positive_seconds::*;
+
 mod property_distribution;
+
 pub use property_distribution::*;

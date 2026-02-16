@@ -6,6 +6,7 @@ use polymarket_client_sdk::clob::types::TickSize;
 use polymarket_client_sdk::clob::types::response::OrderBookSummaryResponse;
 use rkyv::with::Map;
 use rust_decimal::Decimal;
+use strum::EnumIs;
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -36,13 +37,20 @@ pub struct OrderBookSummaryResponsePrecise {
 }
 
 impl OrderBookSummaryResponsePrecise {
-    pub fn validate(&self) -> Result<(), BidAskCrossError> {
+    pub fn validate(&self) -> Result<(), OrderBookValidateError> {
+        use OrderBookValidateError::*;
         let max_bid_price_opt = self.bids.keys().max();
         let min_ask_price_opt = self.asks.keys().min();
         match (max_bid_price_opt, min_ask_price_opt) {
-            (Some(max_bid_price), Some(min_ask_price)) if max_bid_price >= min_ask_price => Err(BidAskCrossError::new(*max_bid_price, *min_ask_price)),
+            (Some(max_bid_price), Some(min_ask_price)) if max_bid_price >= min_ask_price => Err(BidAskCross {
+                source: BidAskCrossError::new(*max_bid_price, *min_ask_price),
+            }),
             _ => Ok(()),
         }
+    }
+
+    pub fn is_crossed(&self) -> bool {
+        self.validate().is_err_and(|e| e.is_bid_ask_cross())
     }
 }
 
@@ -126,6 +134,12 @@ impl From<OrderBookSummaryResponsePrecise> for OrderBookSummaryResponse {
             .tick_size(tick_size)
             .build()
     }
+}
+
+#[derive(Error, EnumIs, Debug)]
+pub enum OrderBookValidateError {
+    #[error("bid-ask cross")]
+    BidAskCross { source: BidAskCrossError },
 }
 
 #[cfg(test)]
