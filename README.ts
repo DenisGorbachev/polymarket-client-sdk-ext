@@ -158,7 +158,7 @@ const thePackageMetadata = theCargoMetadata.packages.find((p) => p.name == name)
 assert(thePackageMetadata, "Could not find package metadata")
 const primaryTarget = thePackageMetadata.targets[0]
 assert(primaryTarget, "Could not find package primary target")
-const primaryBinTarget = thePackageMetadata.targets.find((t) => t.name == name && t.kind.includes("bin"))
+const primaryBinTarget = thePackageMetadata.targets.find((t) => t.kind.includes("bin"))
 // NOTE: primaryTarget may be equal to primaryBinTarget
 const primaryTargets = [primaryTarget, primaryBinTarget]
 const secondaryTargets = thePackageMetadata.targets.filter((t) => !primaryTargets.includes(t))

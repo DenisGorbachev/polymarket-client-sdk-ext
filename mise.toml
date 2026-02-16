@@ -82,11 +82,12 @@ cargo clippy --all-targets --all-features -- -D warnings
 run = "cargo fmt --all"
 
 [tasks."fix:docs"]
+# `rumdl check --fix` may modify any file, so we need to stage all markdown files.
 # use `rumdl check --fix` instead of `rumdl fmt` because `rumdl check --fix` exits with 1 if errors remain (since v0.1.0)
-# `rumdl check --fix` may modify any file, so we need to `git add *.md` (`stage_fixed` only stages the files that were modified before `fix:docs` is run)
+# use a quoted git pathspec so ignored files (e.g. `*.local.md`) don't fail the task.
 run = """
 rumdl check --fix
-git add *.md
+git add -- '*.md'
 """
 
 [tasks."fix:deps"]
