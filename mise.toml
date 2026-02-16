@@ -11,9 +11,7 @@ cargo-binstall = "1.10.15"
 "npm:@commitlint/types" = "19.5.0"
 "npm:repomix" = "1.5.0"
 "cargo:cargo-insert-docs" = "1.2.0"
-"cargo:cargo-sort" = "1.0.9"
 "cargo:cargo-hack" = "0.6.33"
-"cargo:cargo-machete" = "0.7.0"
 "cargo:cargo-nextest" = "0.9.102"
 "cargo:cargo-expand" = "1.0.114"
 "cargo:rumdl" = "0.1.0"
@@ -35,9 +33,6 @@ run = "cargo clippy --all-targets --all-features -- -D warnings"
 
 [tasks."lint:docs"]
 run = "rumdl check"
-
-[tasks."lint:deps"]
-run = "cargo machete --with-metadata"
 
 [tasks."test"]
 # `depends` intentionally doesn't include "test:code:integration" or "test:code:slow" (such tests should be run only by agent or CI)
@@ -61,7 +56,7 @@ run = "cargo test --doc --all-features --no-fail-fast --quiet"
 
 [tasks."fix"]
 # run the tasks in parallel because they modify different files
-depends = ["fix:code", "fix:docs", "fix:deps", "fix:agents"]
+depends = ["fix:code", "fix:docs", "fix:agents"]
 
 [tasks."fix:code"]
 # run the tasks sequentially because they modify the same files
@@ -89,19 +84,6 @@ run = """
 rumdl check --fix
 git add -- '*.md'
 """
-
-[tasks."fix:deps"]
-# run the tasks sequentially because they modify the same files
-run = """
-mise run fix:deps:usage
-mise run fix:deps:order
-"""
-
-[tasks."fix:deps:usage"]
-run = "cargo machete --with-metadata --fix"
-
-[tasks."fix:deps:order"]
-run = "cargo sort"
 
 [tasks."fix:agents"]
 run = """
