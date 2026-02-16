@@ -1771,7 +1771,7 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 [[package]]
 name = "errgonomic"
 version = "0.5.0"
-source = "git+https://github.com/DenisGorbachev/errgonomic#4a49d7c8e90c2b29f7c0bc66a4f435244ffb165d"
+source = "git+https://github.com/DenisGorbachev/errgonomic#4ab6c25c33e0974939475c62a3027a5ce286c3d8"
 dependencies = [
  "cfg-if",
  "futures",
