@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, gamma_event_raw_is_fresh, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GAMMA_QUERY_ASCENDING, GammaEvent, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, gamma_event_raw_is_fresh, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, map_err};
@@ -118,7 +118,7 @@ impl CacheDownloadCommand {
             eprintln!("{}", progress_report_line("Downloading events", offset, Some(page_size), None, page_offset, page_limit));
             let request = EventsRequest::builder()
                 .order(vec!["id".to_string()])
-                .ascending(true)
+                .ascending(GAMMA_QUERY_ASCENDING)
                 .limit(GAMMA_EVENTS_PAGE_SIZE as i32)
                 .offset(offset as i32)
                 .build();

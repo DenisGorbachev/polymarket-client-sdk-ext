@@ -8,6 +8,9 @@ pub const NO: &str = "No";
 /// Must be explicitly set in order to take effect
 pub const GAMMA_EVENTS_PAGE_SIZE: usize = 500;
 
+/// The value of `ascending` param for gamma queries
+pub const GAMMA_QUERY_ASCENDING: bool = true;
+
 pub const GAMMA_EVENTS_KEYSPACE: &str = "GammaEvent";
 pub const CLOB_MARKET_RESPONSES_KEYSPACE: &str = "ClobMarketResponsePrecise";
 pub const CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE: &str = "OrderBookSummaryResponsePrecise";
