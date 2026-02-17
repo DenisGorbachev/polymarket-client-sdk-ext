@@ -71,8 +71,7 @@ impl CacheGammaEventsListDateCascadesCommand {
         use CacheGammaEventsListDateCascadesCommandWriteDateCascadesError::*;
         let (key_slice, value_slice) = handle!(guard.into_inner(), ReadEntryFailed);
         let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
-        let is_date_cascade = event.is_date_cascade().is_some_and(|value| value);
-        if is_date_cascade {
+        if event.is_date_cascade {
             let output_bytes = handle!(serde_json::to_vec(&event), SerializeOutputFailed, event: Box::new(event));
             Ok(Some((key_slice, output_bytes)))
         } else {

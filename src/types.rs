@@ -173,3 +173,7 @@ pub use duration_positive_seconds::*;
 mod property_distribution;
 
 pub use property_distribution::*;
+
+mod time_spread_arbitrage_opportunity;
+
+pub use time_spread_arbitrage_opportunity::*;

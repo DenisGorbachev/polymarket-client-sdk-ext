@@ -1,4 +1,4 @@
-use crate::GammaMarket;
+use crate::{GammaMarket, TimeSpreadArbitrageOpportunity};
 use derive_more::{From, Into};
 use errgonomic::{ErrVec, handle_bool, handle_iter, handle_opt};
 use polymarket_client_sdk::gamma::types::response::Event as GammaEventRaw;
@@ -11,44 +11,54 @@ pub struct GammaEvent {
     pub id: String,
     pub slug: String,
     /// NOTE: This Vec is not sorted
-    pub markets: Option<Vec<GammaMarket>>,
+    pub markets: Vec<GammaMarket>,
+    pub is_date_cascade: bool,
+}
+
+pub fn is_date_cascade<'a>(markets: impl IntoIterator<Item = &'a GammaMarket>) -> bool {
+    let mut markets = markets.into_iter().peekable();
+    // this check is needed because otherwise this function will return true for empty markets vec
+    if markets.peek().is_none() {
+        return false;
+    }
+    let questions = markets.map(|market| market.question.as_str());
+    crate::are_questions_date_cascade(questions)
 }
 
 impl GammaEvent {
-    /// This function may return multiple opportunities because multiple adjacent markets may exhibit inverted pricing.
-    ///
-    /// This function assumes that `self` passes [`Self::is_date_cascade`].
-    ///
-    /// Returns a vec of positive price differences (`prev_yes_price - next_yes_price`).
-    pub fn get_time_spread_arbitrage_opportunity(&self) -> Option<Vec<rust_decimal::Decimal>> {
-        use itertools::Itertools;
-        self.markets.as_ref().map(|markets| {
-            markets
-                .iter()
-                .filter(|market| market.end_date.is_some())
-                .sorted_by(|left, right| left.end_date.cmp(&right.end_date))
-                .tuple_windows()
-                .filter_map(|(prev, next)| {
-                    GammaMarket::is_inverted_pricing(prev, next).and_then(|is_inverted| {
-                        if is_inverted {
-                            prev.yes_price
-                                .as_ref()
-                                .zip(next.yes_price.as_ref())
-                                .and_then(|(prev_yes_price, next_yes_price)| prev_yes_price.checked_sub(*next_yes_price))
-                        } else {
-                            None
-                        }
-                    })
-                })
-                .collect()
-        })
+    pub fn api_url(&self) -> String {
+        format!("https://gamma-api.polymarket.com/events/slug/{}", self.slug)
     }
 
-    pub fn is_date_cascade(&self) -> Option<bool> {
-        self.markets.as_ref().map(|markets| {
-            let questions = markets.iter().map(|market| market.question.as_str());
-            crate::are_questions_date_cascade(questions)
-        })
+    /// This function may return multiple opportunities because multiple adjacent markets may exhibit inverted pricing.
+    ///
+    /// Returns all adjacent market pairs where earlier-date YES is priced above later-date YES.
+    pub fn get_time_spread_arbitrage_opportunities(&self) -> Option<Vec<TimeSpreadArbitrageOpportunity<'_>>> {
+        use itertools::Itertools;
+        if !self.is_date_cascade {
+            return None;
+        }
+        let opportunities = self
+            .markets
+            .iter()
+            .filter(|market| market.end_date.is_some())
+            .sorted_by(|left, right| left.end_date.cmp(&right.end_date))
+            .tuple_windows()
+            .filter_map(|(prev, next)| {
+                GammaMarket::is_inverted_pricing(prev, next).and_then(|is_inverted| {
+                    if is_inverted {
+                        Some(TimeSpreadArbitrageOpportunity {
+                            event: self,
+                            prev,
+                            next,
+                        })
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+        (!opportunities.is_empty()).then_some(opportunities)
     }
 }
 
@@ -65,17 +75,20 @@ impl TryFrom<GammaEventRaw> for GammaEvent {
         } = event;
         handle_bool!(id.trim().is_empty(), EventIdInvalid, id);
         let slug = handle_opt!(slug, SlugMissingInvalid, id);
-        let markets = match markets {
-            Some(markets) => {
-                let markets = handle_iter!(markets.into_iter().map(GammaMarket::try_from), TryFromFailed, id);
-                Some(markets)
-            }
-            None => None,
-        };
+        let markets = handle_iter!(
+            markets
+                .unwrap_or_default()
+                .into_iter()
+                .map(GammaMarket::try_from),
+            TryFromFailed,
+            id
+        );
+        let is_date_cascade = is_date_cascade(markets.iter());
         Ok(Self {
             id,
             slug,
             markets,
+            is_date_cascade,
         })
     }
 }

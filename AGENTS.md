@@ -155,6 +155,7 @@ Notes:
       pub fn bar(inputs: Vec<String>) -> Vec<String> {}
       ```
 * Prefer implementing and use `From` or `TryFrom` for conversions between types (instead of converting in-place)
+* Don't use early-return fast-path guards for empty vecs, iterators, streams (i.e. don't use `if items.is_empty() { return ...; }`)
 * Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
 * Implement proper error handling instead of `unwrap` or `expect` (in normal code and in tests)
   * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
