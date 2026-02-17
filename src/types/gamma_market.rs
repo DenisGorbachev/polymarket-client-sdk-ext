@@ -45,12 +45,21 @@ impl GammaMarket {
         handle_bool!(!prev.are_outcomes_boolean().unwrap_or_default(), PrevOutcomesInvalid);
         handle_bool!(!next.are_outcomes_boolean().unwrap_or_default(), NextOutcomesInvalid);
 
-        Ok(match ((prev.price_yes.as_ref(), next.price_yes.as_ref()), (prev.price_no.as_ref(), next.price_no.as_ref())) {
-            ((Some(prev_yes_price), Some(next_yes_price)), (Some(prev_no_price), Some(next_no_price))) => Some(prev_yes_price > next_yes_price || prev_no_price < next_no_price),
-            ((Some(prev_yes_price), Some(next_yes_price)), _) => Some(prev_yes_price > next_yes_price),
-            (_, (Some(prev_no_price), Some(next_no_price))) => Some(prev_no_price < next_no_price),
+        let is_yes_inverted = match (prev.price_yes, next.price_yes) {
+            (Some(prev_yes_price), Some(next_yes_price)) => Some(prev_yes_price > next_yes_price),
             _ => None,
-        })
+        };
+        let is_no_inverted = match (prev.price_no, next.price_no) {
+            (Some(prev_no_price), Some(next_no_price)) => Some(prev_no_price < next_no_price),
+            _ => None,
+        };
+        let is_any_inverted = match (is_yes_inverted, is_no_inverted) {
+            (Some(is_yes_inverted), Some(is_no_inverted)) => Some(is_yes_inverted || is_no_inverted),
+            (Some(is_yes_inverted), None) => Some(is_yes_inverted),
+            (None, Some(is_no_inverted)) => Some(is_no_inverted),
+            _ => None,
+        };
+        Ok(is_any_inverted)
     }
 
     pub fn are_outcomes_boolean(&self) -> Option<bool> {
