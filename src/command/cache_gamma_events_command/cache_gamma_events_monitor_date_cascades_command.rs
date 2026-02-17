@@ -1,8 +1,10 @@
-use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, GammaEventGetTimeSpreadArbitrageOpportunitiesError, OpenKeyspaceError, open_keyspace};
+use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, GammaEventGetTimeSpreadArbitrageOpportunitiesError, OpenKeyspaceError, is_date_cascade, open_keyspace};
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter};
 use fjall::{PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace};
+use itertools::Itertools;
 use polymarket_client_sdk::gamma::Client as GammaClient;
 use polymarket_client_sdk::gamma::types::request::EventsRequest;
+use std::io::stdout;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -38,10 +40,13 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
                     .map(|event| event.get_time_spread_arbitrage_opportunities()),
                 GetTimeSpreadArbitrageOpportunitiesFailed
             );
-            opportunities
+            let mut stdout = stdout().lock();
+            let opportunities_print_results = opportunities
                 .into_iter()
                 .flatten()
-                .for_each(|opportunity| println!("{event_url}", event_url = opportunity.event.api_url()));
+                .map(|opportunity| serde_json::ser::to_writer_pretty(&mut stdout, &opportunity));
+            let opportunities_print_result: Result<(), _> = opportunities_print_results.try_collect();
+            opportunities_print_result.unwrap();
             iterations = iterations.saturating_add(1);
             if max_iterations.is_some_and(|max_iterations| iterations >= max_iterations) {
                 break;
@@ -70,7 +75,8 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
         use CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError::*;
         let (_key, value) = handle!(guard.into_inner(), ReadEntryFailed);
         let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value.as_ref()), DeserializeFailed, value);
-        if event.is_date_cascade.unwrap_or_default() {
+        // TODO: use event.is_date_cascade
+        if is_date_cascade(&event.markets).unwrap_or_default() {
             handle_bool!(event.id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
             Ok(Some(event.id))
         } else {

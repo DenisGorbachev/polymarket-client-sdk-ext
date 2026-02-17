@@ -555,6 +555,10 @@ Requirements:
 * Some markets have `outcomes` that are not equal to `["Yes", "No"]` (example: [#214743](https://gamma-api.polymarket.com/events/slug/how-much-will-in-the-heights-gross-domestically-on-opening-weekend))
   * We should discard the events with such markets by applying a filter: `market.end_date.timestamp() >= TIMESTAMP_2023_01_01_00_00_00_Z`
 * Some markets have `end_date_iso.is_none()` but `end_date.is_some()` (example: [#500091](https://gamma-api.polymarket.com/events/slug/arthur-the-king-over-15m-opening-weekend))
+* Some markets have `end_date < start_date` (insane!) (example: [#252486](https://gamma-api.polymarket.com/events/slug/will-the-sec-approve-blackrocks-bitcoin-etf-by))
+  * Investigation of example #252486:
+    * The end\_date is "2023-03-30T00:00:00Z", but the market description hints that it should be "2024-03-30T00:00:00Z". Maybe end\_date is only used as a display field?
+    * The UI displays markets in the correct order according to market description, so it's likely sorting by id
 
 ### API limits
 

@@ -1,8 +1,8 @@
-use crate::{GammaEvent, GammaMarket};
+use crate::GammaMarket;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(serde::Serialize, Clone, Debug)]
 pub struct TimeSpreadArbitrageOpportunity<'a> {
-    pub event: &'a GammaEvent,
+    pub event_api_url: String,
     pub prev: &'a GammaMarket,
     pub next: &'a GammaMarket,
 }

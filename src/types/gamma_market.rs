@@ -26,28 +26,33 @@ pub struct GammaMarket {
     pub price_no: Option<Decimal>,
 
     #[rkyv(with = RkyvOffsetDateTime)]
+    #[serde(with = "time::serde::rfc3339")]
     pub end_date: OffsetDateTime,
 }
 
 impl GammaMarket {
     /// This function assumes that `prev.end_date` is less or equal to `next.end_date`.
+    /// This function assumes that `prev.outcomes == next.outcomes` and both equal to [`BOOLEAN_OUTCOMES`](BOOLEAN_OUTCOMES)
     pub fn is_inverted_pricing(prev: &Self, next: &Self) -> Result<Option<bool>, GammaMarketIsInvertedPricingError> {
         use GammaMarketIsInvertedPricingError::*;
         let prev_end_date = prev.end_date;
         let next_end_date = next.end_date;
         handle_bool!(prev_end_date > next_end_date, MarketDateOrderInvalid, prev_end_date, next_end_date);
 
-        let outcomes = prev.outcomes.as_ref().zip(next.outcomes.as_ref());
-        let Some((prev_outcomes, next_outcomes)) = outcomes else {
-            return Ok(None);
-        };
-        handle_bool!(prev_outcomes.as_slice() != BOOLEAN_OUTCOMES.as_slice(), PrevOutcomesInvalid, prev_outcomes: prev_outcomes.to_vec());
-        handle_bool!(next_outcomes.as_slice() != BOOLEAN_OUTCOMES.as_slice(), NextOutcomesInvalid, next_outcomes: next_outcomes.to_vec());
+        handle_bool!(!prev.are_outcomes_boolean().unwrap_or_default(), PrevOutcomesInvalid);
+        handle_bool!(!next.are_outcomes_boolean().unwrap_or_default(), NextOutcomesInvalid);
+
         Ok(prev
             .price_yes
             .as_ref()
             .zip(next.price_yes.as_ref())
             .map(|(prev_yes_price, next_yes_price)| prev_yes_price > next_yes_price))
+    }
+
+    pub fn are_outcomes_boolean(&self) -> Option<bool> {
+        self.outcomes
+            .as_ref()
+            .map(|outcomes| outcomes.as_slice() == BOOLEAN_OUTCOMES.as_slice())
     }
 }
 
@@ -102,7 +107,7 @@ pub enum GammaMarketIsInvertedPricingError {
     #[error("previous market end date must be earlier than next market end date")]
     MarketDateOrderInvalid { prev_end_date: OffsetDateTime, next_end_date: OffsetDateTime },
     #[error("previous market outcomes must be exactly 'Yes'/'No'")]
-    PrevOutcomesInvalid { prev_outcomes: Vec<String> },
+    PrevOutcomesInvalid,
     #[error("next market outcomes must be exactly 'Yes'/'No'")]
-    NextOutcomesInvalid { next_outcomes: Vec<String> },
+    NextOutcomesInvalid,
 }

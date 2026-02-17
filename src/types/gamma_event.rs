@@ -19,6 +19,13 @@ pub fn is_date_cascade(markets: &[GammaMarket]) -> Option<bool> {
     if markets.len() < 2 {
         return None;
     }
+    let market_with_non_boolean_outcomes = markets
+        .iter()
+        .find(|m| m.are_outcomes_boolean() != Some(true));
+    let some_markets_have_non_boolean_outcomes = market_with_non_boolean_outcomes.is_some();
+    if some_markets_have_non_boolean_outcomes {
+        return None;
+    }
     let questions = markets.iter().map(|market| market.question.as_str());
     Some(are_questions_date_cascade(questions))
 }
@@ -47,7 +54,7 @@ impl GammaEvent {
                         is_inverted.and_then(|is_inverted| {
                             if is_inverted {
                                 Some(TimeSpreadArbitrageOpportunity {
-                                    event: self,
+                                    event_api_url: self.api_url(),
                                     prev,
                                     next,
                                 })
