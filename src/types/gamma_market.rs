@@ -14,13 +14,17 @@ use time::error::ComponentRange;
 #[serde(deny_unknown_fields)]
 pub struct GammaMarket {
     pub question: String,
+
     pub outcomes: Option<Vec<String>>,
+
     #[serde(with = "rust_decimal::serde::str_option")]
     #[rkyv(with = Map<RkyvDecimal>)]
-    pub yes_price: Option<Decimal>,
+    pub price_yes: Option<Decimal>,
+
     #[serde(with = "rust_decimal::serde::str_option")]
     #[rkyv(with = Map<RkyvDecimal>)]
-    pub no_price: Option<Decimal>,
+    pub price_no: Option<Decimal>,
+
     #[rkyv(with = Map<RkyvOffsetDateTime>)]
     pub end_date: Option<OffsetDateTime>,
 }
@@ -40,9 +44,9 @@ impl GammaMarket {
             .and_then(|(prev_outcomes, next_outcomes)| {
                 debug_assert_eq!(prev_outcomes.as_slice(), BOOLEAN_OUTCOMES.as_slice());
                 debug_assert_eq!(next_outcomes.as_slice(), BOOLEAN_OUTCOMES.as_slice());
-                prev.yes_price
+                prev.price_yes
                     .as_ref()
-                    .zip(next.yes_price.as_ref())
+                    .zip(next.price_yes.as_ref())
                     .map(|(prev_yes_price, next_yes_price)| prev_yes_price > next_yes_price)
             })
     }
@@ -70,8 +74,8 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
             (Some(question), Ok(end_date)) if outcome_prices_rest.is_empty() => Ok(Self {
                 question,
                 outcomes,
-                yes_price,
-                no_price,
+                price_yes: yes_price,
+                price_no: no_price,
                 end_date,
             }),
             (question, end_date_result) => Err(ConversionFailed {
