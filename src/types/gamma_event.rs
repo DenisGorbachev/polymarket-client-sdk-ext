@@ -1,6 +1,6 @@
-use crate::{ConvertGammaMarketRawToGammaMarketError, GammaMarket, TIMESTAMP_2023_01_01_00_00_00_Z, TimeSpreadArbitrageOpportunity};
+use crate::{ConvertGammaMarketRawToGammaMarketError, GammaMarket, TimeSpreadArbitrageOpportunity, gamma_event_raw_is_fresh};
 use derive_more::{From, Into};
-use errgonomic::{ErrVec, handle_bool, handle_opt, partition_result};
+use errgonomic::{ErrVec, handle_bool, partition_result};
 use polymarket_client_sdk::gamma::types::response::Event as GammaEventRaw;
 use thiserror::Error;
 
@@ -67,8 +67,7 @@ impl TryFrom<GammaEventRaw> for GammaEvent {
 
     fn try_from(event: GammaEventRaw) -> Result<Self, Self::Error> {
         use ConvertGammaEventRawToGammaEventError::*;
-        let end_date = handle_opt!(event.end_date, Unsupported, event);
-        handle_bool!(end_date.timestamp() < TIMESTAMP_2023_01_01_00_00_00_Z, Unsupported, event);
+        handle_bool!(!gamma_event_raw_is_fresh(&event), Unsupported, event);
         let GammaEventRaw {
             id,
             slug,
