@@ -53,6 +53,8 @@ pub struct ClobMarketResponsePrecise {
 }
 
 impl ClobMarketResponsePrecise {
+    // NOTE: This definition is not verified to be correct
+    // NOTE: Some GammaEvent have `e.active && e.closed` at the same time
     pub fn is_tradeable(&self) -> bool {
         self.active && !self.closed && !self.archived && self.accepting_orders && self.enable_order_book
     }

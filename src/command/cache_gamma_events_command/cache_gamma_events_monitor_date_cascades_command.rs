@@ -64,7 +64,7 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
         use CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError::*;
         let (_key, value) = handle!(guard.into_inner(), ReadEntryFailed);
         let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value.as_ref()), DeserializeFailed, value);
-        if event.is_date_cascade {
+        if event.is_date_cascade.unwrap_or_default() {
             handle_bool!(event.id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
             Ok(Some(event.id))
         } else {

@@ -1,4 +1,4 @@
-use crate::{ConvertGammaMarketRawToGammaMarketError, GammaMarket, TimeSpreadArbitrageOpportunity, gamma_event_raw_is_fresh};
+use crate::{ConvertGammaMarketRawToGammaMarketError, GammaMarket, TimeSpreadArbitrageOpportunity, are_questions_date_cascade, gamma_event_raw_is_fresh};
 use derive_more::{From, Into};
 use errgonomic::{ErrVec, handle_bool, partition_result};
 use polymarket_client_sdk::gamma::types::response::Event as GammaEventRaw;
@@ -12,17 +12,15 @@ pub struct GammaEvent {
     pub slug: String,
     /// NOTE: This Vec is not sorted
     pub markets: Vec<GammaMarket>,
-    pub is_date_cascade: bool,
+    pub is_date_cascade: Option<bool>,
 }
 
-pub fn is_date_cascade<'a>(markets: impl IntoIterator<Item = &'a GammaMarket>) -> bool {
-    let mut markets = markets.into_iter().peekable();
-    // this check is needed because otherwise this function will return true for empty markets vec
-    if markets.peek().is_none() {
-        return false;
+pub fn is_date_cascade(markets: &[GammaMarket]) -> Option<bool> {
+    if markets.len() < 2 {
+        return None;
     }
-    let questions = markets.map(|market| market.question.as_str());
-    crate::are_questions_date_cascade(questions)
+    let questions = markets.iter().map(|market| market.question.as_str());
+    Some(are_questions_date_cascade(questions))
 }
 
 impl GammaEvent {
@@ -35,7 +33,7 @@ impl GammaEvent {
     /// Returns all adjacent market pairs where earlier-date YES is priced above later-date YES.
     pub fn get_time_spread_arbitrage_opportunities(&self) -> Option<Vec<TimeSpreadArbitrageOpportunity<'_>>> {
         use itertools::Itertools;
-        if !self.is_date_cascade {
+        if !self.is_date_cascade.unwrap_or_default() {
             return None;
         }
         let opportunities = self
@@ -86,7 +84,7 @@ impl TryFrom<GammaEventRaw> for GammaEvent {
         let is_event_id_empty = id.trim().is_empty();
         match (is_event_id_empty, slug, markets_result) {
             (false, Some(slug), Ok(markets)) => {
-                let is_date_cascade = is_date_cascade(markets.iter());
+                let is_date_cascade = is_date_cascade(&markets);
                 Ok(Self {
                     id,
                     slug,
