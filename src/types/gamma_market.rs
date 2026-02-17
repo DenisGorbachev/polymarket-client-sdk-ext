@@ -45,11 +45,12 @@ impl GammaMarket {
         handle_bool!(!prev.are_outcomes_boolean().unwrap_or_default(), PrevOutcomesInvalid);
         handle_bool!(!next.are_outcomes_boolean().unwrap_or_default(), NextOutcomesInvalid);
 
-        Ok(prev
-            .price_yes
-            .as_ref()
-            .zip(next.price_yes.as_ref())
-            .map(|(prev_yes_price, next_yes_price)| prev_yes_price > next_yes_price))
+        Ok(match ((prev.price_yes.as_ref(), next.price_yes.as_ref()), (prev.price_no.as_ref(), next.price_no.as_ref())) {
+            ((Some(prev_yes_price), Some(next_yes_price)), (Some(prev_no_price), Some(next_no_price))) => Some(prev_yes_price > next_yes_price || prev_no_price < next_no_price),
+            ((Some(prev_yes_price), Some(next_yes_price)), _) => Some(prev_yes_price > next_yes_price),
+            (_, (Some(prev_no_price), Some(next_no_price))) => Some(prev_no_price < next_no_price),
+            _ => None,
+        })
     }
 
     pub fn are_outcomes_boolean(&self) -> Option<bool> {

@@ -48,6 +48,14 @@ impl CacheDownloadCommand {
         let market_keyspace = handle!(open_keyspace(&db, CLOB_MARKETS_KEYSPACE), KeyspaceOpenFailed);
         let orderbook_keyspace = handle!(open_keyspace(&db, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE), KeyspaceOpenFailed);
         let event_keyspace = handle!(open_keyspace(&db, GAMMA_EVENTS_KEYSPACE), KeyspaceOpenFailed);
+        if let Some(offset) = offset
+            && offset == 0
+        {
+            market_response_keyspace.as_ref().clear().unwrap();
+            market_keyspace.as_ref().clear().unwrap();
+            orderbook_keyspace.as_ref().clear().unwrap();
+            event_keyspace.as_ref().clear().unwrap();
+        }
         let clob_client = ClobClient::default();
         let gamma_client = GammaClient::default();
         let page_limit = page_limit.map(NonZeroUsize::get);
