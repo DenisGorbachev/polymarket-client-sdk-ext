@@ -610,7 +610,7 @@ Every fallible function must return an error with enough data for the caller to 
 * Every fallible function body must use the error enum variant names without the error enum name prefix (for example: `ReadFileFailed` instead of `ParseConfigError::ReadFileFailed`)
 * Every error type must be an enum
 * Every error type must derive `Error` via `thiserror` v2
-* Every error type must be located below the function that returns it (in the same file)
+* Every error type must be located in the same file as the function that returns it below other non-mod items
 * Every error enum variant must be a struct variant
 * Every error enum variant must contain one field per owned variable that is relevant to the fallible expression that this variant wraps
   * The relevant variable is a variable whose value determines whether the fallible expression returns an `Ok` or an `Err`
@@ -658,13 +658,65 @@ Every fallible function must return an error with enough data for the caller to 
   * If the function is a freestanding function, the name of the error type must be exactly equal to the name of the function converted to CamelCase concatenated with `Error`
   * If the function is an associated function, the name of the error type must be exactly equal to the name of the type without generics concatenated with the name of the function in CamelCase concatenated with `Error`
   * If the error is specified as an associated type of a foreign trait with multiple functions that return this associated error type, then the name of the error type must be exactly equal to the name of the trait including generics concatenated with the name of the type for which this trait is implemented concatenated with `Error`
-* If the error enum is defined for a `TryFrom<A> for B` impl, then its name must be equal to "Convert{A}To{B}Error"
+* Every `impl TryFrom<A> for B` must use a special form of error handling that matches on multiple variables at once and returns a single error that contains fields for all available variables. For example:
+  ```rust
+  #[derive(Getters, Clone, Debug)]
+  pub struct Human {
+      name: String,
+      #[getter(copy)]
+      age: u32,
+  }
+
+  #[derive(Getters, Clone, Debug)]
+  pub struct Adult {
+      name: NonEmptyString,
+      #[getter(copy)]
+      age: u32,
+  }
+
+  impl TryFrom<Human> for Adult {
+      type Error = TryFromHumanForAdultError;
+
+      fn try_from(input: Human) -> Result<Self, Self::Error> {
+          use TryFromHumanForAdultError::*;
+          let Human {
+              name,
+              age,
+          } = input;
+          let name_result = NonEmptyString::try_from(name);
+          let is_adult = age > 18;
+          match (name_result, is_adult) {
+              (Ok(name), true) => Ok(Self {
+                  name,
+                  age,
+              }),
+              (name_result, is_adult) => Err(ConversionFailed {
+                  name_result,
+                  age,
+                  is_adult,
+              }),
+          }
+      }
+  }
+
+  #[derive(Error, Debug)]
+  pub enum TryFromHumanForAdultError {
+      #[error("failed to convert human to adult")]
+      ConversionFailed { name_result: Result<NonEmptyString, TryFromStringForNonEmptyStringError>, age: u32, is_adult: bool },
+  }
+  ```
 
 ### Definitions
 
 #### Fallible expression
 
 An expression that returns a `Result`.
+
+#### Fallible expression group
+
+A group of [fallible expressions](#fallible-expression) where each output variable does not depend on the output variables of other fallible expressions within the same group.
+
+Aliases: FEG.
 
 #### Data type
 
@@ -1340,6 +1392,9 @@ pub use types::*;
 mod functions;
 
 pub use functions::*;
+
+#[cfg(test)]
+mod drafts;
 ````
 
 ### File: src/macros.rs
