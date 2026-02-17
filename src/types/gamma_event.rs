@@ -1,6 +1,6 @@
-use crate::{ConvertGammaMarketRawToGammaMarketError, GammaMarket, TimeSpreadArbitrageOpportunity, are_questions_date_cascade, gamma_event_raw_is_fresh};
+use crate::{ConvertGammaMarketRawToGammaMarketError, GammaMarket, GammaMarketIsInvertedPricingError, TimeSpreadArbitrageOpportunity, are_questions_date_cascade, gamma_event_raw_is_fresh};
 use derive_more::{From, Into};
-use errgonomic::{ErrVec, handle_bool, partition_result};
+use errgonomic::{ErrVec, handle_bool, handle_iter, partition_result};
 use polymarket_client_sdk::gamma::types::response::Event as GammaEventRaw;
 use thiserror::Error;
 
@@ -31,31 +31,38 @@ impl GammaEvent {
     /// This function may return multiple opportunities because multiple adjacent markets may exhibit inverted pricing.
     ///
     /// Returns all adjacent market pairs where earlier-date YES is priced above later-date YES.
-    pub fn get_time_spread_arbitrage_opportunities(&self) -> Option<Vec<TimeSpreadArbitrageOpportunity<'_>>> {
+    pub fn get_time_spread_arbitrage_opportunities(&self) -> Result<Vec<TimeSpreadArbitrageOpportunity<'_>>, GammaEventGetTimeSpreadArbitrageOpportunitiesError> {
+        use GammaEventGetTimeSpreadArbitrageOpportunitiesError::*;
         use itertools::Itertools;
         if !self.is_date_cascade.unwrap_or_default() {
-            return None;
+            return Ok(Vec::new());
         }
-        let opportunities = self
-            .markets
-            .iter()
-            .sorted_by(|left, right| left.end_date.cmp(&right.end_date))
-            .tuple_windows()
-            .filter_map(|(prev, next)| {
-                GammaMarket::is_inverted_pricing(prev, next).and_then(|is_inverted| {
-                    if is_inverted {
-                        Some(TimeSpreadArbitrageOpportunity {
-                            event: self,
-                            prev,
-                            next,
+        let opportunities = handle_iter!(
+            self.markets
+                .iter()
+                .sorted_by(|left, right| left.end_date.cmp(&right.end_date))
+                .tuple_windows()
+                .map(|(prev, next)| {
+                    GammaMarket::is_inverted_pricing(prev, next).map(|is_inverted| {
+                        is_inverted.and_then(|is_inverted| {
+                            if is_inverted {
+                                Some(TimeSpreadArbitrageOpportunity {
+                                    event: self,
+                                    prev,
+                                    next,
+                                })
+                            } else {
+                                None
+                            }
                         })
-                    } else {
-                        None
-                    }
-                })
-            })
-            .collect::<Vec<_>>();
-        (!opportunities.is_empty()).then_some(opportunities)
+                    })
+                }),
+            IsInvertedPricingFailed, event_slug: self.slug.clone()
+        )
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+        Ok(opportunities)
     }
 }
 
@@ -107,4 +114,10 @@ pub enum ConvertGammaEventRawToGammaEventError {
     Unsupported { event: Box<GammaEventRaw> },
     #[error("failed to convert gamma event")]
     ConversionFailed { id: String, slug: Option<String>, markets_result: Result<Vec<GammaMarket>, ErrVec<ConvertGammaMarketRawToGammaMarketError>>, is_event_id_empty: bool },
+}
+
+#[derive(Error, Debug)]
+pub enum GammaEventGetTimeSpreadArbitrageOpportunitiesError {
+    #[error("failed to check {len} adjacent markets for inverted pricing for event '{event_slug}'", len = source.len())]
+    IsInvertedPricingFailed { source: ErrVec<GammaMarketIsInvertedPricingError>, event_slug: String },
 }

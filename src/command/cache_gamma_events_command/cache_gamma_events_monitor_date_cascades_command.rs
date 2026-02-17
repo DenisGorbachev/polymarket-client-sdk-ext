@@ -1,4 +1,4 @@
-use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, OpenKeyspaceError, open_keyspace};
+use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, GammaEventGetTimeSpreadArbitrageOpportunitiesError, OpenKeyspaceError, open_keyspace};
 use errgonomic::{ErrVec, handle, handle_bool, handle_iter};
 use fjall::{PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use polymarket_client_sdk::gamma::Client as GammaClient;
@@ -32,10 +32,16 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
         let mut iterations = 0usize;
         loop {
             let events = handle!(Self::refresh_date_cascades(&db, &keyspace, &client, &event_ids).await, RefreshDateCascadesFailed);
-            let time_spread_arbitrage_opportunities = events
-                .iter()
-                .filter(|event| event.get_time_spread_arbitrage_opportunities().is_some());
-            time_spread_arbitrage_opportunities.for_each(|event| println!("{}", event.api_url()));
+            let opportunities = handle_iter!(
+                events
+                    .iter()
+                    .map(|event| event.get_time_spread_arbitrage_opportunities()),
+                GetTimeSpreadArbitrageOpportunitiesFailed
+            );
+            opportunities
+                .into_iter()
+                .flatten()
+                .for_each(|opportunity| println!("{event_url}", event_url = opportunity.event.api_url()));
             iterations = iterations.saturating_add(1);
             if max_iterations.is_some_and(|max_iterations| iterations >= max_iterations) {
                 break;
@@ -126,6 +132,8 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandRunError {
     CollectDateCascadeEventIdsFailed { source: CacheGammaEventsMonitorDateCascadesCommandCollectDateCascadeEventIdsError },
     #[error("failed to refresh date cascade events")]
     RefreshDateCascadesFailed { source: CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesError },
+    #[error("failed to compute time spread arbitrage opportunities")]
+    GetTimeSpreadArbitrageOpportunitiesFailed { source: ErrVec<GammaEventGetTimeSpreadArbitrageOpportunitiesError> },
 }
 
 #[derive(Error, Debug)]
