@@ -77,9 +77,9 @@ pub fn read_item(reader: &mut impl Read) -> Result<Option<Vec<u8>>, ReadItemErro
 pub enum ReadItemError {
     #[error("failed to read length prefix")]
     ReadLenPrefixFailed { source: ReadLenPrefixError },
-    #[error("failed to convert item length '{len}' to usize")]
+    #[error("failed to convert item length {len} to usize")]
     TryFromFailed { source: TryFromIntError, len: u64 },
-    #[error("failed to read item bytes for length '{len}'")]
+    #[error("failed to read item bytes for length {len}")]
     ReadItemBytesFailed { source: ReadItemBytesError, len: u64 },
 }
 

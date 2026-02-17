@@ -86,7 +86,7 @@ pub enum CacheCheckCommandRunError {
     OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
     #[error("failed to open market keyspace")]
     OpenMarketKeyspaceFailed { source: OpenKeyspaceError },
-    #[error("failed to process '{len}' cache entries", len = source.len())]
+    #[error("failed to process {len} cache entries", len = source.len())]
     ProcessMarketEntryFailed { source: errgonomic::ErrVec<CacheCheckCommandProcessMarketEntryError> },
     #[error("failed to write violations output")]
     WriteViolationsFailed { source: CacheCheckCommandWriteViolationsError },

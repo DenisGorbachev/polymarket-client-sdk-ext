@@ -1,4 +1,4 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, gamma_event_raw_is_fresh, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, map_err};
@@ -200,12 +200,15 @@ impl CacheDownloadCommand {
     fn write_events_to_database(db: &SingleWriterTxDatabase, event_keyspace: &SingleWriterTxKeyspace, event_slugs: &mut FxHashSet<String>, events: Vec<Event>) -> Result<(), CacheDownloadCommandWriteEventsToDatabaseError> {
         use CacheDownloadCommandWriteEventsToDatabaseError::*;
         let event_entries = handle_iter!(
-            events.into_iter().map(|event| {
-                use CacheDownloadCommandEventEntryFromResponseError::*;
-                let event = handle!(GammaEvent::try_from(event), TryFromFailed);
-                let event_slug = event.slug.clone();
-                Ok((event_slug, event))
-            }),
+            events
+                .into_iter()
+                .filter(gamma_event_raw_is_fresh)
+                .map(|event| {
+                    use CacheDownloadCommandEventEntryFromResponseError::*;
+                    let event = handle!(GammaEvent::try_from(event), TryFromFailed);
+                    let event_slug = event.slug.clone();
+                    Ok((event_slug, event))
+                }),
             EventEntryFromResponseFailed
         );
         let duplicates = Self::get_duplicates(&event_entries, |(event_slug, _)| event_slug.clone(), event_slugs).collect_vec();
@@ -320,7 +323,7 @@ pub enum CacheDownloadCommandDownloadMarketResponsesError {
     MarketKeyspaceLenFailed { source: fjall::Error },
     #[error("failed to fetch markets page with cursor '{next_cursor}'")]
     FetchMarketsFailed { source: polymarket_client_sdk::error::Error, next_cursor: NextCursor },
-    #[error("found '{len}' duplicates", len = duplicates.len())]
+    #[error("found {len} duplicates", len = duplicates.len())]
     DuplicatesFound { duplicates: Vec<String> },
     #[error("failed to fetch order books")]
     FetchOrderbooksForTokensFailed { source: CacheDownloadCommandFetchOrderbooksForTokensError },
@@ -343,14 +346,14 @@ pub enum CacheDownloadCommandDownloadGammaEventsError {
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandEventEntryFromResponseError {
     #[error("failed to convert gamma event response")]
-    TryFromFailed { source: crate::ConvertGammaEventRawToGammaEventError },
+    TryFromFailed { source: Box<crate::ConvertGammaEventRawToGammaEventError> },
     #[error("event response has duplicate event slug '{event_slug}'")]
     EventSlugDuplicateInvalid { event_slug: String },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandFetchOrderbooksForTokensError {
-    #[error("failed to fetch order books for '{len}' chunks", len = source.len())]
+    #[error("failed to fetch order books for {len} chunks", len = source.len())]
     FetchOrderbooksChunkFailed { source: ErrVec<CacheDownloadCommandFetchOrderbooksChunkError> },
 }
 
@@ -362,7 +365,7 @@ pub enum CacheDownloadCommandFetchOrderbooksChunkError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandWritePageToDatabaseError {
-    #[error("failed to parse '{len}' market responses", len = source.len())]
+    #[error("failed to parse {len} market responses", len = source.len())]
     MarketEntriesFromResponseFailed { source: ErrVec<CacheDownloadCommandMarketEntriesFromResponseError> },
     #[error("failed to insert market response entries")]
     InsertMarketResponseEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandMarketResponseBytesError>> },
@@ -378,9 +381,9 @@ pub enum CacheDownloadCommandWritePageToDatabaseError {
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandWriteEventsToDatabaseError {
-    #[error("failed to parse '{len}' event responses", len = source.len())]
+    #[error("failed to parse {len} event responses", len = source.len())]
     EventEntryFromResponseFailed { source: ErrVec<CacheDownloadCommandEventEntryFromResponseError> },
-    #[error("found '{len}' duplicates", len = duplicates.len())]
+    #[error("found {len} duplicates", len = duplicates.len())]
     DuplicatesFound { duplicates: Vec<String> },
     #[error("failed to insert event entries")]
     InsertEventEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandEventBytesError>> },

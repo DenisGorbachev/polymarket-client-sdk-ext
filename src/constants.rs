@@ -20,3 +20,5 @@ pub const CLOB_MARKETS_KEYSPACE: &str = "ClobMarket";
 
 /// Important: some markets have non-boolean outcomes (for example: ["Western Carolina vs. UNC Greensboro"](https://gamma-api.polymarket.com/markets/522329))
 pub static BOOLEAN_OUTCOMES: LazyLock<Vec<String>> = LazyLock::new(|| vec!["Yes".to_string(), "No".to_string()]);
+
+pub const TIMESTAMP_2023_01_01_00_00_00_Z: i64 = 1672531200;

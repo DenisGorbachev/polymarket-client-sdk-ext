@@ -130,7 +130,7 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandRunError {
 
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsMonitorDateCascadesCommandCollectDateCascadeEventIdsError {
-    #[error("failed to process '{len}' date cascade events", len = source.len())]
+    #[error("failed to process {len} date cascade events", len = source.len())]
     DateCascadeEventIdFromGuardFailed { source: ErrVec<CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError> },
 }
 
@@ -154,7 +154,7 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesError {
 pub enum CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesChunkError {
     #[error("failed to fetch gamma events")]
     EventsFailed { source: polymarket_client_sdk::error::Error, request: Box<EventsRequest> },
-    #[error("failed to convert '{len}' gamma event responses", len = source.len())]
+    #[error("failed to convert {len} gamma event responses", len = source.len())]
     TryFromFailed { source: ErrVec<crate::ConvertGammaEventRawToGammaEventError> },
     #[error("failed to persist events to database")]
     WriteEventsToDatabaseFailed { source: CacheGammaEventsMonitorDateCascadesCommandWriteEventsToDatabaseError },
@@ -162,7 +162,7 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesChunkError
 
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsMonitorDateCascadesCommandWriteEventsToDatabaseError {
-    #[error("failed to serialize '{len}' event responses", len = source.len())]
+    #[error("failed to serialize {len} event responses", len = source.len())]
     SerializeEventEntryFailed { source: ErrVec<CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError> },
     #[error("failed to commit database transaction")]
     CommitTransactionFailed { source: fjall::Error },

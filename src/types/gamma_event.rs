@@ -1,10 +1,10 @@
-use crate::{GammaMarket, TimeSpreadArbitrageOpportunity};
+use crate::{ConvertGammaMarketRawToGammaMarketError, GammaMarket, TIMESTAMP_2023_01_01_00_00_00_Z, TimeSpreadArbitrageOpportunity};
 use derive_more::{From, Into};
-use errgonomic::{ErrVec, handle_bool, handle_iter, handle_opt};
+use errgonomic::{ErrVec, handle_bool, handle_opt, partition_result};
 use polymarket_client_sdk::gamma::types::response::Event as GammaEventRaw;
 use thiserror::Error;
 
-/// [`GammaEvent`] is a truncation of [`polymarket_client_sdk::gamma::types::response::Event`]
+/// [`GammaEvent`] is a truncation of [`polymarket_client_sdk::gamma::types::response::Event`] conditional on end_date >= "2023-01-01T00:00:00Z"
 #[derive(From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct GammaEvent {
@@ -67,38 +67,48 @@ impl TryFrom<GammaEventRaw> for GammaEvent {
 
     fn try_from(event: GammaEventRaw) -> Result<Self, Self::Error> {
         use ConvertGammaEventRawToGammaEventError::*;
+        let end_date = handle_opt!(event.end_date, Unsupported, event);
+        handle_bool!(end_date.timestamp() < TIMESTAMP_2023_01_01_00_00_00_Z, Unsupported, event);
         let GammaEventRaw {
             id,
             slug,
             markets,
             ..
         } = event;
-        handle_bool!(id.trim().is_empty(), EventIdInvalid, id);
-        let slug = handle_opt!(slug, SlugMissingInvalid, id);
-        let markets = handle_iter!(
+        let markets_result = match partition_result(
             markets
                 .unwrap_or_default()
                 .into_iter()
                 .map(GammaMarket::try_from),
-            TryFromFailed,
-            id
-        );
-        let is_date_cascade = is_date_cascade(markets.iter());
-        Ok(Self {
-            id,
-            slug,
-            markets,
-            is_date_cascade,
-        })
+        ) {
+            Ok(markets) => Ok(markets),
+            Err(source) => Err(source.into()),
+        };
+        let is_event_id_empty = id.trim().is_empty();
+        match (is_event_id_empty, slug, markets_result) {
+            (false, Some(slug), Ok(markets)) => {
+                let is_date_cascade = is_date_cascade(markets.iter());
+                Ok(Self {
+                    id,
+                    slug,
+                    markets,
+                    is_date_cascade,
+                })
+            }
+            (is_event_id_empty, slug, markets_result) => Err(ConversionFailed {
+                id,
+                slug,
+                markets_result,
+                is_event_id_empty,
+            }),
+        }
     }
 }
 
 #[derive(Error, Debug)]
 pub enum ConvertGammaEventRawToGammaEventError {
-    #[error("event id is empty")]
-    EventIdInvalid { id: String },
-    #[error("event slug is missing for id '{id}'")]
-    SlugMissingInvalid { id: String },
-    #[error("failed to convert '{len}' markets for event '{id}'", len = source.len())]
-    TryFromFailed { source: ErrVec<crate::ConvertGammaMarketRawToGammaMarketError>, id: String },
+    #[error("old gamma event not supported")]
+    Unsupported { event: Box<GammaEventRaw> },
+    #[error("failed to convert gamma event")]
+    ConversionFailed { id: String, slug: Option<String>, markets_result: Result<Vec<GammaMarket>, ErrVec<ConvertGammaMarketRawToGammaMarketError>>, is_event_id_empty: bool },
 }

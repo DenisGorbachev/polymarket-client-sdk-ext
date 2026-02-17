@@ -1,14 +1,14 @@
-use crate::{BOOLEAN_OUTCOMES, RkyvDecimal, RkyvOffsetDateTime, from_chrono_naive_date};
+use crate::{BOOLEAN_OUTCOMES, RkyvDecimal, RkyvOffsetDateTime, TIMESTAMP_2023_01_01_00_00_00_Z, from_chrono_naive_date};
 use derive_more::{From, Into};
 use derive_new::new;
-use errgonomic::{handle, handle_bool, handle_opt};
+use errgonomic::{handle_bool, handle_opt};
 use polymarket_client_sdk::gamma::types::response::Market as GammaMarketRaw;
 use rkyv::with::Map;
 use rust_decimal::Decimal;
 use thiserror::Error;
 use time::OffsetDateTime;
 
-/// [`GammaMarket`] is a truncation of [`polymarket_client_sdk::gamma::types::response::Market`]
+/// [`GammaMarket`] is a truncation of [`polymarket_client_sdk::gamma::types::response::Market`] conditional on end_date >= "2023-01-01T00:00:00Z"
 #[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct GammaMarket {
@@ -52,6 +52,8 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
 
     fn try_from(raw_gamma_market: GammaMarketRaw) -> Result<Self, Self::Error> {
         use ConvertGammaMarketRawToGammaMarketError::*;
+        let end_date = handle_opt!(raw_gamma_market.end_date, Unsupported, market: raw_gamma_market);
+        handle_bool!(end_date.timestamp() < TIMESTAMP_2023_01_01_00_00_00_Z, Unsupported, market: raw_gamma_market);
         let GammaMarketRaw {
             question,
             outcomes,
@@ -59,35 +61,48 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
             end_date_iso,
             ..
         } = raw_gamma_market;
-        let question = handle_opt!(question, QuestionMissing);
         let mut outcome_prices_iter = outcome_prices.unwrap_or_default().into_iter();
         let yes_price = outcome_prices_iter.next();
         let no_price = outcome_prices_iter.next();
         let outcome_prices_rest = outcome_prices_iter.collect::<Vec<_>>();
-        handle_bool!(!outcome_prices_rest.is_empty(), UnexpectedOutcomePrices, outcome_prices_rest);
-        let end_date = match end_date_iso {
-            Some(end_date_iso) => {
-                let end_date = handle!(from_chrono_naive_date(end_date_iso), FromChronoNaiveDateFailed, end_date_iso);
-                Some(end_date)
-            }
-            None => None,
-        };
-        Ok(Self {
-            question,
-            outcomes,
-            yes_price,
-            no_price,
-            end_date,
-        })
+        let end_date_result = end_date_iso
+            .map(|end_date_iso| {
+                from_chrono_naive_date(end_date_iso).map_err(|source| ConvertGammaMarketRawToGammaMarketEndDateError::FromChronoNaiveDateFailed {
+                    source,
+                    end_date_iso,
+                })
+            })
+            .transpose();
+        match (question, end_date_result) {
+            (Some(question), Ok(end_date)) if outcome_prices_rest.is_empty() => Ok(Self {
+                question,
+                outcomes,
+                yes_price,
+                no_price,
+                end_date,
+            }),
+            (question, end_date_result) => Err(ConversionFailed {
+                question,
+                outcomes,
+                yes_price,
+                no_price,
+                outcome_prices_rest,
+                end_date_result,
+            }),
+        }
     }
 }
 
 #[derive(Error, Debug)]
 pub enum ConvertGammaMarketRawToGammaMarketError {
-    #[error("market question is missing")]
-    QuestionMissing {},
-    #[error("market has unexpected extra outcome prices: '{len}'", len = outcome_prices_rest.len())]
-    UnexpectedOutcomePrices { outcome_prices_rest: Vec<Decimal> },
+    #[error("old gamma market not supported")]
+    Unsupported { market: Box<GammaMarketRaw> },
+    #[error("failed to convert gamma market")]
+    ConversionFailed { question: Option<String>, outcomes: Option<Vec<String>>, yes_price: Option<Decimal>, no_price: Option<Decimal>, outcome_prices_rest: Vec<Decimal>, end_date_result: Result<Option<OffsetDateTime>, ConvertGammaMarketRawToGammaMarketEndDateError> },
+}
+
+#[derive(Error, Debug)]
+pub enum ConvertGammaMarketRawToGammaMarketEndDateError {
     #[error("failed to convert end date '{end_date_iso}'")]
     FromChronoNaiveDateFailed { source: time::error::ComponentRange, end_date_iso: chrono::NaiveDate },
 }

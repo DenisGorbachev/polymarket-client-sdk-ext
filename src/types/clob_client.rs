@@ -55,6 +55,6 @@ impl ClobClient {
 pub enum ClobClientMarketsError {
     #[error("failed to fetch markets page")]
     MarketsFailed { source: polymarket_client_sdk::error::Error, next_cursor: Option<String> },
-    #[error("failed to convert '{len}' markets", len = source.len())]
+    #[error("failed to convert {len} markets", len = source.len())]
     MarketTryFromFailed { source: ErrVec<ClobMarketResponsePreciseFallible> },
 }
