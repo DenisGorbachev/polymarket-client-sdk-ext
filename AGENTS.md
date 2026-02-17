@@ -552,8 +552,9 @@ Requirements:
 
 ### Gamma Markets
 
-* Some markets have `outcomes` that are not equal to `["Yes", "No"]` (example: [#2957](https://gamma-api.polymarket.com/events/slug/how-much-will-in-the-heights-gross-domestically-on-opening-weekend))
+* Some markets have `outcomes` that are not equal to `["Yes", "No"]` (example: [#214743](https://gamma-api.polymarket.com/events/slug/how-much-will-in-the-heights-gross-domestically-on-opening-weekend))
   * We should discard the events with such markets by applying a filter: `market.end_date.timestamp() >= TIMESTAMP_2023_01_01_00_00_00_Z`
+* Some markets have `end_date_iso.is_none()` but `end_date.is_some()` (example: [#500091](https://gamma-api.polymarket.com/events/slug/arthur-the-king-over-15m-opening-weekend))
 
 ### API limits
 

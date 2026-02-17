@@ -1,4 +1,4 @@
-use crate::{BOOLEAN_OUTCOMES, RkyvDecimal, RkyvOffsetDateTime, from_chrono_naive_date, gamma_market_raw_is_fresh};
+use crate::{BOOLEAN_OUTCOMES, RkyvDecimal, RkyvOffsetDateTime, from_chrono_date_time, gamma_market_raw_is_fresh};
 use derive_more::{From, Into};
 use derive_new::new;
 use errgonomic::handle_bool;
@@ -61,14 +61,14 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
             question,
             outcomes,
             outcome_prices,
-            end_date_iso,
+            end_date,
             ..
         } = market;
         let mut outcome_prices_iter = outcome_prices.unwrap_or_default().into_iter();
         let yes_price = outcome_prices_iter.next();
         let no_price = outcome_prices_iter.next();
         let outcome_prices_rest = outcome_prices_iter.collect::<Vec<_>>();
-        let end_date_result = end_date_iso.map(from_chrono_naive_date).transpose();
+        let end_date_result = end_date.map(from_chrono_date_time).transpose();
         match (question, end_date_result) {
             (Some(question), Ok(Some(end_date))) if outcome_prices_rest.is_empty() => Ok(Self {
                 question,
