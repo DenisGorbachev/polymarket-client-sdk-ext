@@ -1,4 +1,5 @@
 use crate::{BOOLEAN_OUTCOMES, RkyvDecimal, RkyvOffsetDateTime, from_chrono_date_time, gamma_market_raw_is_fresh};
+use core::num::ParseIntError;
 use derive_more::{From, Into};
 use derive_new::new;
 use errgonomic::handle_bool;
@@ -13,7 +14,7 @@ use time::error::ComponentRange;
 #[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct GammaMarket {
-    pub id: String,
+    pub id: u64,
 
     pub question: String,
 
@@ -57,8 +58,8 @@ impl GammaMarket {
             .map(|outcomes| outcomes.as_slice() == BOOLEAN_OUTCOMES.as_slice())
     }
 
-    pub fn end_date_cmp_key(&self) -> (OffsetDateTime, &str) {
-        (self.end_date, self.id.as_str())
+    pub fn end_date_cmp_key(&self) -> (OffsetDateTime, u64) {
+        (self.end_date, self.id)
     }
 }
 
@@ -80,9 +81,10 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
         let yes_price = outcome_prices_iter.next();
         let no_price = outcome_prices_iter.next();
         let outcome_prices_rest = outcome_prices_iter.collect::<Vec<_>>();
+        let id_result = id.parse::<u64>();
         let end_date_result = end_date.map(from_chrono_date_time).transpose();
-        match (question, end_date_result) {
-            (Some(question), Ok(Some(end_date))) if outcome_prices_rest.is_empty() => Ok(Self {
+        match (id_result, question, end_date_result) {
+            (Ok(id), Some(question), Ok(Some(end_date))) if outcome_prices_rest.is_empty() => Ok(Self {
                 id,
                 question,
                 outcomes,
@@ -90,8 +92,9 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
                 price_no: no_price,
                 end_date,
             }),
-            (question, end_date_result) => Err(ConversionFailed {
+            (id_result, question, end_date_result) => Err(ConversionFailed {
                 id,
+                id_result,
                 question,
                 outcomes,
                 yes_price,
@@ -108,7 +111,7 @@ pub enum ConvertGammaMarketRawToGammaMarketError {
     #[error("old gamma market not supported")]
     Unsupported { market: Box<GammaMarketRaw> },
     #[error("failed to convert gamma market")]
-    ConversionFailed { id: String, question: Option<String>, outcomes: Option<Vec<String>>, yes_price: Option<Decimal>, no_price: Option<Decimal>, outcome_prices_rest: Vec<Decimal>, end_date_result: Result<Option<OffsetDateTime>, ComponentRange> },
+    ConversionFailed { id: String, id_result: Result<u64, ParseIntError>, question: Option<String>, outcomes: Option<Vec<String>>, yes_price: Option<Decimal>, no_price: Option<Decimal>, outcome_prices_rest: Vec<Decimal>, end_date_result: Result<Option<OffsetDateTime>, ComponentRange> },
 }
 
 #[derive(Error, Debug)]

@@ -1,5 +1,5 @@
 use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, GammaEventGetTimeSpreadArbitrageOpportunitiesError, OpenKeyspaceError, is_date_cascade, open_keyspace};
-use errgonomic::{ErrVec, handle, handle_bool, handle_iter};
+use errgonomic::{ErrVec, handle, handle_iter};
 use fjall::{PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use itertools::Itertools;
 use polymarket_client_sdk::gamma::Client as GammaClient;
@@ -55,7 +55,7 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
         Ok(ExitCode::SUCCESS)
     }
 
-    fn collect_date_cascade_event_ids(db: &SingleWriterTxDatabase, keyspace: &SingleWriterTxKeyspace) -> Result<Vec<String>, CacheGammaEventsMonitorDateCascadesCommandCollectDateCascadeEventIdsError> {
+    fn collect_date_cascade_event_ids(db: &SingleWriterTxDatabase, keyspace: &SingleWriterTxKeyspace) -> Result<Vec<u64>, CacheGammaEventsMonitorDateCascadesCommandCollectDateCascadeEventIdsError> {
         use CacheGammaEventsMonitorDateCascadesCommandCollectDateCascadeEventIdsError::*;
         let snapshot = db.read_tx();
         let iter = snapshot.iter(keyspace);
@@ -71,20 +71,15 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
         Ok(event_ids)
     }
 
-    fn date_cascade_event_id_from_guard(guard: fjall::Guard) -> Result<Option<String>, CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError> {
+    fn date_cascade_event_id_from_guard(guard: fjall::Guard) -> Result<Option<u64>, CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError> {
         use CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError::*;
         let (_key, value) = handle!(guard.into_inner(), ReadEntryFailed);
         let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value.as_ref()), DeserializeFailed, value);
         // TODO: use event.is_date_cascade
-        if is_date_cascade(&event.markets).unwrap_or_default() {
-            handle_bool!(event.id.trim().is_empty(), EventIdInvalid, event: Box::new(event));
-            Ok(Some(event.id))
-        } else {
-            Ok(None)
-        }
+        if is_date_cascade(&event.markets).unwrap_or_default() { Ok(Some(event.id)) } else { Ok(None) }
     }
 
-    async fn refresh_date_cascades(db: &SingleWriterTxDatabase, keyspace: &SingleWriterTxKeyspace, client: &GammaClient, event_ids: &[String]) -> Result<Vec<GammaEvent>, CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesError> {
+    async fn refresh_date_cascades(db: &SingleWriterTxDatabase, keyspace: &SingleWriterTxKeyspace, client: &GammaClient, event_ids: &[u64]) -> Result<Vec<GammaEvent>, CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesError> {
         use CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesError::*;
         let mut events_all = Vec::new();
         for chunk in event_ids.chunks(GAMMA_EVENTS_PAGE_SIZE) {
@@ -94,10 +89,10 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
         Ok(events_all)
     }
 
-    async fn refresh_date_cascade_chunk(db: &SingleWriterTxDatabase, keyspace: &SingleWriterTxKeyspace, client: &GammaClient, event_ids: &[String]) -> Result<Vec<GammaEvent>, CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesChunkError> {
+    async fn refresh_date_cascade_chunk(db: &SingleWriterTxDatabase, keyspace: &SingleWriterTxKeyspace, client: &GammaClient, event_ids: &[u64]) -> Result<Vec<GammaEvent>, CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesChunkError> {
         use CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesChunkError::*;
         let request = EventsRequest::builder()
-            .id(event_ids.to_vec())
+            .id(event_ids.iter().map(ToString::to_string).collect())
             .order(vec!["id".to_string()])
             .limit(GAMMA_EVENTS_PAGE_SIZE as i32)
             .ascending(true)
@@ -122,7 +117,7 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
 
     fn serialize_event_entry(event: &GammaEvent) -> Result<(String, Vec<u8>), CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError> {
         use CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError::*;
-        let event_id = event.id.clone();
+        let event_id = event.id.to_string();
         let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(event), SerializeFailed, event_id);
         Ok((event_id, bytes.into_vec()))
     }
@@ -154,8 +149,6 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardEr
     ReadEntryFailed { source: fjall::Error },
     #[error("failed to deserialize event entry")]
     DeserializeFailed { source: rkyv::rancor::Error, value: fjall::Slice },
-    #[error("event response has empty event id")]
-    EventIdInvalid { event: Box<GammaEvent> },
 }
 
 #[derive(Error, Debug)]

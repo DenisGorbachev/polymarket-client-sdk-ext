@@ -1,4 +1,5 @@
 use crate::{ConvertGammaMarketRawToGammaMarketError, GammaMarket, GammaMarketIsInvertedPricingError, TimeSpreadArbitrageOpportunity, are_questions_date_cascade, gamma_event_raw_is_fresh};
+use core::num::ParseIntError;
 use derive_more::{From, Into};
 use errgonomic::{ErrVec, handle_bool, handle_iter, partition_result};
 use polymarket_client_sdk::gamma::types::response::Event as GammaEventRaw;
@@ -8,7 +9,7 @@ use thiserror::Error;
 #[derive(From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct GammaEvent {
-    pub id: String,
+    pub id: u64,
     pub slug: String,
     /// NOTE: This Vec is not sorted
     pub markets: Vec<GammaMarket>,
@@ -85,6 +86,7 @@ impl TryFrom<GammaEventRaw> for GammaEvent {
             markets,
             ..
         } = event;
+        let id_result = id.parse::<u64>();
         let markets_result = match partition_result(
             markets
                 .unwrap_or_default()
@@ -94,9 +96,8 @@ impl TryFrom<GammaEventRaw> for GammaEvent {
             Ok(markets) => Ok(markets),
             Err(source) => Err(source.into()),
         };
-        let is_event_id_empty = id.trim().is_empty();
-        match (is_event_id_empty, slug, markets_result) {
-            (false, Some(slug), Ok(markets)) => {
+        match (id_result, slug, markets_result) {
+            (Ok(id), Some(slug), Ok(markets)) => {
                 let is_date_cascade = is_date_cascade(&markets);
                 Ok(Self {
                     id,
@@ -105,11 +106,11 @@ impl TryFrom<GammaEventRaw> for GammaEvent {
                     is_date_cascade,
                 })
             }
-            (is_event_id_empty, slug, markets_result) => Err(ConversionFailed {
+            (id_result, slug, markets_result) => Err(ConversionFailed {
                 id,
+                id_result,
                 slug,
                 markets_result,
-                is_event_id_empty,
             }),
         }
     }
@@ -120,7 +121,7 @@ pub enum ConvertGammaEventRawToGammaEventError {
     #[error("old gamma event not supported")]
     Unsupported { event: Box<GammaEventRaw> },
     #[error("failed to convert gamma event")]
-    ConversionFailed { id: String, slug: Option<String>, markets_result: Result<Vec<GammaMarket>, ErrVec<ConvertGammaMarketRawToGammaMarketError>>, is_event_id_empty: bool },
+    ConversionFailed { id: String, id_result: Result<u64, ParseIntError>, slug: Option<String>, markets_result: Result<Vec<GammaMarket>, ErrVec<ConvertGammaMarketRawToGammaMarketError>> },
 }
 
 #[derive(Error, Debug)]
