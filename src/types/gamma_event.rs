@@ -39,7 +39,6 @@ impl GammaEvent {
         let opportunities = self
             .markets
             .iter()
-            .filter(|market| market.end_date.is_some())
             .sorted_by(|left, right| left.end_date.cmp(&right.end_date))
             .tuple_windows()
             .filter_map(|(prev, next)| {

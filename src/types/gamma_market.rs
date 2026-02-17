@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 use time::error::ComponentRange;
 
 /// [`GammaMarket`] is a truncation of [`polymarket_client_sdk::gamma::types::response::Market`] conditional on end_date >= "2023-01-01T00:00:00Z"
-#[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Default, Hash, Clone, Debug)]
+#[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct GammaMarket {
     pub question: String,
@@ -25,19 +25,14 @@ pub struct GammaMarket {
     #[rkyv(with = Map<RkyvDecimal>)]
     pub price_no: Option<Decimal>,
 
-    #[rkyv(with = Map<RkyvOffsetDateTime>)]
-    pub end_date: Option<OffsetDateTime>,
+    #[rkyv(with = RkyvOffsetDateTime)]
+    pub end_date: OffsetDateTime,
 }
 
 impl GammaMarket {
     /// This function assumes that `prev` ends before `next`.
     pub fn is_inverted_pricing(prev: &Self, next: &Self) -> Option<bool> {
-        debug_assert!(
-            prev.end_date
-                .as_ref()
-                .zip(next.end_date.as_ref())
-                .is_none_or(|(prev_end_date, next_end_date)| prev_end_date < next_end_date)
-        );
+        debug_assert!(prev.end_date < next.end_date);
         prev.outcomes
             .as_ref()
             .zip(next.outcomes.as_ref())
@@ -71,7 +66,7 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
         let outcome_prices_rest = outcome_prices_iter.collect::<Vec<_>>();
         let end_date_result = end_date_iso.map(from_chrono_naive_date).transpose();
         match (question, end_date_result) {
-            (Some(question), Ok(end_date)) if outcome_prices_rest.is_empty() => Ok(Self {
+            (Some(question), Ok(Some(end_date))) if outcome_prices_rest.is_empty() => Ok(Self {
                 question,
                 outcomes,
                 price_yes: yes_price,
