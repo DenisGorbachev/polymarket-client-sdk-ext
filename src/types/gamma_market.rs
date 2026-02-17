@@ -13,6 +13,8 @@ use time::error::ComponentRange;
 #[derive(new, From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct GammaMarket {
+    pub id: String,
+
     pub question: String,
 
     pub outcomes: Option<Vec<String>>,
@@ -54,6 +56,10 @@ impl GammaMarket {
             .as_ref()
             .map(|outcomes| outcomes.as_slice() == BOOLEAN_OUTCOMES.as_slice())
     }
+
+    pub fn end_date_cmp_key(&self) -> (OffsetDateTime, &str) {
+        (self.end_date, self.id.as_str())
+    }
 }
 
 impl TryFrom<GammaMarketRaw> for GammaMarket {
@@ -63,6 +69,7 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
         use ConvertGammaMarketRawToGammaMarketError::*;
         handle_bool!(!gamma_market_raw_is_fresh(&market), Unsupported, market);
         let GammaMarketRaw {
+            id,
             question,
             outcomes,
             outcome_prices,
@@ -76,6 +83,7 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
         let end_date_result = end_date.map(from_chrono_date_time).transpose();
         match (question, end_date_result) {
             (Some(question), Ok(Some(end_date))) if outcome_prices_rest.is_empty() => Ok(Self {
+                id,
                 question,
                 outcomes,
                 price_yes: yes_price,
@@ -83,6 +91,7 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
                 end_date,
             }),
             (question, end_date_result) => Err(ConversionFailed {
+                id,
                 question,
                 outcomes,
                 yes_price,
@@ -99,7 +108,7 @@ pub enum ConvertGammaMarketRawToGammaMarketError {
     #[error("old gamma market not supported")]
     Unsupported { market: Box<GammaMarketRaw> },
     #[error("failed to convert gamma market")]
-    ConversionFailed { question: Option<String>, outcomes: Option<Vec<String>>, yes_price: Option<Decimal>, no_price: Option<Decimal>, outcome_prices_rest: Vec<Decimal>, end_date_result: Result<Option<OffsetDateTime>, ComponentRange> },
+    ConversionFailed { id: String, question: Option<String>, outcomes: Option<Vec<String>>, yes_price: Option<Decimal>, no_price: Option<Decimal>, outcome_prices_rest: Vec<Decimal>, end_date_result: Result<Option<OffsetDateTime>, ComponentRange> },
 }
 
 #[derive(Error, Debug)]

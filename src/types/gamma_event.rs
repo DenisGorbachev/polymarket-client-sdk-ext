@@ -47,7 +47,7 @@ impl GammaEvent {
         let opportunities = handle_iter!(
             self.markets
                 .iter()
-                .sorted_by(|left, right| left.end_date.cmp(&right.end_date))
+                .sorted_by(|left, right| left.end_date_cmp_key().cmp(&right.end_date_cmp_key()))
                 .tuple_windows()
                 .map(|(prev, next)| {
                     GammaMarket::is_inverted_pricing(prev, next).map(|is_inverted| {

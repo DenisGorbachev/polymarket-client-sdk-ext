@@ -559,6 +559,9 @@ Requirements:
   * Investigation of example #252486:
     * The end\_date is "2023-03-30T00:00:00Z", but the market description hints that it should be "2024-03-30T00:00:00Z". Maybe end\_date is only used as a display field?
     * The UI displays markets in the correct order according to market description, so it's likely sorting by id
+* Some markets have `end_date != end_date(description)` (example: [#1371078](https://gamma-api.polymarket.com/markets/slug/will-north-west-release-an-album-by-december-31-439-883))
+* Some markets have `uma_end_date < end_date(description)` (example: [#252486](https://gamma-api.polymarket.com/events/slug/will-the-sec-approve-blackrocks-bitcoin-etf-by))
+  * Maybe this happens if the outcome materializes before `end_date(description)`, and the resolution is submitted earlier.
 
 ### API limits
 
