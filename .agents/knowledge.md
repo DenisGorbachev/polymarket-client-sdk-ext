@@ -33,6 +33,11 @@
 
 - Some events are `e.active && e.closed` (example: [#2957](https://gamma-api.polymarket.com/events/slug/how-much-will-in-the-heights-gross-domestically-on-opening-weekend))
 
+## Gamma Markets
+
+- Some markets have `outcomes` that are not equal to `["Yes", "No"]` (example: [#2957](https://gamma-api.polymarket.com/events/slug/how-much-will-in-the-heights-gross-domestically-on-opening-weekend))
+  - We should discard the events with such markets by applying a filter: `market.end_date.timestamp() >= TIMESTAMP_2023_01_01_00_00_00_Z`
+
 ## API limits
 
 - [Books](#books) endpoint accepts max 500 token_ids
