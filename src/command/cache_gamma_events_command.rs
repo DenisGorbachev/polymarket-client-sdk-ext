@@ -12,7 +12,7 @@ pub struct CacheGammaEventsCommand {
 #[derive(clap::Subcommand, Clone, Debug)]
 pub enum CacheGammaEventsSubcommand {
     ListDateCascades(CacheGammaEventsListDateCascadesCommand),
-    MonitorDateCascades(CacheGammaEventsMonitorDateCascadesCommand),
+    MonitorTimeSpreadOpportunities(CacheGammaEventsMonitorTimeSpreadOpportunitiesCommand),
 }
 
 impl CacheGammaEventsCommand {
@@ -23,7 +23,7 @@ impl CacheGammaEventsCommand {
         } = self;
         match subcommand {
             ListDateCascades(command) => map_err!(command.run().await, CacheGammaEventsListDateCascadesCommandRunFailed),
-            MonitorDateCascades(command) => map_err!(command.run().await, CacheGammaEventsMonitorDateCascadesCommandRunFailed),
+            MonitorTimeSpreadOpportunities(command) => map_err!(command.run().await, CacheGammaEventsMonitorDateCascadesCommandRunFailed),
         }
     }
 }
@@ -40,6 +40,6 @@ mod cache_gamma_events_list_date_cascades_command;
 
 pub use cache_gamma_events_list_date_cascades_command::*;
 
-mod cache_gamma_events_monitor_date_cascades_command;
+mod cache_gamma_events_monitor_time_spread_opportunities_command;
 
-pub use cache_gamma_events_monitor_date_cascades_command::*;
+pub use cache_gamma_events_monitor_time_spread_opportunities_command::*;

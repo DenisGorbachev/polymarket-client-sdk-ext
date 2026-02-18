@@ -1,4 +1,4 @@
-use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, GammaEventGetTimeSpreadArbitrageOpportunitiesError, OpenKeyspaceError, is_date_cascade, open_keyspace};
+use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, GammaEventGetTimeSpreadArbitrageOpportunitiesError, OpenKeyspaceError, open_keyspace};
 use errgonomic::{ErrVec, handle, handle_iter};
 use fjall::{PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use itertools::Itertools;
@@ -11,7 +11,7 @@ use std::process::ExitCode;
 use thiserror::Error;
 
 #[derive(clap::Parser, Clone, Debug)]
-pub struct CacheGammaEventsMonitorDateCascadesCommand {
+pub struct CacheGammaEventsMonitorTimeSpreadOpportunitiesCommand {
     #[arg(long, default_value = DEFAULT_DB_DIR)]
     pub dir: PathBuf,
 
@@ -19,7 +19,7 @@ pub struct CacheGammaEventsMonitorDateCascadesCommand {
     pub max_iterations: Option<NonZeroUsize>,
 }
 
-impl CacheGammaEventsMonitorDateCascadesCommand {
+impl CacheGammaEventsMonitorTimeSpreadOpportunitiesCommand {
     pub async fn run(self) -> Result<ExitCode, CacheGammaEventsMonitorDateCascadesCommandRunError> {
         use CacheGammaEventsMonitorDateCascadesCommandRunError::*;
         let Self {
@@ -75,8 +75,7 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
         use CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError::*;
         let (_key, value) = handle!(guard.into_inner(), ReadEntryFailed);
         let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value.as_ref()), DeserializeFailed, value);
-        // TODO: use event.is_date_cascade
-        if is_date_cascade(&event.markets).unwrap_or_default() { Ok(Some(event.id)) } else { Ok(None) }
+        if event.is_date_cascade.unwrap_or_default() { Ok(Some(event.id)) } else { Ok(None) }
     }
 
     async fn refresh_date_cascades(db: &SingleWriterTxDatabase, keyspace: &SingleWriterTxKeyspace, client: &GammaClient, event_ids: &[u64]) -> Result<Vec<GammaEvent>, CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesError> {
