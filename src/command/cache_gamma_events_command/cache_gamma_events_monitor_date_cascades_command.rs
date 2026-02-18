@@ -4,7 +4,7 @@ use fjall::{PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspac
 use itertools::Itertools;
 use polymarket_client_sdk::gamma::Client as GammaClient;
 use polymarket_client_sdk::gamma::types::request::EventsRequest;
-use std::io::stdout;
+use std::io::{Write, stdout};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -41,10 +41,10 @@ impl CacheGammaEventsMonitorDateCascadesCommand {
                 GetTimeSpreadArbitrageOpportunitiesFailed
             );
             let mut stdout = stdout().lock();
-            let opportunities_print_results = opportunities
-                .into_iter()
-                .flatten()
-                .map(|opportunity| serde_json::ser::to_writer_pretty(&mut stdout, &opportunity));
+            let opportunities_print_results = opportunities.into_iter().flatten().map(|opportunity| {
+                serde_json::ser::to_writer(&mut stdout, &opportunity)?;
+                stdout.write_all(b"\n")
+            });
             let opportunities_print_result: Result<(), _> = opportunities_print_results.try_collect();
             opportunities_print_result.unwrap();
             iterations = iterations.saturating_add(1);

@@ -1,4 +1,4 @@
-use crate::{BOOLEAN_OUTCOMES, RkyvDecimal, RkyvOffsetDateTime, from_chrono_date_time, gamma_market_raw_is_fresh};
+use crate::{BOOLEAN_OUTCOMES, RkyvDecimal, RkyvOffsetDateTime, TokenId, from_chrono_date_time, gamma_market_raw_is_fresh};
 use core::num::ParseIntError;
 use derive_more::{From, Into};
 use derive_new::new;
@@ -19,6 +19,8 @@ pub struct GammaMarket {
     pub question: String,
 
     pub outcomes: Option<Vec<String>>,
+
+    pub clob_token_ids: Option<Vec<TokenId>>,
 
     #[serde(with = "rust_decimal::serde::str_option")]
     #[rkyv(with = Map<RkyvDecimal>)]
@@ -83,6 +85,7 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
             id,
             question,
             outcomes,
+            clob_token_ids,
             outcome_prices,
             end_date,
             ..
@@ -98,6 +101,7 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
                 id,
                 question,
                 outcomes,
+                clob_token_ids,
                 price_yes: yes_price,
                 price_no: no_price,
                 end_date,
@@ -107,6 +111,7 @@ impl TryFrom<GammaMarketRaw> for GammaMarket {
                 id_result,
                 question,
                 outcomes,
+                clob_token_ids,
                 yes_price,
                 no_price,
                 outcome_prices_rest,
@@ -121,7 +126,7 @@ pub enum ConvertGammaMarketRawToGammaMarketError {
     #[error("old gamma market not supported")]
     Unsupported { market: Box<GammaMarketRaw> },
     #[error("failed to convert gamma market")]
-    ConversionFailed { id: String, id_result: Result<u64, ParseIntError>, question: Option<String>, outcomes: Option<Vec<String>>, yes_price: Option<Decimal>, no_price: Option<Decimal>, outcome_prices_rest: Vec<Decimal>, end_date_result: Result<Option<OffsetDateTime>, ComponentRange> },
+    ConversionFailed { id: String, id_result: Result<u64, ParseIntError>, question: Option<String>, outcomes: Option<Vec<String>>, clob_token_ids: Option<Vec<TokenId>>, yes_price: Option<Decimal>, no_price: Option<Decimal>, outcome_prices_rest: Vec<Decimal>, end_date_result: Result<Option<OffsetDateTime>, ComponentRange> },
 }
 
 #[derive(Error, Debug)]
