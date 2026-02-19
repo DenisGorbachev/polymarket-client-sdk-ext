@@ -4,5 +4,4 @@
 default-filter = """
     not test(/integration_tests::/)
     and not test(/slow_tests::/)
-    and not test(/caching_tests::/)
 """

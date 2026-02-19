@@ -22,6 +22,31 @@ Requirements:
   * `rkyv`
   * `core`
 
+## Action envelope
+
+An envelope enum that has one variant per active method in `polymarket_client_sdk::clob::Client`.
+
+Requirements:
+
+* Every variant must be a tuple variant which must contain a single [action](#action).
+
+## Action
+
+A struct that contains all parameters of a specific active method in `polymarket_client_sdk::clob::Client`.
+
+## Active method
+
+A method that sends an [active request](#active-request).
+
+## Active request
+
+A request that mutates the Polymarket exchange state.
+
+Examples:
+
+* A request to place an order.
+* A request to cancel an order.
+
 ## Foundational crate
 
 The `polymarket_client_sdk` crate (it is extended by `polymarket_client_sdk_ext` crate).
