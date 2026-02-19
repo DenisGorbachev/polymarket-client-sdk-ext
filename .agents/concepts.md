@@ -183,8 +183,10 @@ A Markdown document that renders a list of [concepts](#concept) with the followi
 Requirements:
 
 * The order of other fields in the document must match the order of other fields in the definition of [concept](#concept).
-* A field may not appear twice.
+* A field must not appear twice.
 * If the field is empty, it must not be rendered.
+* Every code item name and single-line code snippet must be rendered in single backticks
+  * Examples: `u64`, `PrintCommand`, `to_markdown`, `impl From<A> for B`
 
 ## Listmap
 

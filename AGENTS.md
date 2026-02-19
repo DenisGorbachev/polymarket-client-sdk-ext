@@ -678,9 +678,13 @@ Every fallible function must return an error with enough data for the caller to 
           TaskNotFound { query: String }
       }
       ```
-  * If the `#[error]` attribute contains fields, then those fields must be wrapped in single quotes. This is necessary to correctly display fields that may contain spaces.
-    * Good: `#[error("user '{name}' not found")]`
-    * Bad: `#[error("user {name} not found")]`
+  * If the `#[error]` attribute contains fields whose values may be rendered as [hard-to-see string](#hard-to-see-string), then those fields must be wrapped in single quotes:
+    * `name` can be rendered as hard-to-see string, so it must be wrapped in single quotes:
+      * Good: `#[error("user '{name}' not found")]`
+      * Bad: `#[error("user {name} not found")]`
+    * `len` can't be rendered as hard-to-see string, so it must not be wrapped in single quotes:
+      * Good: `#[error("failed to parse {len} responses", len = responses.len())]`
+      * Bad: `#[error("failed to parse '{len}' responses", len = responses.len())]`
 * If the error enum variant has a `source` field, then this field must be the first field
 * If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
 * Every error enum variant field must have an owned type (not a reference)
@@ -778,6 +782,10 @@ Examples:
 
 * `RestClient` doesn't point to the actual data, it only allows querying it.
 * `DatabaseConnection` doesn't hold the actual data, it only allows querying it.
+
+#### Hard-to-see string
+
+A string that is empty or contains only whitespace characters.
 
 ### Files
 
