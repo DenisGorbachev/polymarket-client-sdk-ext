@@ -344,14 +344,21 @@ Note: the arithmetic operators and traits are banned because they may panic or s
 
 Note: the index access operators and traits are banned because they may panic.
 
-## Cargo.toml
+## Test fn
 
-* Don't define package features contain only a single optional dependency (such features are already defined by cargo automatically)
+A function marked with `#[test]` or `#[tokio::test]`.
+
+* Must return a `Result`
+* Must implement proper error handling using macros from `errgonomic` crate
 
 ## Macros
 
 * Write `macro_rules!` macros to reduce boilerplate
 * If you see similar code in different places, write a macro and replace the similar code with a macro call
+
+## Cargo.toml
+
+* Don't define package features contain only a single optional dependency (such features are already defined by cargo automatically)
 
 ## Sandbox
 
