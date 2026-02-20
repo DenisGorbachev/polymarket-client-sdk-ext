@@ -134,6 +134,8 @@ Notes:
 
 ## Functions
 
+* Implement proper error handling using macros from `errgonomic` crate instead of `unwrap` or `expect` (in normal code and in tests)
+  * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
 * Prefer streams and iterators:
   * Specifics:
     * Prefer `impl Stream` or `impl IntoIterator` for collection inputs
@@ -160,8 +162,6 @@ Notes:
 * Prefer implementing and use `From` or `TryFrom` for conversions between types (instead of converting in-place)
 * Don't use early-return fast-path guards for empty vecs, iterators, streams (i.e. don't use `if items.is_empty() { return ...; }`)
 * Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
-* Implement proper error handling instead of `unwrap` or `expect` (in normal code and in tests)
-  * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
 * Use iterators instead of for loops. For example:
   * Good:
     ```rust
@@ -356,7 +356,7 @@ Note: the index access operators and traits are banned because they may panic.
 A function marked with `#[test]` or `#[tokio::test]`.
 
 * Must return a `Result`
-* Must implement proper error handling using macros from `errgonomic` crate
+* Must implement proper error handling via `errgonomic` crate
 
 ## Macros
 
