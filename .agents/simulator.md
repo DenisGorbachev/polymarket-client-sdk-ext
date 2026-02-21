@@ -1,6 +1,35 @@
 # Simulator concepts
 
+TODO:
+
+* Move the code from `instahouse-private` to `simsim`
+* Add `simsim` crate as a dependency
+
+## World
+
+A struct that represents the world.
+
+* Must have the following methods:
+  * `pub fn new(now: OffsetDateTime, rng: &mut impl Rng) -> Self`
+  * `pub fn step(rng: &mut impl Rng)`
+* Must not have a field for `impl Rng`
+  * Rationale:
+    * We want to serialize the world
+    * We can pass an `impl Rng` to methods directly
+
+Open questions:
+
+* How to ensure fairness? (ensure that some actors will have a turn)
+
+Notes:
+
+* Online LLM actors have inherently different speed and stochastic outputs (LLMs)
+* The LLM outputs should be cached
+  * But then we won't be able to replay them because the replayed calls will be made at an earlier time compared to actual calls (so the exchange state will be different)
+
 ## Exchange
+
+A struct that implements an exchange interface.
 
 * Must have the following methods:
   * `place_order(&mut self, market_id: MarketId, price: Price, amount: Amount, algo: ExecutionAlgo) -> Result<Info<OrderId, Order>, ExchangePlaceOrderError>`
@@ -10,7 +39,7 @@
 
 ## Market
 
-A struct that implements a trading interface.
+A struct that implements a market interface.
 
 * Must use `NonZeroU64` for `Price` and `Amount`
 * Must have the following methods:

@@ -89,6 +89,13 @@ Notes:
 * Use `cargo add` to add dependencies at their latest versions
 * Set the timeout to 300000 ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
 
+### Recommended crates
+
+* `errgonomic` for error handling
+* `strum` for enum derives
+* `subtype` for defining newtypes
+* `tempfile` for creating temp dirs or files
+
 ### Files
 
 * The file name must match the name of the primary item in this file (for example: a file with `struct User` must be named `user.rs`)
@@ -131,6 +138,8 @@ Notes:
 
 ### Functions
 
+* Implement proper error handling using macros from `errgonomic` crate instead of `unwrap` or `expect` (in normal code and in tests)
+  * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
 * Prefer streams and iterators:
   * Specifics:
     * Prefer `impl Stream` or `impl IntoIterator` for collection inputs
@@ -157,8 +166,6 @@ Notes:
 * Prefer implementing and use `From` or `TryFrom` for conversions between types (instead of converting in-place)
 * Don't use early-return fast-path guards for empty vecs, iterators, streams (i.e. don't use `if items.is_empty() { return ...; }`)
 * Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
-* Implement proper error handling instead of `unwrap` or `expect` (in normal code and in tests)
-  * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
 * Use iterators instead of for loops. For example:
   * Good:
     ```rust
@@ -348,14 +355,21 @@ Note: the arithmetic operators and traits are banned because they may panic or s
 
 Note: the index access operators and traits are banned because they may panic.
 
-### Cargo.toml
+### Test fn
 
-* Don't define package features contain only a single optional dependency (such features are already defined by cargo automatically)
+A function marked with `#[test]` or `#[tokio::test]`.
+
+* Must return a `Result`
+* Must implement proper error handling via `errgonomic` crate
 
 ### Macros
 
 * Write `macro_rules!` macros to reduce boilerplate
 * If you see similar code in different places, write a macro and replace the similar code with a macro call
+
+### Cargo.toml
+
+* Don't define package features contain only a single optional dependency (such features are already defined by cargo automatically)
 
 ### Sandbox
 
@@ -685,6 +699,7 @@ Every fallible function must return an error with enough data for the caller to 
     * `len` can't be rendered as hard-to-see string, so it must not be wrapped in single quotes:
       * Good: `#[error("failed to parse {len} responses", len = responses.len())]`
       * Bad: `#[error("failed to parse '{len}' responses", len = responses.len())]`
+  * If the error enum variant has a field whose type is `std::process::Command` or `tokio::process::Command`, it must be rendered in the error message in backticks via `render_command` function from `errgonomic` crate (requires `shlex` feature)
 * If the error enum variant has a `source` field, then this field must be the first field
 * If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
 * Every error enum variant field must have an owned type (not a reference)
@@ -880,6 +895,23 @@ pub fn partition_result<T, E>(results: impl IntoIterator<Item = Result<T, E>>) -
     });
 
     if errors.is_empty() { Ok(oks) } else { Err(errors) }
+}
+```
+
+### File: src/functions/render\_command.rs
+
+```rust
+use std::process::Command;
+
+pub fn render_command(command: &Command) -> String {
+    let parts = core::iter::once(command.get_program().to_string_lossy())
+        .chain(command.get_args().map(|arg| arg.to_string_lossy()))
+        .collect::<Vec<_>>();
+    let result = shlex::try_join(parts.iter().map(|x| x.as_ref()));
+    match result {
+        Ok(string) => string,
+        Err(_) => command.get_program().to_string_lossy().into_owned(),
+    }
 }
 ```
 
@@ -1338,6 +1370,13 @@ cfg_if::cfg_if! {
         pub use exit_result::*;
     }
 }
+
+cfg_if::cfg_if! {
+    if #[cfg(all(feature = "std", feature = "shlex"))] {
+        mod render_command;
+        pub use render_command::*;
+    }
+}
 ```
 
 ### File: src/lib.rs
@@ -1443,7 +1482,7 @@ mod functions;
 
 pub use functions::*;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod drafts;
 ````
 
