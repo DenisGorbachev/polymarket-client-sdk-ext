@@ -9,9 +9,17 @@ TODO:
 
 A struct that represents the world.
 
+* Must have the following fields:
+  * `observables: Vec<u64>` /// variables whose values serve as resolution criteria for prediction markets created by agents
 * Must have the following methods:
   * `pub fn new(now: OffsetDateTime, rng: &mut impl Rng) -> Self`
   * `pub fn step(rng: &mut impl Rng)`
+    * Must mutate `observables`
+      * Keep `observables[0]` unchanged
+      * Set `observables[1]` to a random value
+      * Set `observables[1]` to `observables[1].wrapping_add(1)`
+      * Set `observables[2]` to `observables[1].wrapping_mul(2)`
+      * Set `observables[3]` to `natural_log(observables[2])`
 * Must not have a field for `impl Rng`
   * Rationale:
     * We want to serialize the world
