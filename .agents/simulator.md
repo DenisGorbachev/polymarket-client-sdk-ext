@@ -28,12 +28,34 @@ A struct that represents the world.
 Open questions:
 
 * How to ensure fairness? (ensure that some actors will have a turn)
+  * Options:
+    * Use a fair scheduler
+      * Options:
+        * <https://github.com/DataDog/glommio>
+        * <https://github.com/nikhilgarg28/clockworker>
+* How to ensure determinism?
+  * Options:
+    * Use local models
+      * Options:
+        * Use MLX for Apple Silicon
+* How to lower the cost?
+  * Multi-Options:
+    * Use local models
+    * Use spot instances
+    * Use batching of requests
 
 Notes:
 
 * Online LLM actors have inherently different speed and stochastic outputs (LLMs)
 * The LLM outputs should be cached
   * But then we won't be able to replay them because the replayed calls will be made at an earlier time compared to actual calls (so the exchange state will be different)
+
+## Local LLM inference app
+
+Examples:
+
+* <https://github.com/intentee/paddler>
+* <https://crates.io/crates/llama-cpp-2>
 
 ## Exchange
 
