@@ -97,6 +97,33 @@ pub struct Book(IndexMap<FxHasher, Price, Amount>);
   * `validate(&self) -> Result<(), BookValidateError>`
     * Must validate that the book is not crossed
 
+## Random actor
+
+An actor that returns random actions.
+
+* Must not return [invalid actions](#invalid-action)
+
+## Invalid action
+
+Given an actor R with perception P, an action A is invalid if the actor R knows that action A can't be executed at perception P.
+
+Examples:
+
+* Place an order with amount higher than available balance
+* Cancel an order by non-existent id
+
+## Perception
+
+A local copy of another actor's state.
+
+Examples:
+
+* A local copy of the exchange state in bot's memory.
+
+Notes:
+
+* Perception + execution model allows the actor to filter out [invalid actions](#invalid-action).
+
 ## Price
 
 `Price(u64)`

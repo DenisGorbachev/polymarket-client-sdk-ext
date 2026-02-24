@@ -141,26 +141,40 @@ Notes:
 * Implement proper error handling using macros from `errgonomic` crate instead of `unwrap` or `expect` (in normal code and in tests)
   * Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
 * Prefer streams and iterators:
-  * Specifics:
-    * Prefer `impl Stream` or `impl IntoIterator` for collection inputs
-    * Prefer `impl Iterator` for collection outputs (avoid large in-memory `Vec`)
+  * Guidelines for inputs:
+    * If the function uses methods that are available only for a specific collection type:
+      * Then: prefer taking a specific collection type as input.
+      * Else: prefer taking an `impl Stream` or `impl IntoIterator` as input.
+  * Guidelines for outputs:
+    * If the function return type is naturally an iterator (for example, the function returns the output of a `map` or `filter`):
+      * Then: prefer returning an `impl Iterator` as output (there's no need to collect into `Vec`).
+      * Else: prefer returning a specific collection type as output.
   * Examples:
     * Good:
       ```rust
-      pub fn foo<'a>(inputs: impl IntoIterator<Item = &'a str>) -> impl Iterator<Item = &'a str> {
-          // do something
+      /// This is good because the function doesn't use any type-specific methods, only generic Iterator trait methods
+      /// This is good because the function naturally returns an Iterator, not a specific collection type
+      pub fn filter_non_empty_strings<'a>(inputs: impl IntoIterator<Item = &'a str>) -> impl Iterator<Item = &'a str> {
+          inputs.into_iter().filter(|i| i.is_empty().not())
       }
 
-      pub fn bar(inputs: impl IntoIterator<Item = String>) -> impl Iterator<Item = String> {
-          // do something
+      /// This is good because the function uses Vec-specific method `extend_from_slice`, so it can't take a generic `impl IntoIterator`
+      fn extend_args(mut args: Vec<String>, extra_args: &[String]) -> Vec<String> {
+          args.extend_from_slice(extra_args);
+          args
       }
       ```
     * Bad:
-      ```rust
-      /// This is bad because it is not general enough
-      pub fn foo(inputs: &[str]) -> Vec<&'a str> {}
+    * ```rust
+      /// This is bad because it needlessly converts a Vec into iter and then collects back into Vec
+      pub fn filter_non_empty_strings(inputs: Vec<&str>) -> Vec<&str> {
+          inputs
+              .into_iter()
+              .filter(|i| i.is_empty().not())
+              .collect::<Vec<_>>()
+      }
 
-      /// This is bad because it is not general enough and also forces the caller to collect the strings into a vec, which is bad for performance
+      /// This is bad because it is not general enough and also forces the caller to collect the strings into a vec for input, which is bad for performance
       pub fn bar(inputs: Vec<String>) -> Vec<String> {}
       ```
 * Prefer implementing and use `From` or `TryFrom` for conversions between types (instead of converting in-place)
@@ -699,7 +713,7 @@ Every fallible function must return an error with enough data for the caller to 
     * `len` can't be rendered as hard-to-see string, so it must not be wrapped in single quotes:
       * Good: `#[error("failed to parse {len} responses", len = responses.len())]`
       * Bad: `#[error("failed to parse '{len}' responses", len = responses.len())]`
-  * If the error enum variant has a field whose type is `std::process::Command` or `tokio::process::Command`, it must be rendered in the error message in backticks via `render_command` function from `errgonomic` crate (requires `shlex` feature)
+  * If the error enum variant has a field whose type is `std::process::Command` or `tokio::process::Command`, it must be rendered in the error message in backticks via `render_command` function from `errgonomic` crate (requires `process` feature)
 * If the error enum variant has a `source` field, then this field must be the first field
 * If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
 * Every error enum variant field must have an owned type (not a reference)
@@ -1372,7 +1386,7 @@ cfg_if::cfg_if! {
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(all(feature = "std", feature = "shlex"))] {
+    if #[cfg(all(feature = "process"))] {
         mod render_command;
         pub use render_command::*;
     }
@@ -1996,7 +2010,7 @@ cfg_if::cfg_if! {
 #### File `src/main.rs`
 
 * Must define a `main` entrypoint
-* Must define a basic test for the top-level command
+* Must define a `verify_cli` test for the top-level command exactly as in the example below (with `debug_assert`)
 
 Example:
 
