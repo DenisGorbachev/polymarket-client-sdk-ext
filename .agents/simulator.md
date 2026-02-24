@@ -5,6 +5,17 @@ TODO:
 * Move the code from `instahouse-private` to `simsim`
 * Add `simsim` crate as a dependency
 
+## Network simulator
+
+A struct that routes messages between actors.
+
+* Must delay some messages.
+* Must drop some messages.
+
+Notes:
+
+* Delays imply reordering of messages.
+
 ## World
 
 A struct that represents the world.
