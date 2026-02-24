@@ -199,7 +199,7 @@ impl CacheDownloadCommand {
         let _market_inserts = handle_iter!(Self::insert_iter(&mut tx, market_keyspace, markets, |market| market.slug.as_str().into(), Self::market_bytes), InsertMarketEntriesFailed);
         let _orderbook_inserts = handle_iter!(Self::insert_iter(&mut tx, orderbook_keyspace, orderbooks, |orderbook| orderbook.asset_id.to_string().into(), Self::orderbook_bytes), InsertOrderbookEntriesFailed);
         handle!(tx.commit(), CommitTransactionFailed);
-        handle!(db.persist(PersistMode::SyncAll), PersistDatabaseFailed);
+        handle!(db.persist(PersistMode::Buffer), PersistDatabaseFailed);
         Ok(())
     }
 
@@ -222,7 +222,7 @@ impl CacheDownloadCommand {
         let mut tx = db.write_tx();
         let _event_inserts = handle_iter!(Self::insert_iter(&mut tx, event_keyspace, event_entries, |(event_slug, _)| event_slug.as_str().into(), |(_event_slug, event)| Self::event_bytes(event)), InsertEventEntriesFailed);
         handle!(tx.commit(), CommitTransactionFailed);
-        handle!(db.persist(PersistMode::SyncAll), PersistDatabaseFailed);
+        handle!(db.persist(PersistMode::Buffer), PersistDatabaseFailed);
         Ok(())
     }
 

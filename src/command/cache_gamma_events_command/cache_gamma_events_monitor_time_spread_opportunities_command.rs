@@ -110,7 +110,7 @@ impl CacheGammaEventsMonitorTimeSpreadOpportunitiesCommand {
             tx.insert(keyspace, event_id, bytes);
         });
         handle!(tx.commit(), CommitTransactionFailed);
-        handle!(db.persist(PersistMode::SyncAll), PersistDatabaseFailed);
+        handle!(db.persist(PersistMode::Buffer), PersistDatabaseFailed);
         Ok(())
     }
 
