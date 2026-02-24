@@ -12,7 +12,7 @@
 ### File `src/main.rs`
 
 - Must define a `main` entrypoint
-- Must define a basic test for the top-level command
+- Must define a `verify_cli` test for the top-level command exactly as in the example below (with `debug_assert`)
 
 Example:
 
