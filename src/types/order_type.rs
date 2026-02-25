@@ -1,14 +1,28 @@
+use clap::ValueEnum;
 use derive_more::From;
+use polymarket_client_sdk::clob::types::OrderType as PolymarketClobOrderType;
 use serde::{Deserialize, Serialize};
 
-#[derive(From, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy, Debug)]
+#[derive(ValueEnum, From, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash, Clone, Copy, Debug)]
 pub enum OrderType {
     #[serde(rename = "GTC")]
-    GoodTillCancelled,
+    Gtc,
     #[serde(rename = "FOK")]
-    FillOrKill,
+    Fok,
     #[serde(rename = "GTD")]
-    GoodTillDay,
+    Gtd,
+    #[serde(rename = "FAK")]
+    Fak,
 }
 
-impl OrderType {}
+impl From<OrderType> for PolymarketClobOrderType {
+    fn from(input: OrderType) -> Self {
+        use OrderType::*;
+        match input {
+            Gtc => Self::GTC,
+            Fok => Self::FOK,
+            Gtd => Self::GTD,
+            Fak => Self::FAK,
+        }
+    }
+}

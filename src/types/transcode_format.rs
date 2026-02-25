@@ -1,3 +1,4 @@
+use clap::ValueEnum;
 use errgonomic::handle;
 use rkyv::api::high::{HighSerializer, HighValidator};
 use rkyv::bytecheck::CheckBytes;
@@ -9,7 +10,7 @@ use rkyv::util::AlignedVec;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(clap::ValueEnum, Copy, Clone, Debug)]
+#[derive(ValueEnum, Copy, Clone, Debug)]
 pub enum TranscodeFormat {
     #[value(name = "rkyv")]
     Rkyv,

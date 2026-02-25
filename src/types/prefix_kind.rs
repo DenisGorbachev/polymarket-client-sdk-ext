@@ -1,6 +1,7 @@
+use clap::ValueEnum;
 use std::io::{self, Write};
 
-#[derive(clap::ValueEnum, Copy, Clone, Debug)]
+#[derive(ValueEnum, Copy, Clone, Debug)]
 #[clap(rename_all = "kebab")]
 pub enum PrefixKind {
     LenU64Le,

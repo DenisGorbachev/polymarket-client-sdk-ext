@@ -1,9 +1,10 @@
+use clap::ValueEnum;
 use errgonomic::handle;
 use std::io;
 use std::io::Write;
 use thiserror::Error;
 
-#[derive(clap::ValueEnum, Copy, Clone, Debug, Default)]
+#[derive(ValueEnum, Copy, Clone, Debug, Default)]
 #[clap(rename_all = "kebab")]
 pub enum OutputKind {
     Key,

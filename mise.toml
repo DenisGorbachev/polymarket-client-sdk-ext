@@ -163,3 +163,9 @@ run = "mise run agent:test:code -- --ignore-default-filter --max-fail 1 --test-t
 # see also: "test:code:slow"
 # `--test-threads` is omitted because slow tests may be run in parallel
 run = "mise run agent:test:code -- --ignore-default-filter --max-fail 1 'slow_tests::'"
+
+[tasks."yolobox:run:secret"]
+run = "./yolobox.secret.local.sh"
+raw = true
+quiet = true
+dir = "{{cwd}}"

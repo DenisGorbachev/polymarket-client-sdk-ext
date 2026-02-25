@@ -13,6 +13,7 @@ pub struct Command {
 #[derive(clap::Subcommand, Clone, Debug)]
 pub enum Subcommand {
     Cache(CacheCommand),
+    Clob(ClobCommand),
     Transcode(TranscodeCommand),
 }
 
@@ -24,6 +25,7 @@ impl Command {
         } = self;
         match subcommand {
             Cache(command) => map_err!(command.run().await, CacheCommandRunFailed),
+            Clob(command) => map_err!(command.run().await, ClobCommandRunFailed),
             Transcode(command) => map_err!(command.run().await, TranscodeCommandRunFailed),
         }
     }
@@ -33,6 +35,8 @@ impl Command {
 pub enum CommandRunError {
     #[error("failed to run cache command")]
     CacheCommandRunFailed { source: CacheCommandRunError },
+    #[error("failed to run clob command")]
+    ClobCommandRunFailed { source: ClobCommandRunError },
     #[error("failed to run transcode command")]
     TranscodeCommandRunFailed { source: TranscodeCommandRunError },
 }
@@ -57,6 +61,10 @@ pub use cache_market_responses_command::*;
 mod cache_order_book_summary_responses_command;
 
 pub use cache_order_book_summary_responses_command::*;
+
+mod clob_command;
+
+pub use clob_command::*;
 
 mod transcode_command;
 

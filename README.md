@@ -33,6 +33,7 @@ Usage: polymarket-client-sdk-ext <COMMAND>
 
 Commands:
   cache      
+  clob       
   transcode  
   help       Print this message or the help of the given subcommand(s)
 
