@@ -1,0 +1,3 @@
+- B001: Could not verify the insufficient-funds error for `clob place-limit-order` because the CLOB API returned a region restriction error before account balance validation. Workarounds: 
+  - Run the same command from a permitted region/IP and verify the returned error body.
+  - Route the request through a compliant proxy/VPN in a permitted region.

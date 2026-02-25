@@ -592,6 +592,10 @@ Requirements:
   * All files from this index have already been downloaded to `.agents/docs/polymarket` on 2026-01-22
   * To download again, execute [Download Polymarket Docs for Developers](../specs/download-polymarket-docs.md) (TODO: turn this file into a shell task in .mise folder)
 
+### Servers
+
+* Polymarket servers are located in `eu-west-2` according to their docs.
+
 ### Database
 
 * Market's primary key is `condition_id`
