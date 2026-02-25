@@ -161,13 +161,12 @@ A command that places a CLOB limit order.
 
 Requirements:
 
-* Inputs:
-  * Must accept and proxy all limit-order builder inputs: `token_id`, `side`, `price`, `size`, `nonce`, `expiration`, `taker`, `order_type`, `post_only`.
-  * Must accept and proxy all client-auth inputs required to sign and send the order: `host`, `chain_id`, `signature_type`, `funder`, `private_key`.
-  * Must allow to supply `private_key` from environment variable.
-  * Must treat generated cryptographic/order data (`salt`, `signature`) as foundational-crate outputs, not CLI inputs.
-* Outputs:
-  * Must output the response serialized via `serde_json`.
+* Must be callable as `clob place-limit-order`
+* Must accept and proxy all limit-order builder inputs: `token_id`, `side`, `price`, `size`, `nonce`, `expiration`, `taker`, `order_type`, `post_only`.
+* Must accept and proxy all client-auth inputs required to sign and send the order: `host`, `chain_id`, `signature_type`, `funder`, `private_key`.
+* Must allow to supply `private_key` from environment variable.
+* Must treat generated cryptographic/order data (`salt`, `signature`) as foundational-crate outputs, not CLI inputs.
+* Must output the response serialized via `serde_json`.
 * Must have methods:
   * `run`
     * Must use `polymarket_client_sdk::clob::Client::limit_order`
