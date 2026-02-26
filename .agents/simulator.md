@@ -1,10 +1,5 @@
 # Simulator concepts
 
-TODO:
-
-* Move the code from `instahouse-private` to `simsim`
-* Add `simsim` crate as a dependency
-
 ## Network simulator
 
 A struct that routes messages between actors.
