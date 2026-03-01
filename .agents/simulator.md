@@ -73,6 +73,12 @@ A struct that implements an exchange interface.
 * Must pass the following tests:
   * `must_reject_order_if_not_enough_balance`
 
+Existing alternatives:
+
+* <https://github.com/joaquinbejar/OrderBook-rs>
+* <https://github.com/barter-rs/barter-rs>
+* <https://github.com/nautechsystems/nautilus_trader>
+
 ## Market
 
 A struct that implements a market interface.
