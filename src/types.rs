@@ -177,3 +177,31 @@ pub use property_distribution::*;
 mod time_spread_arbitrage_opportunity;
 
 pub use time_spread_arbitrage_opportunity::*;
+
+mod related_markets_format;
+
+pub use related_markets_format::*;
+
+mod expr;
+
+pub use expr::*;
+
+mod market_exchange;
+
+pub use market_exchange::*;
+
+mod market_relation_info;
+
+pub use market_relation_info::*;
+
+mod market_relation;
+
+pub use market_relation::*;
+
+mod opinion_market;
+
+pub use opinion_market::*;
+
+mod opinion_market_page;
+
+pub use opinion_market_page::*;

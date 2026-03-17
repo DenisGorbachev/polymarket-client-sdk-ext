@@ -61,6 +61,7 @@ strum = { version = "0.27.2", features = ["derive"] }
 #standard-traits = { git = "https://github.com/DenisGorbachev/standard-traits" }
 stub-macro = "0.2.1"
 subtype = { git = "https://github.com/DenisGorbachev/subtype" }
+tempfile = "3.26.0"
 thiserror = "2.0.17"
 time = { version = "0.3.47", features = ["serde", "macros", "formatting", "parsing"] }
 tokio = { version = "1.39.2", features = ["macros", "rt", "rt-multi-thread"] }

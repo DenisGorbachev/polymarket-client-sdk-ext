@@ -32,10 +32,11 @@ Polymarket API client
 Usage: polymarket-client-sdk-ext <COMMAND>
 
 Commands:
-  cache      
-  clob       
-  transcode  
-  help       Print this message or the help of the given subcommand(s)
+  cache                 
+  clob                  
+  list-related-markets  
+  transcode             
+  help                  Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help     Print help
