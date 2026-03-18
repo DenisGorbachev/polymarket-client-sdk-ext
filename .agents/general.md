@@ -112,6 +112,36 @@ Notes:
   ```rust
   use crate::foo;
   ```
+* Prefer short item paths over long item paths (use `use` statement), unless it's necessary for disambiguation. For example:
+  * Good:
+    ```rust
+    use clap::ValueEnum;
+    use serde::{Deserialize, Serialize};
+  
+    #[derive(ValueEnum, Serialize, Deserialize, Eq, PartialEq, Hash, Clone, Copy, Debug)]
+    pub enum Side {
+        Buy,
+        Sell,
+    }
+    ```
+  * Good (`serde` and `rkyv` prefixes are necessary for disambiguation):
+    ```rust
+    use clap::ValueEnum;
+
+    #[derive(ValueEnum, From, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Eq, PartialEq, Hash, Clone, Copy, Debug)]
+    pub enum Side {
+        Buy,
+        Sell,
+    }
+    ```
+  * Bad (`clap` and `serde` prefixes are not necessary for disambiguation because their trait names are unique in this module):
+    ```rust
+    #[derive(clap::ValueEnum, serde::Serialize, serde::Deserialize, Eq, PartialEq, Hash, Clone, Copy, Debug)]
+    pub enum Side {
+        Buy,
+        Sell,
+    }
+    ```
 
 ## Items
 

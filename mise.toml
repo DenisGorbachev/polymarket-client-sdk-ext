@@ -23,13 +23,13 @@ fx = "39.2.0"
 FJALL_DB = "{{config_root}}/.cache/db"
 
 [tasks."build"]
-run = "cargo build"
+run = "cargo build --workspace"
 
 [tasks."lint"]
 depends = ["lint:code", "lint:docs"]
 
 [tasks."lint:code"]
-run = "cargo clippy --all-targets --all-features -- -D warnings"
+run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
 
 [tasks."lint:docs"]
 run = "rumdl check"
@@ -39,7 +39,7 @@ run = "rumdl check"
 depends = ["test:code", "test:docs"]
 
 [tasks."test:code"]
-run = "cargo nextest run --all-features --no-tests warn"
+run = "cargo nextest run --workspace --all-features --no-tests warn"
 
 [tasks."test:code:integration"]
 # see also: "agent:test:code:integration"
@@ -52,7 +52,7 @@ run = "mise run test:code -- --ignore-default-filter --max-fail 1 --test-threads
 run = "mise run test:code -- --ignore-default-filter --max-fail 1 'slow_tests::'"
 
 [tasks."test:docs"]
-run = "cargo test --doc --all-features --no-fail-fast --quiet"
+run = "cargo test --workspace --doc --all-features --no-fail-fast --quiet"
 
 [tasks."fix"]
 # run the tasks in parallel because they modify different files
@@ -69,8 +69,8 @@ mise run fix:code:style
 # second pass is needed because "cargo clippy --fix" exits with 0 even if some warnings remain
 env = { __CARGO_FIX_YOLO = 'yeah' }
 run = """
-cargo clippy --all-targets --all-features --fix --allow-dirty --allow-staged
-cargo clippy --all-targets --all-features -- -D warnings
+cargo clippy --workspace --all-targets --all-features --fix --allow-dirty --allow-staged
+cargo clippy --workspace --all-targets --all-features -- -D warnings
 """
 
 [tasks."fix:code:style"]
