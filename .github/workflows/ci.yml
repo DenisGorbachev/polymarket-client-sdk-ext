@@ -14,12 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       # mold is a workaround for regression in Rust 1.93 beta
       - uses: rui314/setup-mold@v1
-      - uses: jdx/mise-action@v2
-        with:
-          version: 2025.10.11
+      - uses: jdx/mise-action@v4
       - name: Remove rust from mise
         run: |
           # a different rust version will be installed in the next step
@@ -28,7 +26,7 @@ jobs:
         with:
           toolchain: stable
           components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2.8.0
+      - uses: Swatinem/rust-cache@v2
       - run: lefthook run --force pre-commit
       - run: cargo hack test --feature-powerset
       - uses: wagoid/commitlint-github-action@v6
