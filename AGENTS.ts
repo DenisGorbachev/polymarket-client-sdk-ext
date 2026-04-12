@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-run --no-lock
+#!/usr/bin/env -S deno run --node-modules-dir=false --allow-read --allow-write --allow-run --no-lock
 
 import {parseArgs} from "jsr:@std/cli@1.0.13"
 import {compare, parse} from "jsr:@std/semver@1.0.0"

@@ -1,7 +1,9 @@
 min_version = "2026.4.8"
 
+[settings]
+idiomatic_version_file_enable_tools = ["rust"]
+
 [tools]
-rust = "1.91.0"
 node = "22.12.0"
 deno = "1.46.1"
 cargo-binstall = "1.10.15"
@@ -15,12 +17,6 @@ cargo-binstall = "1.10.15"
 "cargo:cargo-nextest" = "0.9.102"
 "cargo:cargo-expand" = "1.0.114"
 "cargo:rumdl" = "0.1.0"
-"cargo:https://github.com/DenisGorbachev/fjall-cli" = { version = "latest" }
-jq = "1.8.1"
-fx = "39.2.0"
-
-[env]
-FJALL_DB = "{{config_root}}/.cache/db"
 
 [tasks."build"]
 run = "cargo build --workspace"
@@ -35,7 +31,6 @@ run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
 run = "rumdl check"
 
 [tasks."test"]
-# `depends` intentionally doesn't include "test:code:integration" or "test:code:slow" (such tests should be run only by agent or CI)
 depends = ["test:code", "test:docs"]
 
 [tasks."test:code"]
@@ -163,9 +158,3 @@ run = "mise run agent:test:code -- --ignore-default-filter --max-fail 1 --test-t
 # see also: "test:code:slow"
 # `--test-threads` is omitted because slow tests may be run in parallel
 run = "mise run agent:test:code -- --ignore-default-filter --max-fail 1 'slow_tests::'"
-
-[tasks."yolobox:run:secret"]
-run = "./yolobox.secret.local.sh"
-raw = true
-quiet = true
-dir = "{{cwd}}"

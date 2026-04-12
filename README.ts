@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-write --allow-read --allow-run=bash,git,cargo --allow-net=docs.rs:443,github.com:443 --allow-env --allow-sys --no-lock
+#!/usr/bin/env -S deno run --node-modules-dir=false --allow-write --allow-read --allow-run=bash,git,cargo --allow-net=docs.rs:443,github.com:443 --allow-env --allow-sys --no-lock
 
 // NOTE: Pin the versions of the packages because the script runs without a lock file
 import * as zx from "npm:zx@8.3.2"
