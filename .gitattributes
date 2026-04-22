@@ -2,3 +2,10 @@
 # To define `ours` merge driver, run `git config --global merge.ours.driver true`
 README.md merge=ours
 AGENTS.md merge=ours
+
+# The following lines require `hidden` diff driver
+# To define `hidden` diff driver, run `git config --global diff.hidden.binary true`
+# Note that `diff.external` setting does not respect internal diff drivers
+README.md diff=hidden
+AGENTS.md diff=hidden
+Cargo.lock diff=hidden
