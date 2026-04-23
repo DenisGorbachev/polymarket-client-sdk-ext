@@ -1,5 +1,15 @@
-# The following lines require `ours` merge driver
-# To define `ours` merge driver, run `git config --global merge.ours.driver 'git merge-file --ours --quiet -L %X -L %S -L %Y --marker-size=%L %A %O %B'`
+# The following lines require `ours` merge driver:
+#
+# [merge "ours"]
+#   # For conflicting hunks: merge ours
+#   # For non-conflicting hunks: merge normally
+#   name = Prefer ours for conflicting hunks
+#   # wrapping with `test` is needed because `git merge-file` exit status is equal to the number of conflicts (including those resolved with `--ours`)
+#   # %S, %X, %Y, %L are not needed because `--ours` leaves no conflicts
+#   driver = sh -c 'git merge-file --ours --quiet "$1" "$2" "$3" || test $? -le 127' -- %A %O %B
+#   # keep using `text` for ancestor merges
+#   recursive = text
+#
 README.md merge=ours
 AGENTS.md merge=ours
 Cargo.lock merge=ours
