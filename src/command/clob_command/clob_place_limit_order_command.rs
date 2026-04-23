@@ -167,7 +167,7 @@ impl From<ClobPlaceLimitOrderCommandSignatureType> for PolymarketClobSignatureTy
     }
 }
 
-/// This struct is needed because [`PostOrderResponse`] doesn't implement [`Serialize`]
+/// This struct is needed because [`PostOrderResponse`] doesn't implement [`serde::Serialize`]
 #[derive(serde::Serialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ClobPlaceLimitOrderCommandOutput {
