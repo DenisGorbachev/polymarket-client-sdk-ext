@@ -38,6 +38,8 @@ fi
   name_old=$(taplo get -f "$cargo_toml" "package.name")
   name_old_snake_case=$(ccase --to snake "$name_old")
   name_new_snake_case=$(ccase --to snake "$name_new")
+  name_old_kebab_case=$(ccase --to kebab "$name_old")
+  name_new_kebab_case=$(ccase --to kebab "$name_new")
   repo_url=$(cd "$dir" && gh repo view --json url | jq -r .url)
 
   tomli set -f "$cargo_toml" "package.name" "$name_new" | sponge "$cargo_toml"
@@ -49,6 +51,7 @@ fi
   # rg exits with status code = 1 if it doesn't find any files, so we need to disable & re-enable "set -e"
   set +e
   rg --files-with-matches "$name_old_snake_case" "$dir" | xargs gsed -i "s/\b$name_old_snake_case\b/$name_new_snake_case/g"
+  rg --files-with-matches "$name_old_kebab_case" "$dir" | xargs gsed -i "s/\b$name_old_kebab_case\b/$name_new_kebab_case/g"
   set -e
 
   mise exec -- lefthook install

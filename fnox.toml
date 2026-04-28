@@ -1,0 +1,7 @@
+#:schema https://fnox.jdx.dev/schema.json
+
+if_missing = "error"
+
+[providers]
+keychain = { type = "keychain", service = "rust-private-lib-template" }
+pass = { type = "password-store", prefix = "rust-private-lib-template/" }
