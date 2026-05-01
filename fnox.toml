@@ -3,5 +3,5 @@
 if_missing = "error"
 
 [providers]
-keychain = { type = "keychain", service = "rust-private-lib-template" }
-pass = { type = "password-store", prefix = "rust-private-lib-template/" }
+keychain = { type = "keychain", service = "rust-pre-public-lib-template" }
+pass = { type = "password-store", prefix = "rust-pre-public-lib-template/" }
