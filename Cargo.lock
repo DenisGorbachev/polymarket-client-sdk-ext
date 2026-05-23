@@ -3220,7 +3220,6 @@ dependencies = [
  "serde_json",
  "similar-asserts",
  "strum",
- "stub-macro",
  "subtype",
  "tempfile",
  "thiserror 2.0.18",
@@ -4514,12 +4513,6 @@ dependencies = [
  "quote",
  "syn 2.0.117",
 ]
-
-[[package]]
-name = "stub-macro"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b898e484f55f310f9513dd80f0b65c4e1030abc101fecffed6003baea6a4a853"
 
 [[package]]
 name = "subtle"

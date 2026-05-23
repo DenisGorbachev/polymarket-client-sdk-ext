@@ -14,7 +14,10 @@ impl Visitor<'_> for TimestampVisitor {
 
     fn visit_str<E: Error>(self, value: &str) -> Result<Self::Value, E> {
         let timestamp_ms = value.parse::<u64>().map_err(E::custom)?;
-        OffsetDateTime::from_unix_timestamp_nanos((timestamp_ms as i128) * 1_000_000).map_err(E::custom)
+        let timestamp_ns = (timestamp_ms as i128)
+            .checked_mul(1_000_000)
+            .ok_or_else(|| E::custom(format!("timestamp '{timestamp_ms}' milliseconds is out of range")))?;
+        OffsetDateTime::from_unix_timestamp_nanos(timestamp_ns).map_err(E::custom)
     }
 }
 

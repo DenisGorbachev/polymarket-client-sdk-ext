@@ -401,6 +401,8 @@ A function marked with `#[test]` or `#[tokio::test]`.
 
 * Must return a `Result`
 * Must implement proper error handling via `errgonomic` crate
+* Should use macros from `assertables` crate
+  * Should use `assert_infix` instead of `assert_gt`, `assert_ge`, `assert_lt`, `assert_le`, `assert_eq`
 
 ## Macros
 

@@ -97,7 +97,9 @@ pub fn read_len_prefix(reader: &mut impl Read) -> Result<Option<u64>, ReadLenPre
                 offset,
             });
         }
-        offset += read;
+        offset = offset
+            .checked_add(read)
+            .expect("always succeeds because read is at most the remaining bytes in the fixed length prefix buffer");
     }
     Ok(Some(u64::from_le_bytes(len_bytes)))
 }

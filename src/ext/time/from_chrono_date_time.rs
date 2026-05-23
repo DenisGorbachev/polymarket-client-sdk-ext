@@ -7,7 +7,10 @@ pub fn from_chrono_date_time<Tz: TimeZone>(datetime: DateTime<Tz>) -> Result<Off
     // Chrono: seconds since epoch + subsecond nanos
     let secs = datetime.timestamp() as i128;
     let subsec_nanos = datetime.timestamp_subsec_nanos() as i128;
-    let unix_nanos = secs * 1_000_000_000 + subsec_nanos;
+    let unix_nanos = secs
+        .checked_mul(1_000_000_000)
+        .and_then(|secs_nanos| secs_nanos.checked_add(subsec_nanos))
+        .expect("always succeeds because chrono timestamp seconds fit into i64 and subsecond nanos are less than one second");
     OffsetDateTime::from_unix_timestamp_nanos(unix_nanos)
 }
 
