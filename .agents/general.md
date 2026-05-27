@@ -47,6 +47,10 @@ Notes:
 * After finishing the task: run `mise run agent:on:stop` (this command runs the lints and tests)
   * `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
   * `mise run agent:on:stop` includes `cargo fmt`, `cargo check`, `cargo clippy`, `cargo nextest` (no need to run them separately)
+* After finishing the original task, improve the code:
+  * Remove unnecessary code
+  * Remove unnecessary allocations
+  * Refactor code that converts between types into `From` / `Into` impls
 * Don't edit the files in the following top-level dirs: `specs`, `.agents`
 * Don't write the tests unless I ask you explicitly
 * If a later instruction overrides the former instruction: follow the later instruction (last override wins).
