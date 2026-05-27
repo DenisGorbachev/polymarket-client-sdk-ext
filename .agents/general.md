@@ -148,6 +148,12 @@ Notes:
 
 * Prefer `pub` instead of `pub(crate)` or private.
 
+## Layout
+
+* Generic helper functions must be in `src/functions` folder
+
+The general layout guidelines may be overridden by more specific layout guidelines below.
+
 ## Types
 
 * Always use the most specific types (enforce semantic difference through syntactic difference):
