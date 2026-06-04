@@ -163,6 +163,10 @@ Notes:
 
 The general layout guidelines may be overridden by more specific layout guidelines below.
 
+### Constants
+
+* Define constants only for values used in multiple places (prefer inline values)
+
 ### Types
 
 * Always use the most specific types (enforce semantic difference through syntactic difference):
