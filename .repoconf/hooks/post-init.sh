@@ -41,7 +41,6 @@ fi
   name_new_snake_case=$(ccase --to snake "$name_new")
   name_old_kebab_case=$(ccase --to kebab "$name_old")
   name_new_kebab_case=$(ccase --to kebab "$name_new")
-  repo_name=$(basename "$dir")
   repo_url=$(cd "$dir" && gh repo view --json url | jq -r .url)
 
   tomli set -f "$cargo_toml" "package.name" "$name_new" | sponge "$cargo_toml"
@@ -56,8 +55,9 @@ fi
   rg --files-with-matches "$name_old_kebab_case" "$dir" | xargs gsed -i "s/\b$name_old_kebab_case\b/$name_new_kebab_case/g"
   set -e
 
-  tomli set -f "$fnox_toml" "providers.keychain.service" "$repo_name" | sponge "$fnox_toml"
-  tomli set -f "$fnox_toml" "providers.pass.prefix" "$repo_name/" | sponge "$fnox_toml"
+  # Using package name instead of folder name because a workspace can contain multiple checkouts of the same repository in different folders
+  tomli set -f "$fnox_toml" "providers.keychain.service" "$name_new" | sponge "$fnox_toml"
+  tomli set -f "$fnox_toml" "providers.pass.prefix" "$name_new/" | sponge "$fnox_toml"
 
   mise exec -- lefthook install
 
