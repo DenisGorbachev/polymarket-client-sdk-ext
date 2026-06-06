@@ -429,6 +429,7 @@ A function marked with `#[test]` or `#[tokio::test]`.
 
 * For shell scripts and commands that will be read by the user (written per direct request of the user):
   * Use long options
+  * Use `echo` with inline args instead of `printf`
 * For shell scripts and commands what won't be read by the user (written to accomplish a local task):
   * Use short options
 
