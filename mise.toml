@@ -20,6 +20,7 @@ cargo-binstall = "1.10.15"
 "cargo:cargo-hack" = "0.6.33"
 "cargo:cargo-nextest" = "0.9.102"
 "cargo:cargo-expand" = "1.0.114"
+"cargo:taplo-cli" = "0.10.0"
 "cargo:rumdl" = "0.1.0"
 
 [env]
@@ -58,7 +59,10 @@ run = "cargo test --workspace --doc --all-features --no-fail-fast --quiet"
 
 [tasks."fix"]
 # run the tasks in parallel because they modify different files
-depends = ["fix:code", "fix:docs", "fix:agents"]
+depends = ["fix:code", "fix:docs", "fix:agents", "fix:configs"]
+
+[tasks."fix:configs"]
+depends = ["fix:fnox"]
 
 [tasks."fix:code"]
 # run the tasks sequentially because they modify the same files
