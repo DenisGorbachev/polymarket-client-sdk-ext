@@ -4,13 +4,19 @@ set -euo pipefail
 
 project_root=${MISE_PROJECT_ROOT:-$(pwd)}
 fnox_toml="$project_root/fnox.toml"
-cargo_toml="$project_root/Cargo.toml"
-package_name=$(taplo get --file-path "$cargo_toml" --strip-newline "package.name") || {
-  echo "failed to read package.name from $cargo_toml" >&2
+origin_url=$(git -C "$project_root" remote get-url origin) || {
+  echo "failed to read origin remote URL from $project_root" >&2
   exit 1
 }
-expected_keychain_service="$package_name"
-expected_pass_prefix="$package_name/"
+origin_url=${origin_url%/}
+project_name=${origin_url##*/}
+project_name=${project_name%.git}
+if [[ -z "$project_name" ]]; then
+  echo "failed to extract project name from origin remote URL: $origin_url" >&2
+  exit 1
+fi
+expected_keychain_service="$project_name"
+expected_pass_prefix="$project_name/"
 
 read_toml_value() {
   taplo get --file-path "$fnox_toml" --strip-newline "$@"

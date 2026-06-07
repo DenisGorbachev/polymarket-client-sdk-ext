@@ -41,6 +41,14 @@ fi
   name_new_snake_case=$(ccase --to snake "$name_new")
   name_old_kebab_case=$(ccase --to kebab "$name_old")
   name_new_kebab_case=$(ccase --to kebab "$name_new")
+  origin_url=$(git -C "$dir" remote get-url origin)
+  origin_url=${origin_url%/}
+  project_name=${origin_url##*/}
+  project_name=${project_name%.git}
+  if [[ -z "$project_name" ]]; then
+    echo "failed to extract project name from origin remote URL: $origin_url" >&2
+    exit 1
+  fi
   repo_url=$(cd "$dir" && gh repo view --json url | jq -r .url)
 
   tomli set -f "$cargo_toml" "package.name" "$name_new" | sponge "$cargo_toml"
@@ -55,9 +63,9 @@ fi
   rg --files-with-matches "$name_old_kebab_case" "$dir" | xargs gsed -i "s/\b$name_old_kebab_case\b/$name_new_kebab_case/g"
   set -e
 
-  # Using package name instead of folder name because a workspace can contain multiple checkouts of the same repository in different folders
-  tomli set -f "$fnox_toml" "providers.keychain.service" "$name_new" | sponge "$fnox_toml"
-  tomli set -f "$fnox_toml" "providers.pass.prefix" "$name_new/" | sponge "$fnox_toml"
+  # Using git remote project name instead of folder name because a workspace can contain multiple checkouts of the same repository in different folders, and some repos contain Cargo.toml with `workspace` but not `package`, so we can't use `package.name`
+  tomli set -f "$fnox_toml" "providers.keychain.service" "$project_name" | sponge "$fnox_toml"
+  tomli set -f "$fnox_toml" "providers.pass.prefix" "$project_name/" | sponge "$fnox_toml"
 
   mise exec -- lefthook install
 
