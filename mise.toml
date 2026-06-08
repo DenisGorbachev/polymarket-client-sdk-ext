@@ -58,8 +58,17 @@ run = "mise run test:code -- --ignore-default-filter --max-fail 1 'slow_tests::'
 run = "cargo test --workspace --doc --all-features --no-fail-fast --quiet"
 
 [tasks."fix"]
-# run the tasks in parallel because they modify different files
-depends = ["fix:code", "fix:docs", "fix:agents", "fix:configs"]
+# Run code fixes in parallel with project-file fixes because `fix:code` is the longest path.
+depends = ["fix:code", "fix:aux"]
+
+[tasks."fix:aux"]
+# Run config fixes before generated instructions because AGENTS.ts includes config files such as fnox.toml.
+# Run markdown fixes last because they should format generated markdown and stage it after generation.
+run = """
+mise run fix:configs
+mise run fix:agents
+mise run fix:docs
+"""
 
 [tasks."fix:configs"]
 depends = ["fix:fnox"]

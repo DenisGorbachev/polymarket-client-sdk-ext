@@ -24,3 +24,15 @@ commit-msg:
   commands:
     commitlint:
       run: mise run commitlint -- --edit "$1"
+post-commit:
+  commands:
+    repair-index-from-worktree:
+      run: |
+        set -eu
+        unset GIT_INDEX_FILE
+        # Repair stale staged entries left by pathspec commits after pre-commit fixers updated the temporary commit index.
+        git diff --cached --name-only HEAD -- | while IFS= read -r path; do
+          if git diff --quiet HEAD -- "$path"; then
+            git add --all -- "$path"
+          fi
+        done
