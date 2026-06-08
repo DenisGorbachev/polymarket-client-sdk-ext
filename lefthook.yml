@@ -26,7 +26,7 @@ commit-msg:
       run: mise run commitlint -- --edit "$1"
 post-commit:
   commands:
-    repair-index-from-worktree:
+    repair-index:
       run: |
         set -eu
         unset GIT_INDEX_FILE
