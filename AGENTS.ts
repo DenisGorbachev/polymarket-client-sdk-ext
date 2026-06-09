@@ -262,6 +262,7 @@ const parts = (await Promise.all([
   includeFile(".agents/general.md"),
   includeFileIfCargoDependencyExists("serde", ".agents/crates/serde.md"),
   includeFileIfCargoDependencyExists("subtype", ".agents/crates/subtype.md"),
+  includeFileIfCargoDependencyExists("clap", ".agents/crates/clap.md"),
   includeFileIfCargoDependencyExists("clap", ".agents/cli.md"),
   includeFileIfExists(".agents/project.md"),
   includeFileIfExists(".agents/knowledge.md"),

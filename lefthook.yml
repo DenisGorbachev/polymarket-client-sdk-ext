@@ -3,6 +3,9 @@ pre-commit:
   parallel: true
   commands:
     gen:readme:
+      # skip because `mise run gen:readme` may fail in CI due to transient network errors (e.g. GitHub server not responding)
+      skip:
+        - run: test -n "${CI:-}"
       run: |
         set -eu
         mise run gen:readme
