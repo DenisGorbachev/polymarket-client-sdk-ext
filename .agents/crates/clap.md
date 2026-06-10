@@ -2,4 +2,6 @@
 
 ## Requirements
 
-- Every enum in the project must derive `ValueEnum` with `#[value(rename_all = "kebab-case")]`
+- For each enum in project:
+  - If enum has only unit variants and doesn't implement `Error`
+    - Then: it must derive `ValueEnum` with `#[value(rename_all = "kebab-case")]`
