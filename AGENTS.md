@@ -167,6 +167,7 @@ The general layout guidelines may be overridden by more specific layout guidelin
 ### Constants
 
 * Define constants only for values used in multiple places (prefer inline values)
+* Put constants in `src/constants.rs`
 
 ### Types
 
