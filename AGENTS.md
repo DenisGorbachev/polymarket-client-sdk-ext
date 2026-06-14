@@ -89,6 +89,10 @@ Notes:
       * Then: newline and a Markdown nested list of fixes where each fix must have a format `{number}. {description}` (the numbers should start from 1 for each list of fixes)
       * Else: the exact text "none."
 * If there are no findings, then start your reply with "No findings"
+* If I reply to your review with an ordered list, process each item in the following way:
+  * "+" - "Do fix"
+  * "-" - "Don't fix"
+  * other - respond normally (keep the number in your response)
 
 ### Commands
 
