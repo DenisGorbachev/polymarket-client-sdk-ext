@@ -86,8 +86,9 @@ Notes:
       * Else: the exact text "none."
 * If there are no findings, then start your reply with "No findings"
 * If I reply to your review with an ordered list, process each item in the following way:
-  * "+" - "Do fix"
-  * "-" - "Don't fix"
+  * "+" - "Think about this finding again, then apply the best fix according to your thinking process"
+  * "+ {number}" - "Apply proposed fix at {number}"
+  * "-" - "Don't apply any fixes"
   * other - respond normally (keep the number in your response)
 
 ## Commands
