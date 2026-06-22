@@ -95,6 +95,10 @@ Notes:
   * "-" - "Don't apply any fixes"
   * other - respond normally (keep the number in your response)
 
+### Debugging workflow
+
+* Improve error handling, so that the root cause is clearly visible
+
 ### Commands
 
 * Use `fd` and `rg` instead of `find` and `grep`
@@ -158,16 +162,18 @@ Notes:
         Sell,
     }
     ```
+* If you need error and result types from `std`, prefer short paths:
+  * `use std::io;` and `io::Result`, `io::Error`
+  * `use std::fmt;` and `fmt::Result`, `fmt::Error`
 
-### Items
+### Visibility
 
-* Prefer `pub` instead of `pub(crate)` or private.
-
-### Layout
-
-* Generic helper functions must be in `src/functions` folder
-
-The general layout guidelines may be overridden by more specific layout guidelines below.
+* Items:
+  * Prefer `pub` instead of `pub(crate)` or private.
+* Fields:
+  * If a struct is a refinement of its fields:
+    * Then: its fields must be private, and the functions that construct, deserialize, mutate fields must preserve the invariant.
+    * Else: its fields must be `pub`.
 
 ### Constants
 
@@ -380,6 +386,7 @@ The general layout guidelines may be overridden by more specific layout guidelin
       }
   }
   ```
+* Generic helper functions must be in `src/functions` (one file per function)
 
 ### Struct derives
 
@@ -2429,6 +2436,15 @@ title = "Polymarket API client"
 tagline = ""
 summary = ""
 announcement = ""
+
+[lints.rust]
+redundant_imports = "deny"
+unused_import_braces = "deny"
+# unused_qualifications must not be "deny" because our code style has multiple `use Foo::*;`, and some macros (derive_more::Display, strum::Display, strum::EnumString) produce code with full qualifications
+# unused_qualifications = "deny"
+
+[lints.clippy]
+absolute_paths = "deny"
 
 [dependencies]
 alloy = { version = "1.6.3", default-features = false, features = ["std", "serde", "signer-mnemonic"] }
