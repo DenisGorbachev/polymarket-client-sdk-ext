@@ -308,7 +308,6 @@ impl From<ClobMarketResponsePrecise> for MarketResponse {
 mod tests {
     use super::*;
     use errgonomic::{handle, handle_bool};
-    use polymarket_client_sdk::clob::types::response::MarketResponse;
     use thiserror::Error;
 
     #[test]

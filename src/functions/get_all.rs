@@ -3,7 +3,6 @@ use async_stream::stream;
 use futures::Stream;
 use polymarket_client_sdk::clob::types::response::Page;
 use std::fmt::Debug;
-use std::future::Future;
 
 pub fn get_page_stream<T: Debug, E, F: Future<Output = Result<Page<T>, E>>>(mut f: impl FnMut(NextCursor) -> F, mut next_cursor: NextCursor) -> impl Stream<Item = Result<Vec<T>, E>> {
     stream! {
