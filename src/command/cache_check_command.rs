@@ -1,9 +1,11 @@
 use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, ClobMarketResponsePrecise, DEFAULT_DB_DIR, MARKET_RESPONSE_PROPERTIES, OpenKeyspaceError, Property, PropertyName, PropertyStats, open_keyspace};
-use errgonomic::{handle, handle_iter};
-use fjall::{Readable, SingleWriterTxDatabase, Snapshot, UserKey};
+use errgonomic::{ErrVec, handle, handle_iter};
+use fjall::{Error as FjallError, Guard, Readable, SingleWriterTxDatabase, Slice, Snapshot, UserKey};
 use polymarket_client_sdk::clob::types::response::MarketResponse;
+use rkyv::from_bytes;
+use rkyv::rancor::Error as RkyvError;
 use rustc_hash::FxHashMap;
-use std::io::Write;
+use std::io::{Error as IoError, Write, stdout};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use thiserror::Error;
@@ -51,10 +53,10 @@ impl CacheCheckCommand {
             .collect()
     }
 
-    fn process_entry(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<MarketResponse>>)], snapshot: &Snapshot, guard: fjall::Guard) -> Result<(), CacheCheckCommandProcessMarketEntryError> {
+    fn process_entry(violations: &mut ViolationStatsMap, properties: &mut [(PropertyName, Box<dyn Property<MarketResponse>>)], snapshot: &Snapshot, guard: Guard) -> Result<(), CacheCheckCommandProcessMarketEntryError> {
         use CacheCheckCommandProcessMarketEntryError::*;
         let (key_slice, value_slice) = handle!(guard.into_inner(), ReadEntryFailed);
-        let value = handle!(rkyv::from_bytes::<ClobMarketResponsePrecise, rkyv::rancor::Error>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
+        let value = handle!(from_bytes::<ClobMarketResponsePrecise, RkyvError>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
         let market_response = MarketResponse::from(value);
         Self::record_violations(violations, properties, snapshot, key_slice, &market_response);
         Ok(())
@@ -73,7 +75,7 @@ impl CacheCheckCommand {
 
     fn write_violations(violations: &ViolationStatsMap) -> Result<(), CacheCheckCommandWriteViolationsError> {
         use CacheCheckCommandWriteViolationsError::*;
-        let mut stdout = std::io::stdout().lock();
+        let mut stdout = stdout().lock();
         handle!(serde_json::to_writer_pretty(&mut stdout, violations), SerializeFailed);
         handle!(stdout.write_all(b"\n"), WriteFailed);
         Ok(())
@@ -83,11 +85,11 @@ impl CacheCheckCommand {
 #[derive(Error, Debug)]
 pub enum CacheCheckCommandRunError {
     #[error("failed to open database at '{dir}'")]
-    OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
+    OpenDatabaseFailed { source: FjallError, dir: PathBuf },
     #[error("failed to open market keyspace")]
     OpenMarketKeyspaceFailed { source: OpenKeyspaceError },
     #[error("failed to process {len} cache entries", len = source.len())]
-    ProcessMarketEntryFailed { source: errgonomic::ErrVec<CacheCheckCommandProcessMarketEntryError> },
+    ProcessMarketEntryFailed { source: ErrVec<CacheCheckCommandProcessMarketEntryError> },
     #[error("failed to write violations output")]
     WriteViolationsFailed { source: CacheCheckCommandWriteViolationsError },
 }
@@ -95,9 +97,9 @@ pub enum CacheCheckCommandRunError {
 #[derive(Error, Debug)]
 pub enum CacheCheckCommandProcessMarketEntryError {
     #[error("failed to read cache entry")]
-    ReadEntryFailed { source: fjall::Error },
+    ReadEntryFailed { source: FjallError },
     #[error("failed to deserialize market response")]
-    DeserializeFailed { source: rkyv::rancor::Error, value: fjall::Slice },
+    DeserializeFailed { source: RkyvError, value: Slice },
 }
 
 #[derive(Error, Debug)]
@@ -105,5 +107,5 @@ pub enum CacheCheckCommandWriteViolationsError {
     #[error("failed to serialize violations output")]
     SerializeFailed { source: serde_json::Error },
     #[error("failed to write violations output")]
-    WriteFailed { source: std::io::Error },
+    WriteFailed { source: IoError },
 }

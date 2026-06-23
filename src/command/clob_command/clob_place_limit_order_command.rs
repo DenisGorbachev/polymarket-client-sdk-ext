@@ -1,5 +1,5 @@
 use crate::{OrderType, Side, TokenId};
-use alloy::signers::local::MnemonicBuilder;
+use alloy::signers::local::{LocalSignerError, MnemonicBuilder};
 use chrono::{DateTime, Utc};
 use clap::ValueEnum;
 use errgonomic::handle;
@@ -7,8 +7,9 @@ use polymarket_client_sdk::auth::Signer;
 use polymarket_client_sdk::clob::types::response::PostOrderResponse;
 use polymarket_client_sdk::clob::types::{OrderStatusType, SignatureType as PolymarketClobSignatureType};
 use polymarket_client_sdk::clob::{Client as PolymarketClobClient, Config as PolymarketClobConfig};
+use polymarket_client_sdk::error::Error as PolymarketError;
 use polymarket_client_sdk::types::{Address, B256, ChainId, Decimal};
-use std::io::{Write, stdout};
+use std::io::{Error as IoError, Write, stdout};
 use std::process::ExitCode;
 use thiserror::Error;
 
@@ -130,23 +131,23 @@ impl ClobPlaceLimitOrderCommand {
 #[derive(Error, Debug)]
 pub enum ClobPlaceLimitOrderCommandRunError {
     #[error("failed to set mnemonic derivation index '{account_index}'")]
-    MnemonicBuilderIndexFailed { source: alloy::signers::local::LocalSignerError, account_index: u32 },
+    MnemonicBuilderIndexFailed { source: LocalSignerError, account_index: u32 },
     #[error("failed to build signer from mnemonic at account index '{account_index}'")]
-    MnemonicBuilderBuildFailed { source: alloy::signers::local::LocalSignerError, account_index: u32 },
+    MnemonicBuilderBuildFailed { source: LocalSignerError, account_index: u32 },
     #[error("failed to initialize clob client for host '{host}'")]
-    ClientNewFailed { source: polymarket_client_sdk::error::Error, host: String },
+    ClientNewFailed { source: PolymarketError, host: String },
     #[error("failed to authenticate clob client")]
-    AuthenticateFailed { source: polymarket_client_sdk::error::Error },
+    AuthenticateFailed { source: PolymarketError },
     #[error("failed to build limit order")]
-    BuildLimitOrderFailed { source: polymarket_client_sdk::error::Error },
+    BuildLimitOrderFailed { source: PolymarketError },
     #[error("failed to sign order")]
-    SignOrderFailed { source: polymarket_client_sdk::error::Error },
+    SignOrderFailed { source: PolymarketError },
     #[error("failed to post order")]
-    PostOrderFailed { source: polymarket_client_sdk::error::Error },
+    PostOrderFailed { source: PolymarketError },
     #[error("failed to serialize output")]
     SerializeOutputFailed { source: serde_json::Error },
     #[error("failed to write output newline")]
-    WriteOutputNewlineFailed { source: std::io::Error },
+    WriteOutputNewlineFailed { source: IoError },
 }
 
 #[derive(ValueEnum, Clone, Copy, Debug)]

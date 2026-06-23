@@ -1,9 +1,11 @@
-use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, GammaEventGetTimeSpreadArbitrageOpportunitiesError, OpenKeyspaceError, open_keyspace};
+use crate::{ConvertGammaEventRawToGammaEventError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GammaEvent, GammaEventGetTimeSpreadArbitrageOpportunitiesError, OpenKeyspaceError, open_keyspace};
 use errgonomic::{ErrVec, handle, handle_iter};
-use fjall::{PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace};
+use fjall::{Error as FjallError, Guard, PersistMode, Readable, SingleWriterTxDatabase, SingleWriterTxKeyspace, Slice};
 use itertools::Itertools;
+use polymarket_client_sdk::error::Error as PolymarketError;
 use polymarket_client_sdk::gamma::Client as GammaClient;
 use polymarket_client_sdk::gamma::types::request::EventsRequest;
+use rkyv::{from_bytes, rancor::Error as RkyvError, to_bytes};
 use std::io::{Write, stdout};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
@@ -71,10 +73,10 @@ impl CacheGammaEventsMonitorTimeSpreadOpportunitiesCommand {
         Ok(event_ids)
     }
 
-    fn date_cascade_event_id_from_guard(guard: fjall::Guard) -> Result<Option<u64>, CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError> {
+    fn date_cascade_event_id_from_guard(guard: Guard) -> Result<Option<u64>, CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError> {
         use CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError::*;
         let (_key, value) = handle!(guard.into_inner(), ReadEntryFailed);
-        let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value.as_ref()), DeserializeFailed, value);
+        let event = handle!(from_bytes::<GammaEvent, RkyvError>(value.as_ref()), DeserializeFailed, value);
         if event.is_date_cascade.unwrap_or_default() { Ok(Some(event.id)) } else { Ok(None) }
     }
 
@@ -117,7 +119,7 @@ impl CacheGammaEventsMonitorTimeSpreadOpportunitiesCommand {
     fn serialize_event_entry(event: &GammaEvent) -> Result<(String, Vec<u8>), CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError> {
         use CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError::*;
         let event_id = event.id.to_string();
-        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(event), SerializeFailed, event_id);
+        let bytes = handle!(to_bytes::<RkyvError>(event), SerializeFailed, event_id);
         Ok((event_id, bytes.into_vec()))
     }
 }
@@ -125,7 +127,7 @@ impl CacheGammaEventsMonitorTimeSpreadOpportunitiesCommand {
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsMonitorDateCascadesCommandRunError {
     #[error("failed to open database at '{dir}'")]
-    OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
+    OpenDatabaseFailed { source: FjallError, dir: PathBuf },
     #[error("failed to open gamma events keyspace")]
     OpenKeyspaceFailed { source: OpenKeyspaceError },
     #[error("failed to collect date cascade event ids")]
@@ -145,9 +147,9 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandCollectDateCascadeEventIdsErr
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsMonitorDateCascadesCommandDateCascadeEventIdFromGuardError {
     #[error("failed to read cache entry")]
-    ReadEntryFailed { source: fjall::Error },
+    ReadEntryFailed { source: FjallError },
     #[error("failed to deserialize event entry")]
-    DeserializeFailed { source: rkyv::rancor::Error, value: fjall::Slice },
+    DeserializeFailed { source: RkyvError, value: Slice },
 }
 
 #[derive(Error, Debug)]
@@ -159,9 +161,9 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesError {
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsMonitorDateCascadesCommandRefreshDateCascadesChunkError {
     #[error("failed to fetch gamma events")]
-    EventsFailed { source: polymarket_client_sdk::error::Error, request: Box<EventsRequest> },
+    EventsFailed { source: PolymarketError, request: Box<EventsRequest> },
     #[error("failed to convert {len} gamma event responses", len = source.len())]
-    TryFromFailed { source: ErrVec<crate::ConvertGammaEventRawToGammaEventError> },
+    TryFromFailed { source: ErrVec<ConvertGammaEventRawToGammaEventError> },
     #[error("failed to persist events to database")]
     WriteEventsToDatabaseFailed { source: CacheGammaEventsMonitorDateCascadesCommandWriteEventsToDatabaseError },
 }
@@ -171,13 +173,13 @@ pub enum CacheGammaEventsMonitorDateCascadesCommandWriteEventsToDatabaseError {
     #[error("failed to serialize {len} event responses", len = source.len())]
     SerializeEventEntryFailed { source: ErrVec<CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError> },
     #[error("failed to commit database transaction")]
-    CommitTransactionFailed { source: fjall::Error },
+    CommitTransactionFailed { source: FjallError },
     #[error("failed to persist database changes")]
-    PersistDatabaseFailed { source: fjall::Error },
+    PersistDatabaseFailed { source: FjallError },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsMonitorDateCascadesCommandSerializeEventEntryError {
     #[error("failed to serialize event response for event '{event_id}'")]
-    SerializeFailed { source: rkyv::rancor::Error, event_id: String },
+    SerializeFailed { source: RkyvError, event_id: String },
 }

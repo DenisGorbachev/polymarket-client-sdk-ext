@@ -7,6 +7,7 @@ use rkyv::rancor::Error as RkyvError;
 use rkyv::rancor::Strategy;
 use rkyv::ser::allocator::ArenaHandle;
 use rkyv::util::AlignedVec;
+use rkyv::{Archive as RkyvArchive, Deserialize as RkyvDeserialize, Serialize as RkyvSerialize, from_bytes, to_bytes};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -21,14 +22,14 @@ pub enum TranscodeFormat {
 impl TranscodeFormat {
     pub fn decode<T>(self, input: Vec<u8>) -> Result<T, TranscodeFormatDecodeError>
     where
-        T: rkyv::Archive + for<'de> Deserialize<'de>,
-        T::Archived: for<'a> CheckBytes<HighValidator<'a, RkyvError>> + rkyv::Deserialize<T, Strategy<Pool, RkyvError>>,
+        T: RkyvArchive + for<'de> Deserialize<'de>,
+        T::Archived: for<'a> CheckBytes<HighValidator<'a, RkyvError>> + RkyvDeserialize<T, Strategy<Pool, RkyvError>>,
     {
         use TranscodeFormat::*;
         use TranscodeFormatDecodeError::*;
         match self {
             Rkyv => {
-                let value = handle!(rkyv::from_bytes::<T, RkyvError>(&input), FromBytesFailed, input);
+                let value = handle!(from_bytes::<T, RkyvError>(&input), FromBytesFailed, input);
                 Ok(value)
             }
             SerdeJson => {
@@ -40,14 +41,14 @@ impl TranscodeFormat {
 
     pub fn encode<T>(self, value: T) -> Result<Vec<u8>, TranscodeFormatEncodeError<T>>
     where
-        T: Serialize + for<'a> rkyv::Serialize<HighSerializer<AlignedVec, ArenaHandle<'a>, RkyvError>>,
+        T: Serialize + for<'a> RkyvSerialize<HighSerializer<AlignedVec, ArenaHandle<'a>, RkyvError>>,
     {
         use TranscodeFormat::*;
         use TranscodeFormatEncodeError::*;
         match self {
             Rkyv => {
                 let bytes = handle!(
-                    rkyv::to_bytes::<RkyvError>(&value),
+                    to_bytes::<RkyvError>(&value),
                     ToBytesFailed,
                     value: Box::new(value)
                 );
@@ -68,7 +69,7 @@ impl TranscodeFormat {
 #[derive(Error, Debug)]
 pub enum TranscodeFormatDecodeError {
     #[error("failed to deserialize rkyv payload")]
-    FromBytesFailed { source: rkyv::rancor::Error, input: Vec<u8> },
+    FromBytesFailed { source: RkyvError, input: Vec<u8> },
     #[error("failed to deserialize serde_json payload")]
     FromSliceFailed { source: serde_json::Error, input: Vec<u8> },
 }
@@ -76,7 +77,7 @@ pub enum TranscodeFormatDecodeError {
 #[derive(Error, Debug)]
 pub enum TranscodeFormatEncodeError<T> {
     #[error("failed to serialize payload to rkyv")]
-    ToBytesFailed { source: rkyv::rancor::Error, value: Box<T> },
+    ToBytesFailed { source: RkyvError, value: Box<T> },
     #[error("failed to serialize payload to serde_json")]
     ToVecFailed { source: serde_json::Error, value: Box<T> },
 }

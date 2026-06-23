@@ -3,13 +3,15 @@ use derive_more::{Deref, DerefMut};
 use derive_new::new;
 use errgonomic::{ErrVec, handle, handle_iter};
 use futures::Stream;
+use polymarket_client_sdk::clob::Client;
 use polymarket_client_sdk::clob::types::response::Page;
+use polymarket_client_sdk::error::Error as PolymarketError;
 use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(new, Deref, DerefMut, Default, Clone, Debug)]
 pub struct ClobClient {
-    pub inner: polymarket_client_sdk::clob::Client,
+    pub inner: Client,
 }
 
 impl ClobClient {
@@ -54,7 +56,7 @@ impl ClobClient {
 #[derive(Error, Debug)]
 pub enum ClobClientMarketsError {
     #[error("failed to fetch markets page")]
-    MarketsFailed { source: polymarket_client_sdk::error::Error, next_cursor: Option<String> },
+    MarketsFailed { source: PolymarketError, next_cursor: Option<String> },
     #[error("failed to convert {len} markets", len = source.len())]
     MarketTryFromFailed { source: ErrVec<ClobMarketResponsePreciseFallible> },
 }

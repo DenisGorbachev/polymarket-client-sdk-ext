@@ -2,6 +2,7 @@ use crate::{ClobMarket as MarketType, PrefixKind, TranscodeFormat, TranscodeForm
 use core::num::TryFromIntError;
 use errgonomic::handle;
 use std::io::{self, Read, Write, stdin, stdout};
+use std::iter::from_fn;
 use std::process::ExitCode;
 use thiserror::Error;
 
@@ -52,7 +53,7 @@ pub enum TranscodeCommandRunError {
 }
 
 pub fn read_items(reader: &mut impl Read) -> impl Iterator<Item = Result<Vec<u8>, ReadItemError>> + '_ {
-    std::iter::from_fn(move || match read_item(reader) {
+    from_fn(move || match read_item(reader) {
         Ok(Some(item)) => Some(Ok(item)),
         Ok(None) => None,
         Err(error) => Some(Err(error)),

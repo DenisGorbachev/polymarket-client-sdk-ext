@@ -1,7 +1,9 @@
-use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GammaEvent, OpenKeyspaceError, OutputKind, open_keyspace};
+use crate::{DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GammaEvent, OpenKeyspaceError, OutputKind, OutputKindWriteError, open_keyspace};
 use errgonomic::handle;
-use fjall::{Readable, SingleWriterTxDatabase};
-use std::io::{Write, stdout};
+use fjall::{Error as FjallError, Guard, Readable, SingleWriterTxDatabase, Slice};
+use rkyv::from_bytes;
+use rkyv::rancor::Error as RkyvError;
+use std::io::{Error as IoError, Write, stdout};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -44,7 +46,7 @@ impl CacheGammaEventsListDateCascadesCommand {
         Ok(ExitCode::SUCCESS)
     }
 
-    fn write_date_cascade_events(iter: impl IntoIterator<Item = fjall::Guard>, writer: &mut impl Write, kind: OutputKind, offset: usize, limit: usize) -> Result<(), CacheGammaEventsListDateCascadesCommandWriteDateCascadesError> {
+    fn write_date_cascade_events(iter: impl IntoIterator<Item = Guard>, writer: &mut impl Write, kind: OutputKind, offset: usize, limit: usize) -> Result<(), CacheGammaEventsListDateCascadesCommandWriteDateCascadesError> {
         use CacheGammaEventsListDateCascadesCommandWriteDateCascadesError::*;
         let mut entries = iter
             .into_iter()
@@ -67,10 +69,10 @@ impl CacheGammaEventsListDateCascadesCommand {
         })
     }
 
-    fn date_cascade_entry_from_guard(guard: fjall::Guard) -> Result<Option<(fjall::Slice, Vec<u8>)>, CacheGammaEventsListDateCascadesCommandWriteDateCascadesError> {
+    fn date_cascade_entry_from_guard(guard: Guard) -> Result<Option<(Slice, Vec<u8>)>, CacheGammaEventsListDateCascadesCommandWriteDateCascadesError> {
         use CacheGammaEventsListDateCascadesCommandWriteDateCascadesError::*;
         let (key_slice, value_slice) = handle!(guard.into_inner(), ReadEntryFailed);
-        let event = handle!(rkyv::from_bytes::<GammaEvent, rkyv::rancor::Error>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
+        let event = handle!(from_bytes::<GammaEvent, RkyvError>(value_slice.as_ref()), DeserializeFailed, value: value_slice);
         if event.is_date_cascade.unwrap_or_default() {
             let output_bytes = handle!(serde_json::to_vec(&event), SerializeOutputFailed, event: Box::new(event));
             Ok(Some((key_slice, output_bytes)))
@@ -83,7 +85,7 @@ impl CacheGammaEventsListDateCascadesCommand {
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsListDateCascadesCommandRunError {
     #[error("failed to open database at '{dir}'")]
-    OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
+    OpenDatabaseFailed { source: FjallError, dir: PathBuf },
     #[error("failed to open gamma events keyspace")]
     OpenKeyspaceFailed { source: OpenKeyspaceError },
     #[error("failed to write date cascade events output")]
@@ -93,13 +95,13 @@ pub enum CacheGammaEventsListDateCascadesCommandRunError {
 #[derive(Error, Debug)]
 pub enum CacheGammaEventsListDateCascadesCommandWriteDateCascadesError {
     #[error("failed to read cache entry")]
-    ReadEntryFailed { source: fjall::Error },
+    ReadEntryFailed { source: FjallError },
     #[error("failed to deserialize event entry")]
-    DeserializeFailed { source: rkyv::rancor::Error, value: fjall::Slice },
+    DeserializeFailed { source: RkyvError, value: Slice },
     #[error("failed to serialize event output")]
     SerializeOutputFailed { source: serde_json::Error, event: Box<GammaEvent> },
     #[error("failed to write output")]
-    WriteFailed { source: crate::OutputKindWriteError },
+    WriteFailed { source: OutputKindWriteError },
     #[error("failed to write output newline")]
-    WriteAllFailed { source: std::io::Error },
+    WriteAllFailed { source: IoError },
 }

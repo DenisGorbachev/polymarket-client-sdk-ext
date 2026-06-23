@@ -3,6 +3,7 @@ use async_stream::stream;
 use core::num::TryFromIntError;
 use errgonomic::{handle, handle_opt};
 use futures::{Stream, StreamExt};
+use polymarket_client_sdk::error::Error as PolymarketError;
 use polymarket_client_sdk::gamma::Client as GammaClient;
 use polymarket_client_sdk::gamma::types::request::MarketsRequest;
 use polymarket_client_sdk::gamma::types::response::Market as PolymarketMarket;
@@ -390,7 +391,7 @@ pub enum ListRelatedMarketsCommandNetworkRelationStreamError {
 #[derive(Error, Debug)]
 pub enum ListRelatedMarketsCommandNetworkRelationStreamItemError {
     #[error("failed to fetch polymarket markets for request '{request:?}'")]
-    MarketsFailed { source: polymarket_client_sdk::error::Error, request: Box<MarketsRequest> },
+    MarketsFailed { source: PolymarketError, request: Box<MarketsRequest> },
     #[error("failed to convert market count '{market_count}' to i32")]
     TryFromMarketCountFailed { source: TryFromIntError, market_count: usize },
     #[error("failed to increment polymarket offset {offset} by {market_count_i32}")]

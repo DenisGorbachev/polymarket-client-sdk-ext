@@ -1,16 +1,20 @@
-use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GAMMA_QUERY_ASCENDING, GammaEvent, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, gamma_event_raw_is_fresh, open_keyspace, progress_report_line};
+use crate::{CLOB_MARKET_RESPONSES_KEYSPACE, CLOB_MARKETS_KEYSPACE, CLOB_ORDER_BOOK_SUMMARY_RESPONSE_KEYSPACE, ClobMarket, ClobMarketFallible, ClobMarketResponsePrecise, ClobMarketResponsePreciseFallible, ConvertGammaEventRawToGammaEventError, ConvertOrderBookSummaryResponseToOrderbookError, DEFAULT_DB_DIR, GAMMA_EVENTS_KEYSPACE, GAMMA_EVENTS_PAGE_SIZE, GAMMA_QUERY_ASCENDING, GammaEvent, NEXT_CURSOR_STOP, NextCursor, OpenKeyspaceError, OrderBookSummaryResponsePrecise, ShouldDownloadOrderbooks, TokenId, format_debug_diff, gamma_event_raw_is_fresh, open_keyspace, progress_report_line};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
+use core::fmt::Debug;
+use core::num::TryFromIntError;
 use errgonomic::{DisplayAsDebug, ErrVec, handle, handle_bool, handle_iter, map_err};
-use fjall::{PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace, SingleWriterWriteTx, UserKey};
+use fjall::{Error as FjallError, PersistMode, SingleWriterTxDatabase, SingleWriterTxKeyspace, SingleWriterWriteTx, UserKey};
 use futures::future::join_all;
 use itertools::Itertools;
 use polymarket_client_sdk::clob::Client as ClobClient;
 use polymarket_client_sdk::clob::types::request::OrderBookSummaryRequest;
 use polymarket_client_sdk::clob::types::response::{MarketResponse, OrderBookSummaryResponse};
+use polymarket_client_sdk::error::Error as PolymarketError;
 use polymarket_client_sdk::gamma::Client as GammaClient;
 use polymarket_client_sdk::gamma::types::request::EventsRequest;
 use polymarket_client_sdk::gamma::types::response::Event;
+use rkyv::{rancor::Error as RkyvError, to_bytes};
 use rustc_hash::FxHashSet;
 use std::error::Error as StdError;
 use std::hash::Hash;
@@ -228,7 +232,7 @@ impl CacheDownloadCommand {
 
     fn round_trip_entry<T, U, E>(input: T) -> Result<(T, U), CacheDownloadCommandRoundTripEntryError<T, E>>
     where
-        T: Clone + PartialEq + core::fmt::Debug,
+        T: Clone + PartialEq + Debug,
         U: TryFrom<T, Error = E> + Clone,
         T: From<U>,
         E: StdError + Send + Sync + 'static,
@@ -280,26 +284,26 @@ impl CacheDownloadCommand {
 
     fn market_response_bytes(market: ClobMarketResponsePrecise) -> Result<Vec<u8>, CacheDownloadCommandMarketResponseBytesError> {
         use CacheDownloadCommandMarketResponseBytesError::*;
-        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&market), SerializeFailed, market);
+        let bytes = handle!(to_bytes::<RkyvError>(&market), SerializeFailed, market);
         Ok(bytes.into_vec())
     }
 
     fn market_bytes(market: ClobMarket) -> Result<Vec<u8>, CacheDownloadCommandMarketBytesError> {
         use CacheDownloadCommandMarketBytesError::*;
-        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&market), SerializeFailed, market);
+        let bytes = handle!(to_bytes::<RkyvError>(&market), SerializeFailed, market);
         Ok(bytes.into_vec())
     }
 
     fn orderbook_bytes(orderbook: OrderBookSummaryResponse) -> Result<Vec<u8>, CacheDownloadCommandOrderbookBytesError> {
         use CacheDownloadCommandOrderbookBytesError::*;
         let (_orderbook, orderbook_precise) = handle!(Self::round_trip_entry::<OrderBookSummaryResponse, OrderBookSummaryResponsePrecise, ConvertOrderBookSummaryResponseToOrderbookError>(orderbook), RoundTripEntryFailed);
-        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&orderbook_precise), SerializeFailed, orderbook: Box::new(orderbook_precise));
+        let bytes = handle!(to_bytes::<RkyvError>(&orderbook_precise), SerializeFailed, orderbook: Box::new(orderbook_precise));
         Ok(bytes.into_vec())
     }
 
     fn event_bytes(event: GammaEvent) -> Result<Vec<u8>, CacheDownloadCommandEventBytesError> {
         use CacheDownloadCommandEventBytesError::*;
-        let bytes = handle!(rkyv::to_bytes::<rkyv::rancor::Error>(&event), SerializeFailed, event);
+        let bytes = handle!(to_bytes::<RkyvError>(&event), SerializeFailed, event);
         Ok(bytes.into_vec())
     }
 
@@ -314,7 +318,7 @@ impl CacheDownloadCommand {
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandRunError {
     #[error("failed to open database at '{dir}'")]
-    OpenDatabaseFailed { source: fjall::Error, dir: PathBuf },
+    OpenDatabaseFailed { source: FjallError, dir: PathBuf },
     #[error("failed to open keyspace")]
     KeyspaceOpenFailed { source: OpenKeyspaceError },
     #[error("failed to download market responses")]
@@ -326,9 +330,9 @@ pub enum CacheDownloadCommandRunError {
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandDownloadMarketResponsesError {
     #[error("failed to read market keyspace length")]
-    MarketKeyspaceLenFailed { source: fjall::Error },
+    MarketKeyspaceLenFailed { source: FjallError },
     #[error("failed to fetch markets page with cursor '{next_cursor}'")]
-    FetchMarketsFailed { source: polymarket_client_sdk::error::Error, next_cursor: NextCursor },
+    FetchMarketsFailed { source: PolymarketError, next_cursor: NextCursor },
     #[error("found {len} duplicates", len = duplicates.len())]
     DuplicatesFound { duplicates: Vec<String> },
     #[error("failed to fetch order books")]
@@ -340,11 +344,11 @@ pub enum CacheDownloadCommandDownloadMarketResponsesError {
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandDownloadGammaEventsError {
     #[error("failed to read event keyspace length")]
-    EventKeyspaceLenFailed { source: fjall::Error },
+    EventKeyspaceLenFailed { source: FjallError },
     #[error("failed to fetch gamma events page")]
-    FetchEventsFailed { source: polymarket_client_sdk::error::Error, request: Box<EventsRequest> },
+    FetchEventsFailed { source: PolymarketError, request: Box<EventsRequest> },
     #[error("failed to convert event count '{count}' to offset")]
-    EventCountConversionFailed { source: core::num::TryFromIntError, count: usize },
+    EventCountConversionFailed { source: TryFromIntError, count: usize },
     #[error("failed to persist events to database")]
     WriteEventsToDatabaseFailed { source: CacheDownloadCommandWriteEventsToDatabaseError },
 }
@@ -352,7 +356,7 @@ pub enum CacheDownloadCommandDownloadGammaEventsError {
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandEventEntryFromResponseError {
     #[error("failed to convert gamma event response")]
-    TryFromFailed { source: Box<crate::ConvertGammaEventRawToGammaEventError> },
+    TryFromFailed { source: Box<ConvertGammaEventRawToGammaEventError> },
     #[error("event response has duplicate event slug '{event_slug}'")]
     EventSlugDuplicateInvalid { event_slug: String },
 }
@@ -366,7 +370,7 @@ pub enum CacheDownloadCommandFetchOrderbooksForTokensError {
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandFetchOrderbooksChunkError {
     #[error("failed to fetch order books for chunk")]
-    OrderBooksFailed { source: polymarket_client_sdk::error::Error, requests: Box<[OrderBookSummaryRequest]> },
+    OrderBooksFailed { source: PolymarketError, requests: Box<[OrderBookSummaryRequest]> },
 }
 
 #[derive(Error, Debug)]
@@ -380,9 +384,9 @@ pub enum CacheDownloadCommandWritePageToDatabaseError {
     #[error("failed to insert order book entries")]
     InsertOrderbookEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandOrderbookBytesError>> },
     #[error("failed to commit database transaction")]
-    CommitTransactionFailed { source: fjall::Error },
+    CommitTransactionFailed { source: FjallError },
     #[error("failed to persist database changes")]
-    PersistDatabaseFailed { source: fjall::Error },
+    PersistDatabaseFailed { source: FjallError },
 }
 
 #[derive(Error, Debug)]
@@ -394,15 +398,15 @@ pub enum CacheDownloadCommandWriteEventsToDatabaseError {
     #[error("failed to insert event entries")]
     InsertEventEntriesFailed { source: ErrVec<CacheDownloadCommandInsertError<CacheDownloadCommandEventBytesError>> },
     #[error("failed to commit database transaction")]
-    CommitTransactionFailed { source: fjall::Error },
+    CommitTransactionFailed { source: FjallError },
     #[error("failed to persist database changes")]
-    PersistDatabaseFailed { source: fjall::Error },
+    PersistDatabaseFailed { source: FjallError },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandRoundTripEntryError<T, E>
 where
-    T: core::fmt::Debug,
+    T: Debug,
     E: StdError + Send + Sync + 'static,
 {
     #[error("failed to convert cache entry")]
@@ -431,13 +435,13 @@ where
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandMarketResponseBytesError {
     #[error("failed to serialize market response")]
-    SerializeFailed { source: rkyv::rancor::Error, market: Box<ClobMarketResponsePrecise> },
+    SerializeFailed { source: RkyvError, market: Box<ClobMarketResponsePrecise> },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandMarketBytesError {
     #[error("failed to serialize market")]
-    SerializeFailed { source: rkyv::rancor::Error, market: Box<ClobMarket> },
+    SerializeFailed { source: RkyvError, market: Box<ClobMarket> },
 }
 
 #[derive(Error, Debug)]
@@ -445,11 +449,11 @@ pub enum CacheDownloadCommandOrderbookBytesError {
     #[error("failed to round-trip order book summary response")]
     RoundTripEntryFailed { source: CacheDownloadCommandRoundTripEntryError<OrderBookSummaryResponse, ConvertOrderBookSummaryResponseToOrderbookError> },
     #[error("failed to serialize order book summary")]
-    SerializeFailed { source: rkyv::rancor::Error, orderbook: Box<OrderBookSummaryResponsePrecise> },
+    SerializeFailed { source: RkyvError, orderbook: Box<OrderBookSummaryResponsePrecise> },
 }
 
 #[derive(Error, Debug)]
 pub enum CacheDownloadCommandEventBytesError {
     #[error("failed to serialize event response")]
-    SerializeFailed { source: rkyv::rancor::Error, event: Box<GammaEvent> },
+    SerializeFailed { source: RkyvError, event: Box<GammaEvent> },
 }

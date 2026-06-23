@@ -1,5 +1,5 @@
 use errgonomic::handle;
-use fjall::{KeyspaceCreateOptions, SingleWriterTxDatabase, SingleWriterTxKeyspace};
+use fjall::{Error as FjallError, KeyspaceCreateOptions, SingleWriterTxDatabase, SingleWriterTxKeyspace};
 use thiserror::Error;
 
 /// Opens a Fjall keyspace with default options.
@@ -13,5 +13,5 @@ pub fn open_keyspace(db: &SingleWriterTxDatabase, keyspace: &'static str) -> Res
 #[derive(Error, Debug)]
 pub enum OpenKeyspaceError {
     #[error("failed to open keyspace '{keyspace}'")]
-    OpenKeyspaceFailed { source: fjall::Error, keyspace: &'static str },
+    OpenKeyspaceFailed { source: FjallError, keyspace: &'static str },
 }

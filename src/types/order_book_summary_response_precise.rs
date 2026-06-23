@@ -1,5 +1,6 @@
 use crate::RkyvOffsetDateTime;
 use crate::{BidAskCrossError, BookSideMap, ConditionId, ConvertVecOrderSummaryToBookSideError, RkyvDecimal, TimestampVisitor, TokenId, UintAsString, from_chrono_date_time, into_chrono_date_time};
+use chrono::{DateTime, Utc};
 use derive_more::{From, Into};
 use errgonomic::handle;
 use polymarket_client_sdk::clob::types::TickSize;
@@ -9,6 +10,7 @@ use rust_decimal::Decimal;
 use strum::EnumIs;
 use thiserror::Error;
 use time::OffsetDateTime;
+use time::error::ComponentRange;
 
 #[derive(From, Into, serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Eq, PartialEq, Clone, Debug)]
 #[serde(deny_unknown_fields)]
@@ -96,7 +98,7 @@ impl TryFrom<OrderBookSummaryResponse> for OrderBookSummaryResponsePrecise {
 #[derive(Error, Debug)]
 pub enum ConvertOrderBookSummaryResponseToOrderbookError {
     #[error("failed to convert timestamp '{timestamp}'")]
-    FromChronoDateTimeFailed { source: time::error::ComponentRange, timestamp: chrono::DateTime<chrono::Utc> },
+    FromChronoDateTimeFailed { source: ComponentRange, timestamp: DateTime<Utc> },
     #[error("failed to convert bids")]
     BidsTryFromFailed { source: ConvertVecOrderSummaryToBookSideError },
     #[error("failed to convert asks")]

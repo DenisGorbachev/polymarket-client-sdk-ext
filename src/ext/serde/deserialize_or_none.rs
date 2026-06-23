@@ -1,3 +1,5 @@
+use serde::de::Error as DeError;
+use serde::{Deserialize, Deserializer};
 use std::fmt::Display;
 use std::marker::PhantomData;
 use std::str::FromStr;
@@ -11,9 +13,9 @@ where
 {
     pub fn run<'de, D>(deserializer: D) -> Result<Option<T>, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: Deserializer<'de>,
     {
-        let s: String = serde::Deserialize::deserialize(deserializer)?;
-        if s.is_empty() { Ok(None) } else { T::from_str(&s).map(Some).map_err(serde::de::Error::custom) }
+        let s: String = Deserialize::deserialize(deserializer)?;
+        if s.is_empty() { Ok(None) } else { T::from_str(&s).map(Some).map_err(DeError::custom) }
     }
 }

@@ -1,5 +1,6 @@
 use crate::{Amount, Level, Price, RkyvIndexMapDecimal};
 use core::fmt;
+use core::iter::from_fn;
 use core::str::FromStr;
 use derive_more::{AsRef, Deref, DerefMut, Into};
 use indexmap::IndexMap;
@@ -42,7 +43,7 @@ impl<'de> Deserialize<'de> for BookSideMap {
 
             fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
                 let mut map = IndexMap::with_capacity_and_hasher(access.size_hint().unwrap_or(0), FxBuildHasher);
-                let mut entries = core::iter::from_fn(|| match access.next_entry::<String, String>() {
+                let mut entries = from_fn(|| match access.next_entry::<String, String>() {
                     Ok(Some(entry)) => Some(Ok(entry)),
                     Ok(None) => None,
                     Err(error) => Some(Err(error)),
