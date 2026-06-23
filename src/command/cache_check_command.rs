@@ -5,7 +5,7 @@ use polymarket_client_sdk::clob::types::response::MarketResponse;
 use rkyv::from_bytes;
 use rkyv::rancor::Error as RkyvError;
 use rustc_hash::FxHashMap;
-use std::io::{Error as IoError, Write, stdout};
+use std::io::{self, Write, stdout};
 use std::path::PathBuf;
 use std::process::ExitCode;
 use thiserror::Error;
@@ -107,5 +107,5 @@ pub enum CacheCheckCommandWriteViolationsError {
     #[error("failed to serialize violations output")]
     SerializeFailed { source: serde_json::Error },
     #[error("failed to write violations output")]
-    WriteFailed { source: IoError },
+    WriteFailed { source: io::Error },
 }

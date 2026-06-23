@@ -3,7 +3,7 @@ use errgonomic::handle;
 use fjall::{Error as FjallError, Guard, Readable, SingleWriterTxDatabase, Slice};
 use rkyv::from_bytes;
 use rkyv::rancor::Error as RkyvError;
-use std::io::{Error as IoError, Write, stdout};
+use std::io::{self, Write, stdout};
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -103,5 +103,5 @@ pub enum CacheGammaEventsListDateCascadesCommandWriteDateCascadesError {
     #[error("failed to write output")]
     WriteFailed { source: OutputKindWriteError },
     #[error("failed to write output newline")]
-    WriteAllFailed { source: IoError },
+    WriteAllFailed { source: io::Error },
 }

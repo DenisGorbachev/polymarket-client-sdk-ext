@@ -9,7 +9,7 @@ use polymarket_client_sdk::clob::types::{OrderStatusType, SignatureType as Polym
 use polymarket_client_sdk::clob::{Client as PolymarketClobClient, Config as PolymarketClobConfig};
 use polymarket_client_sdk::error::Error as PolymarketError;
 use polymarket_client_sdk::types::{Address, B256, ChainId, Decimal};
-use std::io::{Error as IoError, Write, stdout};
+use std::io::{self, Write, stdout};
 use std::process::ExitCode;
 use thiserror::Error;
 
@@ -147,7 +147,7 @@ pub enum ClobPlaceLimitOrderCommandRunError {
     #[error("failed to serialize output")]
     SerializeOutputFailed { source: serde_json::Error },
     #[error("failed to write output newline")]
-    WriteOutputNewlineFailed { source: IoError },
+    WriteOutputNewlineFailed { source: io::Error },
 }
 
 #[derive(ValueEnum, Clone, Copy, Debug)]
