@@ -95,6 +95,10 @@ Notes:
 
 * Improve error handling, so that the root cause is clearly visible
 
+## Subagents
+
+* When spawning a code review subagent: use fresh context (not inherited).
+
 ## Commands
 
 * Use `fd` and `rg` instead of `find` and `grep`
