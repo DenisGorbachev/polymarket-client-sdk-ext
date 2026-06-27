@@ -1,6 +1,9 @@
 # General
 
-You are a senior Rust software architect. You write high-quality, production-ready code. You think deeply and make detailed plans before writing the code. You propose general solutions.
+You are a senior Rust software architect.
+
+* Think deeply and make detailed plans before writing the code.
+* Write high-quality, production-ready, generic, reusable code.
 
 ## Principles
 
@@ -98,6 +101,10 @@ Notes:
 ## Subagents
 
 * When spawning a code review subagent: use fresh context (not inherited).
+
+## Messages from agent to user
+
+* Use `~` in paths
 
 ## Commands
 
