@@ -1054,7 +1054,7 @@ A string that is empty or contains only whitespace characters.
 
 ### Files
 
-### File: src/functions/exit\_result.rs
+### File: src/functions/exit.rs
 
 ```rust
 use crate::eprintln_error;
@@ -1074,6 +1074,17 @@ pub fn exit_result<E: Error>(result: Result<ExitCode, E>) -> ExitCode {
         eprintln_error(&err);
         ExitCode::FAILURE
     })
+}
+
+/// Converts an [`Option`] into an [`ExitCode`], printing a detailed error trace on failure.
+pub fn exit_option<E: Error>(option: Option<E>) -> ExitCode {
+    match option {
+        None => ExitCode::SUCCESS,
+        Some(err) => {
+            eprintln_error(&err);
+            ExitCode::FAILURE
+        }
+    }
 }
 
 /// Converts an [`impl IntoIterator<Item = Result<(), E>>`](IntoIterator) into an [`ExitCode`], printing a detailed error trace on the first failure.
@@ -1117,12 +1128,10 @@ pub fn get_root_source(error: &dyn Error) -> &dyn Error {
 ### File: src/functions/partition\_result.rs
 
 ```rust
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
-/// Collects `Ok` values unless at least one `Err` is encountered.
-///
-/// This is optimized for `handle_iter!`: once an error appears, previously
-/// collected `Ok` values are dropped and further `Ok` values are ignored.
+/// PRUNING: drops collected `Ok` values and ignores later `Ok` values after the first `Err`, because `handle_iter!` only returns errors when any item fails.
 #[doc(hidden)]
 pub fn partition_result<T, E>(results: impl IntoIterator<Item = Result<T, E>>) -> Result<Vec<T>, Vec<E>> {
     let iter = results.into_iter();
@@ -1151,10 +1160,11 @@ pub fn partition_result<T, E>(results: impl IntoIterator<Item = Result<T, E>>) -
 ### File: src/functions/render\_command.rs
 
 ```rust
+use core::iter::once;
 use std::process::Command;
 
 pub fn render_command(command: &Command) -> String {
-    let parts = core::iter::once(command.get_program().to_string_lossy())
+    let parts = once(command.get_program().to_string_lossy())
         .chain(command.get_args().map(|arg| arg.to_string_lossy()))
         .collect::<Vec<_>>();
     let result = shlex::try_join(parts.iter().map(|x| x.as_ref()));
@@ -1206,12 +1216,12 @@ pub enum WriteToNamedTempFileError {
 ```rust
 use crate::{ErrorDisplayer, WriteToNamedTempFileError, map_err, write_to_named_temp_file};
 use core::error::Error;
-use core::fmt::Formatter;
+use core::fmt::{self, Formatter};
 use std::io;
 use std::io::{Write, stderr};
 
 /// Writes a human-readable error trace to the provided formatter.
-pub fn writeln_error_to_formatter<E: Error + ?Sized>(error: &E, f: &mut Formatter<'_>) -> core::fmt::Result {
+pub fn writeln_error_to_formatter<E: Error + ?Sized>(error: &E, f: &mut Formatter<'_>) -> fmt::Result {
     use std::fmt::Write;
     write!(f, "- {error}")?;
     if let Some(source_new) = error.source() {
@@ -1293,6 +1303,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use std::error::Error;
     use thiserror::Error;
+    use tokio::io::{Error as TokioIoError, ErrorKind as TokioIoErrorKind};
 
     #[test]
     fn must_write_error() {
@@ -1310,7 +1321,7 @@ mod tests {
                         },
                         I18nRequestFailed {
                             source: RequestSendFailed {
-                                source: tokio::io::Error::new(tokio::io::ErrorKind::AddrNotAvailable, "server at 239.143.73.1 did not respond"),
+                                source: TokioIoError::new(TokioIoErrorKind::AddrNotAvailable, "server at 239.143.73.1 did not respond"),
                             },
                             row: Row::new("Bar"),
                         },
@@ -1386,7 +1397,7 @@ mod tests {
         #[error("failed to construct a JSON schema")]
         JsonSchemaNewFailed { source: JsonSchemaNewError },
         #[error("failed to send a request")]
-        RequestSendFailed { source: tokio::io::Error },
+        RequestSendFailed { source: TokioIoError },
     }
 
     #[derive(Error, Debug)]
@@ -1421,7 +1432,7 @@ mod tests {
 ### File: src/types/debug\_as\_display.rs
 
 ```rust
-use core::fmt::{Debug, Display, Formatter};
+use core::fmt::{self, Debug, Display, Formatter};
 
 /// A wrapper that renders `Debug` using the inner type's `Display` implementation.
 /// This wrapper is needed for types that have an easy-to-understand `Display` impl but hard-to-understand `Debug` impl.
@@ -1432,13 +1443,13 @@ pub struct DebugAsDisplay<T: Display>(
 );
 
 impl<T: Display> Debug for DebugAsDisplay<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Display::fmt(&self.0, f)
     }
 }
 
 impl<T: Display> Display for DebugAsDisplay<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Display::fmt(&self.0, f)
     }
 }
@@ -1453,7 +1464,7 @@ impl<T: Display> From<T> for DebugAsDisplay<T> {
 ### File: src/types/display\_as\_debug.rs
 
 ```rust
-use core::fmt::{Debug, Display, Formatter};
+use core::fmt::{self, Debug, Display, Formatter};
 
 /// A wrapper that renders `Display` using the inner type's `Debug` implementation.
 #[derive(Ord, PartialOrd, Eq, PartialEq, Copy, Clone, Debug)]
@@ -1463,7 +1474,7 @@ pub struct DisplayAsDebug<T: Debug>(
 );
 
 impl<T: Debug> Display for DisplayAsDebug<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Debug::fmt(&self.0, f)
     }
 }
@@ -1480,8 +1491,7 @@ impl<T: Debug> From<T> for DisplayAsDebug<T> {
 ```rust
 use crate::ErrorDisplayer;
 use core::error::Error;
-use core::fmt::{Debug, Write};
-use core::fmt::{Display, Formatter};
+use core::fmt::{self, Debug, Display, Formatter, Write};
 use core::ops::{Deref, DerefMut};
 
 /// An owned collection of errors
@@ -1495,7 +1505,7 @@ impl<E: Error> ErrVec<E> {
 }
 
 impl<E: Error> Display for ErrVec<E> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "encountered {len} errors", len = self.len())?;
         self.0.iter().try_for_each(|error| {
             f.write_char('\n')?;
@@ -1557,13 +1567,13 @@ impl<E: Error + Clone> From<&[E]> for ErrVec<E> {
 
 ```rust
 use crate::writeln_error_to_formatter;
-use core::fmt::{Display, Formatter};
+use core::fmt::{self, Display, Formatter};
 use std::error::Error;
 
 pub struct ErrorDisplayer<'a, E: ?Sized>(pub &'a E);
 
-impl<'a, E: Error + ?Sized> Display for ErrorDisplayer<'a, E> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+impl<E: Error + ?Sized> Display for ErrorDisplayer<'_, E> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         writeln_error_to_formatter(self.0, f)
     }
 }
@@ -1614,10 +1624,10 @@ cfg_if::cfg_if! {
     if #[cfg(feature = "std")] {
         mod writeln_error;
         mod write_to_named_temp_file;
-        mod exit_result;
+        mod exit;
         pub use writeln_error::*;
         pub use write_to_named_temp_file::*;
-        pub use exit_result::*;
+        pub use exit::*;
     }
 }
 
@@ -1717,6 +1727,8 @@ cfg_if::cfg_if! {
 #![doc = "```"]
 //!
 
+#![deny(clippy::arithmetic_side_effects)]
+#![cfg_attr(not(test), deny(unused_crate_dependencies))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -1991,7 +2003,12 @@ mod tests {
         let results = numbers.into_iter().map(|number| {
             use CheckEvenError::*;
             if number % 2 == 0 {
-                Ok(number * 10)
+                match number.checked_mul(10) {
+                    Some(product) => Ok(product),
+                    None => Err(NumberOverflowed {
+                        number,
+                    }),
+                }
             } else {
                 Err(NumberNotEven {
                     number,
@@ -2113,6 +2130,8 @@ mod tests {
     enum CheckEvenError {
         #[error("number is not even: {number}")]
         NumberNotEven { number: u32 },
+        #[error("number overflowed: {number}")]
+        NumberOverflowed { number: u32 },
     }
 
     async fn check_file(path: PathBuf) -> Result<String, CheckFileError> {
