@@ -4,13 +4,13 @@
 #USAGE   choices "prod" "test"
 #USAGE }
 #USAGE arg "<key>" help="Secret key"
-#USAGE arg "[fnox_args]" help="Additional fnox set arguments" var=#true
+#USAGE arg "[fnox_args]" help="Additional fnox set arguments, including optional secret value" var=#true
 
 set -euo pipefail
 
 profile_raw=${1:?"profile is required"} && shift
 key_raw=${1:?"key is required"} && shift
-# this script doesn't read a value arg because the value can be piped from stdin or typed manually in response to the hidden input prompt
+# this script doesn't define a dedicated value arg because fnox already accepts the value among its own args
 
 profile=$profile_raw
 key=$(ccase --to constant "$key_raw")
@@ -32,7 +32,7 @@ esac
 # `--key-name` is required to set a different key name per profile (by default fnox sets the same key name as key)
 fnox_args=(set --profile "$profile" --provider "$provider" --key-name "$key_name" "$key" "$@")
 
-if [[ -t 0 ]]; then
+if [[ -t 0 && $# -eq 0 ]]; then
   # Work around fnox redrawing its hidden prompt under mise raw tasks.
   read -r -s -p "Secret value: " value
   echo >&2
