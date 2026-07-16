@@ -94,6 +94,33 @@ const includeFile = async (path: string) => {
   return await renderFileContents(path, contents)
 }
 
+const includeAllFiles = async (fileName: string) => {
+  const decoder = new TextDecoder()
+  const command = new Deno.Command("fd", {
+    args: [
+      "--type",
+      "file",
+      "--glob",
+      fileName,
+      "--print0",
+      "--strip-cwd-prefix",
+    ],
+    stdout: "piped",
+    stderr: "piped",
+    cwd: fromFileUrl(rootUrl),
+  })
+  const output = await command.output()
+  if (!output.success) {
+    const stderr = decoder.decode(output.stderr).trim()
+    throw new Error(
+      `fd failed while finding '${fileName}'${stderr ? `: ${stderr}` : ""}`,
+    )
+  }
+  const paths = decoder.decode(output.stdout).split("\0").filter((path) => path.length > 0).sort()
+  const files = await Promise.all(paths.map(includeFile))
+  return files.join("\n\n")
+}
+
 const renderFileContents = async (path: string, contents: string, pathToRender: string = path) => {
   if (isMarkdownPath(path)) {
     return await shiftHeadings(contents)
@@ -272,7 +299,7 @@ const parts = (await Promise.all([
   includeCargoDependencyFileIfExists("errgonomic", "DOCS.md"),
   includeFile(".agents/cli.md"),
   Promise.resolve("## Project files"),
-  includeFile("Cargo.toml"),
+  includeAllFiles("Cargo.toml"),
   includeFile("fnox.toml"),
   includeFileIfExists("src/main.rs"),
   includeFileIfExists("src/lib.rs"),
