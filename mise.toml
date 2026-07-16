@@ -15,7 +15,6 @@ cargo-binstall = "1.10.15"
 "npm:@commitlint/config-conventional" = "19.6.0"
 "npm:@commitlint/cli" = "19.6.0"
 "npm:@commitlint/types" = "19.5.0"
-"npm:repomix" = "1.5.0"
 "cargo:cargo-insert-docs" = "1.6.0"
 "cargo:cargo-hack" = "0.6.33"
 "cargo:cargo-nextest" = "0.9.102"
@@ -129,30 +128,6 @@ run = "touch AGENTS.md && chmod 0644 AGENTS.md && ./AGENTS.ts --output AGENTS.md
 
 [tasks."commitlint"]
 run = "commitlint --extends \"$(mise where npm:@commitlint/config-conventional)/lib/node_modules/@commitlint/config-conventional/lib/index.js\""
-
-[tasks."repomix"]
-usage = """
-arg "<file>"
-arg "[rest]" var=#true
-"""
-run = """
-#!/usr/bin/env bash
-set -xeuo pipefail
-dir=$MISE_PROJECT_ROOT
-file=$usage_file
-header=$(taplo get -f "$dir/Cargo.toml" "package.description")
-# `--no-git-sort-by-changes` stabilizes file order across invocations
-repomix \
-    --include src,tests,examples \
-    --no-file-summary \
-    --no-directory-structure \
-    --no-git-sort-by-changes \
-    --header-text "$header" \
-    --output "$file" \
-    {{arg(name="rest")}} \
-    "$@" \
-    $dir
-"""
 
 [tasks."agent:docs:list"]
 run = "[ -d .agents/docs ] && find .agents/docs -type f -print || true"
