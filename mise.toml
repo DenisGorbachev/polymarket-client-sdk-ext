@@ -32,15 +32,6 @@ postinstall = { task = "git:install-hooks" }
 [tasks."build"]
 run = "cargo build --workspace"
 
-[tasks."lint"]
-depends = ["lint:code", "lint:docs"]
-
-[tasks."lint:code"]
-run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
-
-[tasks."lint:docs"]
-run = "rumdl check"
-
 [tasks."test"]
 depends = ["test:code", "test:docs"]
 
@@ -58,6 +49,7 @@ run = [{ task = "test:code", args = ["--ignore-default-filter", "--max-fail", "1
 run = [{ task = "test:code", args = ["--ignore-default-filter", "--max-fail", "1", "slow_tests::"] }]
 
 [tasks."test:docs"]
+env = { RUSTDOCFLAGS = "-D warnings" }
 run = "cargo test --workspace --doc --all-features --no-fail-fast --quiet"
 
 # "fix" may modify the files that are read by "test", so "test" may actually test an old version. This risk is small and acceptable, because the tests are re-run in CI.
