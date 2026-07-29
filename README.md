@@ -27,7 +27,7 @@ cargo add polymarket-client-sdk-ext
 ## Usage
 
 ```shell
-Polymarket API client
+A Polymarket API client.
 
 Usage: polymarket-client-sdk-ext <COMMAND>
 
@@ -42,6 +42,10 @@ Options:
   -h, --help     Print help
   -V, --version  Print version
 ```
+
+## Other packages
+
+This workspace has no other packages.
 
 ## Gratitude
 

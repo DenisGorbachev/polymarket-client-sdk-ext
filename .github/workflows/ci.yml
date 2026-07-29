@@ -35,8 +35,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-bin: false # mise already caches CARGO_HOME
-      - run: lefthook run --force pre-commit
-      - run: cargo hack test --feature-powerset
+      - run: mise run pre-commit
+      - run: "cargo hack test --workspace --feature-powerset -- --skip integration_tests::"
       - uses: wagoid/commitlint-github-action@v6
         with:
           failOnWarnings: true

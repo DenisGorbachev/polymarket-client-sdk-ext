@@ -1,9 +1,10 @@
-[package]
-name = "polymarket-client-sdk-ext"
+[workspace]
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.91.0"
-description = "Polymarket API client"
+rust-version = "1.93.1"
 license = "Apache-2.0 OR MIT"
 homepage = "https://github.com/DenisGorbachev/polymarket-client-sdk-ext"
 repository = "https://github.com/DenisGorbachev/polymarket-client-sdk-ext"
@@ -22,27 +23,45 @@ exclude = [
     "deno.json",
     "commitlint.config.mjs",
     "fnox.toml",
-    "lefthook.yml",
     "mise.toml",
     "rumdl.toml",
     "rustfmt.toml",
     ".yolobox"
 ]
 
-[package.metadata.details]
+[workspace.metadata.details]
+name = "polymarket-client-sdk-ext"
 title = "Polymarket API client"
-tagline = ""
-summary = ""
-announcement = ""
+readme = { }
 
-[lints.rust]
+[workspace.lints.rust]
 redundant_imports = "deny"
 unused_import_braces = "deny"
 # unused_qualifications must not be "deny" because our code style has multiple `use Foo::*;`, and some macros (derive_more::Display, strum::Display, strum::EnumString) produce code with full qualifications
 # unused_qualifications = "deny"
 
-[lints.clippy]
+[workspace.lints.clippy]
 absolute_paths = "deny"
+arithmetic_side_effects = "deny"
+
+[package]
+name = "polymarket-client-sdk-ext"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "A Polymarket API client."
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+
+[package.metadata.details]
+title = "Polymarket API client"
+
+[lints]
+workspace = true
 
 [dependencies]
 alloy = { version = "1.6.3", default-features = false, features = ["std", "serde", "signer-mnemonic"] }
