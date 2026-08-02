@@ -1,2 +1,3 @@
 /target
 /.cache
+/.cargo/config.local.toml

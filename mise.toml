@@ -55,7 +55,7 @@ run = "cargo test --workspace --doc --all-features --no-fail-fast --quiet"
 # "fix" may modify the files that are read by "test", so "test" may actually test an old version. This risk is small and acceptable, because the tests are re-run in CI.
 [tasks."pre-commit"]
 alias = "pre-merge-commit"
-depends = ["fix-and-stage", "test"]
+depends = ["cargo:validate-config", "fix-and-stage", "test"]
 
 [tasks."fix-and-stage"]
 depends = ["fix"]
@@ -121,7 +121,7 @@ quiet = true
 
 # "fix" may modify the files that are read by "test", so "test" may actually test an old version. This risk is small and acceptable, because the tests are re-run in CI.
 [tasks."agent:on:stop"]
-depends = ["fix", "agent:test"]
+depends = ["cargo:validate-config", "fix", "agent:test"]
 
 [tasks."agent:test"]
 depends = ["agent:test:code", "agent:test:code:integration", "agent:test:code:slow", "test:docs"]

@@ -58,7 +58,13 @@ Notes:
 * Don't edit the files in the following top-level dirs: `specs`, `.agents`
 * If a later instruction overrides the former instruction: follow the later instruction (last override wins)
 * If I explicitly ask to update the code in a way that deviates from the spec, update both the code and the spec
-* If you need to patch a dependency, tell me about it, but don't do it without my explicit permission
+* If you need to patch a dependency:
+  * If the dependency is owned by Denis Gorbachev:
+    * Then:
+      * Find it in `~/workspace`
+      * Apply edits
+      * Add a local override via `[patch]` in `.cargo/config.local.toml`
+    * Else: tell me about it, but don't patch it without my explicit permission
 * If you notice unexpected edits, keep them and don't mention them
 * If you notice incorrect code, tell me
 * If you have to apply a workaround, add a comment next to the workaround that explains why it is necessary, and also mention the workaround in your final report
@@ -78,7 +84,8 @@ Notes:
 ## Review workflow
 
 * Output a full list of findings (not a shortlist)
-* Every finding in the full list must be formatted as `{number}. [{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}` (I will identify the findings by number in my answer)
+* Every finding in the full list must be formatted as `{ctid}: [{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}` (I will identify the findings by chat thread ID in my answer)
+  * `ctid` must be a [chat thread id](#chat-thread-id)
   * `priority` must be one of `P0`, `P1`, `P2`, `P3`.
   * `references` must be a comma-separated list of `reference`
   * `reference` must must be formatted as `{path}:{line}`
@@ -106,6 +113,7 @@ Notes:
 ## Messages from agent to user
 
 * Use `~` in paths
+* Give each independently addressable item in a multi-item message a unique [chat thread ID](#chat-thread-id)
 
 ## Commands
 
@@ -465,3 +473,11 @@ A function marked with `#[test]` or `#[tokio::test]`.
 ## Code style
 
 * Don't enforce a line length limit when writing code, comments or documentation
+
+## Chat thread id
+
+An identifier which could be used to refer to the chat thread in the subsequent messages.
+
+* Must have the following format: `{prefix}-{index}`
+  * `prefix` must be a string of at least three uppercase letters (e.g. `RVC`, `AKE`, `LMY`) (letters should match thread topic)
+  * `index` must be a natural number (e.g. `0`, `1`, `15`)
