@@ -84,7 +84,7 @@ Notes:
 ## Review workflow
 
 * Output a full list of findings (not a shortlist)
-* Every finding in the full list must be formatted as `{ctid}: [{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}` (I will identify the findings by chat thread ID in my answer)
+* Every finding in the full list must be formatted as `### {ctid}\n\n[{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}` (I will identify the findings by chat thread ID in my answer)
   * `ctid` must be a [chat thread id](#chat-thread-id)
   * `priority` must be one of `P0`, `P1`, `P2`, `P3`.
   * `references` must be a comma-separated list of `reference`
@@ -93,7 +93,7 @@ Notes:
   * `line` must be the first line of the relevant code or text block
   * `fixes` must be one of the following:
     * If there is at least one proposed fix:
-      * Then: newline and a Markdown nested list of fixes where each fix must have a format `{number}. {description}` (the numbers should start from 1 for each list of fixes)
+      * Then: "\n\n" and a Markdown nested list of fixes where each fix must have a format `{number}. {description}` (the numbers should start from 1 for each list of fixes)
       * Else: the exact text "none."
 * If there are no findings, then start your reply with "No findings"
 * If I reply to your review with an ordered list, process each item in the following way:
