@@ -3,9 +3,23 @@
 
 set -euo pipefail
 
+check=false
+if [[ ${1:-} == --check ]]; then
+  check=true
+  shift
+fi
+if [[ $# -ne 0 ]]; then
+  echo "usage: $0 [--check]" >&2
+  exit 1
+fi
+
 project_root=${MISE_PROJECT_ROOT:-$(pwd)}
 manifest_path="$project_root/Cargo.toml"
-metadata=$(cargo metadata --manifest-path "$manifest_path" --format-version 1 --no-deps)
+metadata_args=(cargo metadata --manifest-path "$manifest_path" --format-version 1 --no-deps)
+if [[ $check == true ]]; then
+  metadata_args+=(--locked)
+fi
+metadata=$("${metadata_args[@]}")
 status=0
 
 while IFS= read -r -d '' manifest; do
@@ -13,7 +27,7 @@ while IFS= read -r -d '' manifest; do
     [[ $workspace_lints == true ]]; then
     continue
   fi
-  if tomli --filepath "$manifest" query "lints" >/dev/null 2>&1; then
+  if [[ $check == true ]] || tomli --filepath "$manifest" query "lints" >/dev/null 2>&1; then
     echo "$manifest: lints.workspace must equal true" >&2
     status=1
   else

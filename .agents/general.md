@@ -79,6 +79,11 @@ Notes:
   * Examples
     * A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
     * A task to write a trait impl that only returns an error - in this case you should not write the trait impl but reply with "trait X can't be implemented for Foo because ..."
+* If a sentence starts with "Proposal: ":
+  * Evaluate it thorougly.
+  * If you agree:
+    * Then: implement it.
+    * Else: explain why you didn't implement it and brainstorm solutions.
 * If you resolve the blockers, remove them from blockers.md
 
 ## Review workflow
@@ -100,7 +105,8 @@ Notes:
   * "+" - "Think about this finding again, then apply the best fix according to your thinking process"
   * "+ {number}" - "Apply proposed fix at {number}"
   * "-" - "Don't apply any fixes"
-  * other - respond normally (keep the number in your response)
+  * other - respond normally (keep the `ctid` in your response)
+* If there are no more actionable items in the thread identified by a specific `ctid`: drop this `ctid` from your response.
 
 ## Debugging workflow
 
@@ -457,6 +463,9 @@ A function marked with `#[test]` or `#[tokio::test]`.
 
 * Write `macro_rules!` macros to reduce boilerplate
 * If you see similar code in different places, write a macro and replace the similar code with a macro call
+* If the macros has variadic args:
+  * Then: do add `$(,)?`
+  * Else: don't add `$(,)?`
 
 ## Shell
 
