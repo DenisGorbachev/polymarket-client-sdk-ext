@@ -63,8 +63,7 @@ Notes:
     * Then:
       * Find it in `~/workspace`
       * Apply edits
-      * Add a temporary local override via `[patch]` in the tracked `.cargo/config.toml` file
-      * Before committing, push the dependency, remove the path-based override, and update `Cargo.lock`
+      * Add a temporary local `[patch]` in `.cargo/config.toml`
     * Else: tell me about it, but don't patch it without my explicit permission
 * If you notice unexpected edits, keep them and don't mention them
 * If you notice incorrect code, tell me
