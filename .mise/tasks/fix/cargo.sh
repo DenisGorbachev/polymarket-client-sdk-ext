@@ -55,7 +55,7 @@ dependency_errors=$(
     | select(.path != null)
     | . as $dependency
     | if ($package_dirs | index($dependency.path) | not) then
-        "\($package.manifest_path): dependency \u0027\($dependency.rename // $dependency.name)\u0027 uses non-workspace path \u0027\($dependency.path)\u0027; use .cargo/config.local.toml for local overrides"
+        "\($package.manifest_path): dependency \u0027\($dependency.rename // $dependency.name)\u0027 uses non-workspace path \u0027\($dependency.path)\u0027; use a temporary [patch] entry in .cargo/config.toml for local overrides"
       elif $package.publish != [] and $dependency.kind != "dev" and $dependency.req == "*" then
         "\($package.manifest_path): publishable package \u0027\($package.name)\u0027 dependency \u0027\($dependency.rename // $dependency.name)\u0027 uses a workspace path without a registry version"
       else empty end
@@ -83,7 +83,7 @@ while IFS= read -r -d '' location && IFS= read -r -d '' dependency_name && IFS= 
     | any($packages[].dependencies[]; .path == $path)
       or any($packages[]; (.manifest_path | manifest_dir) == $path)
   ' <<<"$metadata" >/dev/null; then
-    echo "$manifest_path: $location '$dependency_name' uses non-workspace path '$dependency_path'; use .cargo/config.local.toml for local overrides" >&2
+    echo "$manifest_path: $location '$dependency_name' uses non-workspace path '$dependency_path'; use a temporary [patch] entry in .cargo/config.toml for local overrides" >&2
     status=1
   fi
 done < <(
