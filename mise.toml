@@ -43,16 +43,16 @@ depends = ["test:code", "test:docs"]
 depends = ["lint:name", "lint:configs", "lint:code", "lint:code:style", "lint:docs"]
 
 [tasks."lint:name"]
-run = "./.mise/tasks/fix/name.sh --check"
+run = [{ task = "fix:name", args = ["--check"] }]
 
 [tasks."lint:configs"]
 depends = ["lint:configs:cargo", "lint:configs:fnox"]
 
 [tasks."lint:configs:cargo"]
-run = "./.mise/tasks/fix/cargo.sh --check"
+run = [{ task = "fix:cargo", args = ["--check"] }]
 
 [tasks."lint:configs:fnox"]
-run = "./.mise/tasks/fix/fnox.sh"
+run = [{ task = "fix:fnox" }]
 
 [tasks."lint:code"]
 run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings"

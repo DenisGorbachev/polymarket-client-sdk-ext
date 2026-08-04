@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE depends=["fix:name"]
+#MISE wait_for=["fix:name"]
 
 set -euo pipefail
 
