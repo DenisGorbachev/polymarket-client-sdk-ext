@@ -79,13 +79,13 @@
 
 ## .mise/tasks/fix/fnox.sh
 
-- Must depend on `fix:name`.
+- Must `wait_for=["fix:name"]`
 - Must validate that `providers.keychain.service` and `providers.pass.prefix` equal `git:repo-name` and `git:repo-name/`, respectively.
 - Must not migrate secrets between old and new identifiers.
 
 ## .mise/tasks/fix/cargo.sh
 
-- Must depend on `fix:name`.
+- Must `wait_for=["fix:name"]`
 - Must discover workspace package manifests with `cargo metadata`.
 - If a manifest has no `lints` key
   - Then: Must add `lints.workspace = true`.
