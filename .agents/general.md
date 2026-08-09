@@ -471,14 +471,14 @@ A function marked with `#[test]` or `#[tokio::test]`.
 
 - If a command is an argument of a tool call:
   - Then:
-    - Use short options
+    - Prefer short options
   - Else:
     - If it's a common command (one of: cd, cp, mv, rm, mkdir, ls, ln, chmod, chown):
       - Then:
-        - Use short options
+        - Prefer short options
       - Else
-        - Use long options
-    - Use `echo` with inline args instead of `printf`
+        - Prefer long options
+    - Prefer `echo` instead of `printf`
 
 ## Cargo.toml
 
