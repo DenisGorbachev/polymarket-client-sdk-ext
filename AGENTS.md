@@ -477,7 +477,7 @@ A function marked with `#[test]` or `#[tokio::test]`.
   - Then:
     - Prefer short options
   - Else:
-    - If it's a common command (one of: cd, cp, mv, rm, mkdir, ls, ln, chmod, chown):
+    - If it's a common command (one of: set, cd, cp, mv, rm, mkdir, ls, ln, chmod, chown):
       - Then:
         - Prefer short options
       - Else
