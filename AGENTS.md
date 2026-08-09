@@ -72,13 +72,14 @@ Notes:
 - If you notice unexpected edits, keep them and don't mention them
 - If you notice incorrect code, tell me
 - If you have to apply a workaround, add a comment next to the workaround that explains why it is necessary, and also mention the workaround in your final report
-- If the task can't be completed exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), `touch` the blockers.md file and append a list of blockers to it:
+- If the task can't be completed exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), append a list item to `blockers.md`:
   - Each blocker must be a list item with a description and a child list of workarounds
     - description must start with "{id}: "
       - id must start with "B" and contain at least 3 digits (e.g. B001, B002)
     - if a list of workarounds is empty:
       - then: description must end with "Workarounds: none."
       - else: description must end with "Workarounds: " (the list of workarounds should follow)
+- If unexpected behavior impedes your progress, but it's not a blocker yet, append a list item to `papercuts.md` describing this unexpected behavior. For example: domain is unavailable, program is unavailable, available memory or disk space is too low, command runs for unexpectedly long time or consumes an unexpected amount of resources.
 - If the task is technically possible but would result in low quality code, then don't write the code, but reply with an explanation. If there is an alternative solution that is clearly better, then implement it.
   - Examples
     - A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
@@ -473,6 +474,7 @@ A function marked with `#[test]` or `#[tokio::test]`.
 
 #### Shell
 
+- Don't use hard wraps to enforce max line length (I'll use soft wraps in my editor)
 - If a command is an argument of a tool call:
   - Then:
     - Prefer short options
