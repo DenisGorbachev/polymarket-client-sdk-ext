@@ -413,6 +413,7 @@ Notes:
       }
   }
   ```
+- Prefer short method syntax over long trait-path syntax (prefer `value.method(arg)` over `Trait::method(value, arg)`)
 - Generic helper functions must be in `src/functions` (one file per function)
 
 #### Struct derives
