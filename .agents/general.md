@@ -480,11 +480,19 @@ A function marked with `#[test]` or `#[tokio::test]`.
 
 ## Chat thread id
 
-An identifier which could be used to refer to the chat thread in the subsequent messages.
+- Must be a string
+- Must contain at least 3 characters
+- Must contain only uppercase characters
 
-- Must have the following format: `{prefix}-{index}`
-  - `prefix` must be a string of at least three uppercase letters (e.g. `RVC`, `AKE`, `LMY`) (letters should match thread topic)
-  - `index` must be a natural number (e.g. `0`, `1`, `15`)
+Examples:
+
+- `RVC`
+- `AKE`
+- `LMY`
+
+Notes:
+
+- Should match the thread topic
 
 ## findings.md
 
