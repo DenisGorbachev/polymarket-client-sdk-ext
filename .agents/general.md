@@ -68,39 +68,23 @@ Notes:
 - If you notice unexpected edits, keep them and don't mention them
 - If you notice incorrect code, tell me
 - If you have to apply a workaround, add a comment next to the workaround that explains why it is necessary, and also mention the workaround in your final report
-- If the task can't be completed exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), append a list item to `blockers.md`:
-  - Each blocker must be a list item with a description and a child list of workarounds
-    - description must start with "{id}: "
-      - id must start with "B" and contain at least 3 digits (e.g. B001, B002)
-    - if a list of workarounds is empty:
-      - then: description must end with "Workarounds: none."
-      - else: description must end with "Workarounds: " (the list of workarounds should follow)
-- If unexpected behavior impedes your progress, but it's not a blocker yet, append a list item to `papercuts.md` describing this unexpected behavior. For example: domain is unavailable, program is unavailable, available memory or disk space is too low, command runs for unexpectedly long time or consumes an unexpected amount of resources.
+- If the task can't be completed exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), append an item to [`findings.md`](#findingsmd) with priority `P0`.
+- If unexpected behavior impedes your progress, but it's not a blocker (for example: domain is unavailable, program is unavailable, available memory or disk space is too low, command runs for unexpectedly long time or consumes an unexpected amount of resources), append an item to [`findings.md`](#findingsmd) with priority `P2`.
 - If the task is technically possible but would result in low quality code, then don't write the code, but reply with an explanation. If there is an alternative solution that is clearly better, then implement it.
   - Examples
     - A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
     - A task to write a trait impl that only returns an error - in this case you should not write the trait impl but reply with "trait X can't be implemented for Foo because ..."
-- If a sentence starts with "Proposal: ":
+- If a sentence starts with "Idea: ":
   - Evaluate it thorougly.
   - If you agree:
     - Then: implement it.
     - Else: explain why you didn't implement it and brainstorm solutions.
-- If you resolve the blockers, remove them from blockers.md
+- If you resolve the findings, remove them from [findings.md](#findingsmd)
+  - If [findings.md](#findingsmd) becomes empty, remove it
 
 ## Review workflow
 
-- Output a full list of findings (not a shortlist)
-- Every finding in the full list must be formatted as `### {ctid}\n\n[{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}` (I will identify the findings by chat thread ID in my answer)
-  - `ctid` must be a [chat thread id](#chat-thread-id)
-  - `priority` must be one of `P0`, `P1`, `P2`, `P3`.
-  - `references` must be a comma-separated list of `reference`
-  - `reference` must must be formatted as `{path}:{line}`
-  - `path` must be a file path relative to your working directory
-  - `line` must be the first line of the relevant code or text block
-  - `fixes` must be one of the following:
-    - If there is at least one proposed fix:
-      - Then: "\n\n" and a Markdown nested list of fixes where each fix must have a format `{number}. {description}` (the numbers should start from 1 for each list of fixes)
-      - Else: the exact text "none."
+- Output a full list of [findings](#finding) (not a shortlist)
 - If there are no findings, then start your reply with "No findings"
 - If I reply to your review with an ordered list, process each item in the following way:
   - "+" - "Think about this finding again, then apply the best fix according to your thinking process"
@@ -126,7 +110,7 @@ Notes:
 
 - Use `fd` and `rg` instead of `find` and `grep`
 - Use `cargo add` to add dependencies at their latest versions
-- Set the timeout and `yield_time_ms` to at least 300000 ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
+- Set the command-execution tool call’s timeout parameter and `yield_time_ms` to at least 300000 ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
 
 ## Recommended crates
 
@@ -411,6 +395,9 @@ Notes:
   ```
 - Prefer short method syntax over long trait-path syntax (prefer `value.method(arg)` over `Trait::method(value, arg)`)
 - Generic helper functions must be in `src/functions` (one file per function)
+- If clippy reports `too_many_arguments`:
+  - Don't use tuples to silence the lint
+  - Consider refactoring the code for better separation of concerns
 
 ## Struct derives
 
@@ -498,3 +485,22 @@ An identifier which could be used to refer to the chat thread in the subsequent 
 - Must have the following format: `{prefix}-{index}`
   - `prefix` must be a string of at least three uppercase letters (e.g. `RVC`, `AKE`, `LMY`) (letters should match thread topic)
   - `index` must be a natural number (e.g. `0`, `1`, `15`)
+
+## findings.md
+
+- If it exists:
+  - Must contain a non-empty list of [findings](#finding)
+
+## Finding
+
+- Must be formatted as `### {ctid}\n\n[{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}`
+  - `ctid` must be a [chat thread id](#chat-thread-id)
+  - `priority` must be one of `P0`, `P1`, `P2`, `P3`.
+  - `references` must be a comma-separated list of `reference`
+  - `reference` must must be formatted as `{path}:{line}`
+  - `path` must be a file path relative to your working directory
+  - `line` must be the first line of the relevant code or text block
+  - `fixes` must be one of the following:
+    - If there is at least one proposed fix:
+      - Then: "\n\n" and a Markdown nested list of fixes where each fix must have a format `{number}. {description}` (the numbers should start from 1 for each list of fixes)
+      - Else: the exact text "none."
