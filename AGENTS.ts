@@ -1,11 +1,11 @@
 #!/usr/bin/env -S deno run --node-modules-dir=false --allow-read --allow-write --allow-run --allow-env=HOME --no-lock
 
-import { compare, parse } from "jsr:@std/semver@1.0.0"
-import { stringify } from "jsr:@libs/xml@7.0.3"
+import {compare, parse} from "jsr:@std/semver@1.0.0"
+import {stringify} from "jsr:@libs/xml@7.0.3"
 import remarkParse from "npm:remark-parse@11.0.0"
-import { unified } from "npm:unified@11.0.5"
-import { visit } from "npm:unist-util-visit@5.0.0"
-import { basename, dirname, extname, fromFileUrl, isAbsolute, join, relative, resolve, SEPARATOR } from "jsr:@std/path@1.1.4"
+import {unified} from "npm:unified@11.0.5"
+import {visit} from "npm:unist-util-visit@5.0.0"
+import {basename, dirname, extname, fromFileUrl, isAbsolute, join, relative, resolve, SEPARATOR} from "jsr:@std/path@1.1.4"
 
 const sourcePath = fromFileUrl(import.meta.url)
 const rootPath = dirname(sourcePath)
@@ -27,7 +27,7 @@ const renderPath = (path: string) => {
   return `~/${posixPath(relativeToHome)}`
 }
 
-const runCommand = (command: string, args: string[], stderr: "inherit" | "piped" = "piped") => new Deno.Command(command, { args, cwd: rootPath, stdout: "piped", stderr }).output()
+const runCommand = (command: string, args: string[], stderr: "inherit" | "piped" = "piped") => new Deno.Command(command, {args, cwd: rootPath, stdout: "piped", stderr}).output()
 
 const fileExists = async (path: string) => {
   try {
@@ -49,14 +49,14 @@ const shiftHeadings = (markdown: string, headingLevel: number) => {
     const depth = Math.min(6, Math.max(1, heading.depth + headingLevel - 1))
     const markerEnd = start.offset + heading.depth
     if (markdown.slice(start.offset, markerEnd) === "#".repeat(heading.depth)) {
-      edits.push({ start: start.offset, end: markerEnd, replacement: "#".repeat(depth) })
+      edits.push({start: start.offset, end: markerEnd, replacement: "#".repeat(depth)})
       return
     }
     const lines = markdown.slice(start.offset, end.offset).split(/\r?\n/)
     lines.pop()
     const indentation = Math.max(0, start.column - 1)
     const contents = lines.map((line, index) => index === 0 ? line : line.slice(indentation)).join(" ")
-    edits.push({ start: start.offset, end: end.offset, replacement: `${"#".repeat(depth)} ${contents}` })
+    edits.push({start: start.offset, end: end.offset, replacement: `${"#".repeat(depth)} ${contents}`})
   })
   return edits.reduceRight(
     (source, edit) => source.slice(0, edit.start) + edit.replacement + source.slice(edit.end),
@@ -96,8 +96,8 @@ const getLanguageIdentifier = (path: string) => {
 
 export const renderXmlFile = (path: string, contents: string) =>
   stringify(
-    { file: { path, contents: "\n" + contents } },
-    { format: { indent: "", breakline: 0 } },
+    {file: {path, contents: "\n" + contents}},
+    {format: {indent: "", breakline: 0}},
   ).trimEnd()
 
 const includeFile = async (path: string, headingLevel = 3) => renderFileContents(path, await Deno.readTextFile(resolvePath(path)), renderPath(path), headingLevel)
@@ -157,7 +157,7 @@ const includeAllCargoFiles = async (relativePaths: string[], headingLevel: numbe
     }))
     .sort((left, right) => left.renderedPath.localeCompare(right.renderedPath))
   return (await Promise.all(
-    candidates.map(async ({ fullPath, renderedPath }) => {
+    candidates.map(async ({fullPath, renderedPath}) => {
       if (!(await fileExists(fullPath))) return null
       return renderFileContents(fullPath, await Deno.readTextFile(fullPath), renderedPath, headingLevel)
     }),
@@ -235,8 +235,9 @@ const parts = (await Promise.all([
   renderSection(
     "### Project files",
     [
-      includeAllCargoFiles(["Cargo.toml"], 4),
+      includeFile("mise.toml", 4),
       includeFile("fnox.toml", 4),
+      includeAllCargoFiles(["Cargo.toml"], 4),
       includeAllCargoFiles(["src/lib.rs", "src/main.rs"], 4),
     ],
   ),

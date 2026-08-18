@@ -1927,6 +1927,21 @@ macro_rules! map_err {
     };
 }
 
+/// Converts [`None`] into an error variant without returning early.
+///
+/// [`map_none`](crate::map_none) should be used only when the error variant doesn't capture any owned variables (which is very rare), or exactly at the end of the block (in the position of returned expression).
+#[macro_export]
+macro_rules! map_none {
+    ($option:expr, $variant:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        match $option {
+            Some(value) => Ok(value),
+            None => Err($variant {
+                $($arg: $crate::_into!($arg$(: $value)?)),*
+            })
+        }
+    };
+}
+
 /// Internal
 #[doc(hidden)]
 #[macro_export]
@@ -2010,12 +2025,12 @@ mod tests {
         }
     }
 
-    /// This function tests the [`crate::handle_opt!`] macro
+    /// This function tests the [`crate::handle_opt!`] and [`crate::map_none!`] macros.
     #[allow(dead_code)]
-    fn find_even(numbers: Vec<u32>) -> Result<u32, FindEvenError> {
-        use FindEvenError::*;
-        let even = handle_opt!(numbers.iter().find(|x| *x % 2 == 0), NotFound);
-        Ok(*even)
+    fn first_word(lines: &[String]) -> Result<&str, FirstWordError> {
+        use FirstWordError::*;
+        let line = handle_opt!(lines.first(), LineNotFound);
+        map_none!(line.split_whitespace().next(), WordNotFound)
     }
 
     /// This function tests the [`crate::handle_iter!`] macro
@@ -2120,9 +2135,11 @@ mod tests {
     }
 
     #[derive(Error, Debug)]
-    enum FindEvenError {
-        #[error("even number not found")]
-        NotFound,
+    enum FirstWordError {
+        #[error("line not found")]
+        LineNotFound {},
+        #[error("word not found")]
+        WordNotFound {},
     }
 
     #[derive(Error, Debug)]
@@ -2312,6 +2329,188 @@ cfg_if::cfg_if! {
 ````
 
 ### Project files
+
+#### mise.toml
+
+```toml
+min_version = "2026.7.13"
+
+[settings]
+idiomatic_version_file_enable_tools = ["rust"]
+task.output = "keep-order"
+
+[plugins]
+fnox-env = "https://github.com/jdx/mise-env-fnox"
+
+[tools]
+node = "24.15.0"
+deno = "1.46.1"
+fnox = "1.21.0"
+cargo-binstall = "1.10.15"
+"npm:@commitlint/config-conventional" = "19.6.0"
+"npm:@commitlint/cli" = "19.6.0"
+"npm:@commitlint/types" = "19.5.0"
+"cargo:cargo-insert-docs" = "1.6.0"
+"cargo:cargo-hack" = "0.6.33"
+"cargo:cargo-nextest" = "0.9.102"
+"cargo:cargo-expand" = "1.0.114"
+"cargo:taplo-cli" = "0.10.0"
+"cargo:rumdl" = "0.1.0"
+"cargo:sd" = "1.0.0"
+
+[env]
+_.fnox-env = { tools = true }
+
+[hooks]
+postinstall = { task = "git:install-hooks" }
+
+[tasks."build"]
+run = "cargo build --workspace"
+
+[tasks."check"]
+depends = ["cargo:validate-config"]
+run = [{ tasks = ["lint", "test"] }]
+
+[tasks."test"]
+depends = ["test:code", "test:docs"]
+
+[tasks."lint"]
+depends = ["lint:name", "lint:configs", "lint:code", "lint:code:style", "lint:docs", "lint:reports"]
+
+[tasks."lint:name"]
+run = [{ task = "fix:name", args = ["--check"] }]
+
+[tasks."lint:configs"]
+depends = ["lint:configs:cargo", "lint:configs:fnox"]
+
+[tasks."lint:configs:cargo"]
+run = [{ task = "fix:cargo", args = ["--check"] }]
+
+[tasks."lint:configs:fnox"]
+run = [{ task = "fix:fnox" }]
+
+[tasks."lint:code"]
+run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warnings"
+
+[tasks."lint:code:style"]
+run = "cargo fmt --all -- --check"
+
+[tasks."lint:docs"]
+run = "rumdl check"
+
+[tasks."test:code"]
+run = "cargo nextest run --locked --workspace --all-features --no-tests warn"
+
+[tasks."test:code:integration"]
+# see also: "agent:test:code:integration"
+# `--test-threads 1` because integration tests must be run sequentially
+run = [{ task = "test:code", args = ["--ignore-default-filter", "--max-fail", "1", "--test-threads", "1", "integration_tests::"] }]
+
+[tasks."test:code:slow"]
+# see also: "agent:test:code:slow"
+# `--test-threads` is omitted because slow tests may be run in parallel
+run = [{ task = "test:code", args = ["--ignore-default-filter", "--max-fail", "1", "slow_tests::"] }]
+
+[tasks."test:docs"]
+env = { RUSTDOCFLAGS = "-D warnings" }
+run = "cargo test --locked --workspace --doc --all-features --no-fail-fast --quiet"
+
+[tasks."pre-commit"]
+alias = "pre-merge-commit"
+run = [{ task = "git:validate-commit" }]
+
+# Compatibility for existing clones whose generated post-commit hook still invokes this task. The installer removes that hook during this one-time migration.
+[tasks."post-commit"]
+hide = true
+run = [{ task = "git:install-hooks" }]
+
+[tasks."commit-msg"]
+run = 'mise run --output interleave commitlint -- --edit "$@"'
+
+[tasks."fix"]
+depends = ["fix:code", "fix:aux"]
+
+[tasks."fix:aux"]
+depends = ["fix:configs", "fix:docs", "fix:agents", "fix:readme"]
+
+[tasks."fix:configs"]
+depends = ["fix:cargo", "fix:fnox"]
+
+[tasks."fix:code"]
+depends = ["fix:name", "fix:code:style"]
+
+[tasks."fix:code:warnings"]
+depends = ["fix:cargo"]
+# second pass is needed because "cargo clippy --fix" exits with 0 even if some warnings remain
+env = { __CARGO_FIX_YOLO = 'yeah' }
+run = [
+    "cargo clippy --workspace --all-targets --all-features --fix --allow-dirty --allow-staged",
+    { task = "lint:code" },
+]
+
+[tasks."fix:code:style"]
+# Run after `fix:code:warnings` because both tasks modify the same code files.
+depends = ["fix:code:warnings"]
+run = "cargo fmt --all"
+
+[tasks."fix:docs"]
+depends = ["fix:agents", "fix:readme"]
+# use `rumdl check --fix` instead of `rumdl fmt` because `rumdl check --fix` exits with 1 if errors remain (since v0.1.0)
+run = "rumdl check --fix"
+
+[tasks."fix:agents"]
+# "fix:agents" depends on "fix:code" because it reads the code files
+depends = ["fix:name", "fix:configs", "fix:code"]
+run = [{ task = "gen:agents" }]
+
+[tasks."gen:readme"]
+run = "./README.ts"
+
+[tasks."gen:agents"]
+run = "./AGENTS.ts"
+
+[tasks."commitlint"]
+run = "commitlint --extends \"$(mise where npm:@commitlint/config-conventional)/node_modules/@commitlint/config-conventional/lib/index.js\""
+
+[tasks."agent:docs:list"]
+run = "[ -d .agents/docs ] && find .agents/docs -type f -print || true"
+output = "interleave"
+quiet = true
+
+[tasks."agent:on:stop"]
+depends = ["cargo:validate-config"]
+run = [{ task = "fix" }, { task = "agent:test" }]
+
+[tasks."agent:test"]
+depends = ["agent:test:code", "agent:test:code:integration", "agent:test:code:slow", "test:docs"]
+
+[tasks."agent:test:code"]
+# don't include `--fail-fast` because it's better to let the agent see all failures
+# reduce output to save tokens
+run = [{ task = "test:code", args = ["--cargo-quiet", "--hide-progress-bar", "--status-level", "fail", "--final-status-level", "flaky"] }]
+
+[tasks."agent:test:code:integration"]
+# see also: "test:code:integration"
+# `--test-threads 1` because integration tests must be run sequentially
+run = [{ task = "test:code", args = ["--cargo-quiet", "--hide-progress-bar", "--status-level", "fail", "--final-status-level", "flaky", "--ignore-default-filter", "--max-fail", "1", "--test-threads", "1", "integration_tests::"] }]
+
+[tasks."agent:test:code:slow"]
+# see also: "test:code:slow"
+# `--test-threads` is omitted because slow tests may be run in parallel
+run = [{ task = "test:code", args = ["--cargo-quiet", "--hide-progress-bar", "--status-level", "fail", "--final-status-level", "flaky", "--ignore-default-filter", "--max-fail", "1", "slow_tests::"] }]
+```
+
+#### fnox.toml
+
+```toml
+#:schema https://fnox.jdx.dev/schema.json
+
+if_missing = "error"
+
+[providers]
+keychain = { type = "keychain", service = "rust-private-lib-template" }
+pass = { type = "password-store", prefix = "rust-private-lib-template/" }
+```
 
 #### Cargo.toml
 
