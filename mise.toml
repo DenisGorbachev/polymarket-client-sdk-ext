@@ -7,7 +7,7 @@ task.output = "keep-order"
 [tools]
 node = "24.15.0"
 deno = "1.46.1"
-fnox = "1.21.0"
+fnox = "1.33.1"
 cargo-binstall = "1.10.15"
 "npm:@commitlint/config-conventional" = "19.6.0"
 "npm:@commitlint/cli" = "19.6.0"
