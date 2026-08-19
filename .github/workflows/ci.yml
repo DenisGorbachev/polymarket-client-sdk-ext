@@ -22,6 +22,10 @@ jobs:
           echo "RUSTUP_HOME=$RUNNER_TEMP/mise/rustup" >> "$GITHUB_ENV" # RUSTUP_HOME must live under MISE_DATA_DIR, so that mise caches it automatically (it doesn't cache ~/.rustup)
           echo "CARGO_HOME=$RUNNER_TEMP/mise/cargo" >> "$GITHUB_ENV" # CARGO_HOME must live under MISE_DATA_DIR, so that mise caches it automatically (it doesn't cache ~/.cargo)
           echo "DENO_DIR=$RUNNER_TEMP/deno" >> "$GITHUB_ENV" # DENO_DIR must live outside MISE_DATA_DIR, so that actions/cache can save it after later Deno invocations
+      - name: Install pass
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes pass
       - uses: rui314/setup-mold@v1 # mold is a workaround for regression in Rust 1.93 beta
       - uses: jdx/mise-action@v4
         with:
