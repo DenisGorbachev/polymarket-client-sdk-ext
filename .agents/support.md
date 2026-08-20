@@ -83,6 +83,11 @@
 - Must validate that `providers.keychain.service` and `providers.pass.prefix` equal `git:repo-name` and `git:repo-name/`, respectively.
 - Must not migrate secrets between old and new identifiers.
 
+## .mise/tasks/fnox/github/init-age-key.sh
+
+- May clear the clipboard without preserving contents that predate the task.
+- May treat write races as acceptable because the script is run by a single user who guarantees that other scripts do not run concurrently.
+
 ## .mise/tasks/fix/cargo.sh
 
 - Must `wait_for=["fix:name"]`

@@ -2393,7 +2393,7 @@ run = "cargo fmt --all -- --check"
 run = "rumdl check"
 
 [tasks."test:code"]
-run = "fnox --profile test exec -- cargo nextest run --locked --workspace --all-features --no-tests warn"
+run = "fnox --profile test exec --replace -- cargo nextest run --locked --workspace --all-features --no-tests warn"
 
 [tasks."test:code:integration"]
 # see also: "agent:test:code:integration"
@@ -2500,10 +2500,15 @@ run = [{ task = "test:code", args = ["--cargo-quiet", "--hide-progress-bar", "--
 #:schema https://fnox.jdx.dev/schema.json
 
 if_missing = "error"
+env = "exec"
 
 [providers]
 keychain = { type = "keychain", service = "rust-private-lib-template" }
 pass = { type = "password-store", prefix = "rust-private-lib-template/" }
+age = { type = "age", recipients = [
+    "age1sf4r4amev2svqr6llwg8hgtz9n7p5qdh7hh0mavcshzfrmgfduksnq3hql",
+    "age1605gsnxpe536sprwccyumq74veg0g80u55n8ggems0t8deau6qdsfnq3m3"
+] }
 ```
 
 #### Cargo.toml

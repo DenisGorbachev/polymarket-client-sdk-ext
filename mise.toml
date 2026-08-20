@@ -58,7 +58,7 @@ run = "cargo fmt --all -- --check"
 run = "rumdl check"
 
 [tasks."test:code"]
-run = "fnox --profile test exec -- cargo nextest run --locked --workspace --all-features --no-tests warn"
+run = "fnox --profile test exec --replace -- cargo nextest run --locked --workspace --all-features --no-tests warn"
 
 [tasks."test:code:integration"]
 # see also: "agent:test:code:integration"
