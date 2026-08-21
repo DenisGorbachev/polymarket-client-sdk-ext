@@ -150,3 +150,11 @@
   - Else: Must remove `workspace.package.{repository,homepage}`.
 - May rely on the template root defining the workspace fields it updates.
 - Must update fnox identifiers, regenerate READMEs, build, test, stage, and commit.
+
+## .github/workflows/ci.yml
+
+- Must keep the Rust version specified in `rust-toolchain.toml`.
+  - Rationale:
+    - Setting it to "stable" in CI leads to warnings that aren't visible in pre-commit.
+    - Building for both "stable" and pinned version takes extra time & disk space.
+    - Pinning "stable" is not always possible (some projects do require nightly).
