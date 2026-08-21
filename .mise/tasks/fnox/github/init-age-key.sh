@@ -138,7 +138,7 @@ copy_config_with_metadata() {
 validate_age_config() {
   local project_root=${1:?} fnox_path=${2:?}
   if ! MISE_PROJECT_ROOT="$project_root" "$project_root/.mise/tasks/fix/fnox.sh" \
-    --fnox-toml "$fnox_path"; then
+    --fnox-toml "$fnox_path" --allow-pass-test-secrets; then
     echo "fnox config validation failed: $fnox_path" >&2
     return 1
   fi
@@ -174,16 +174,16 @@ refuse_age_ciphertext() {
 
 copy_private_identity() {
   local identity_path=${1:?}
-  if ! awk '/^AGE-SECRET-KEY-[[:alnum:]]+$/ { print }' "$identity_path" | copy_to_clipboard; then
+  if ! awk '/^AGE-SECRET-KEY-[[:alnum:]]+$/ { printf "%s", $0 }' "$identity_path" | copy_to_clipboard; then
     echo "failed to copy the private identity to the clipboard" >&2
     return 1
   fi
 }
 
-copy_public_value() {
+copy_value() {
   local value=${1:?}
-  if ! echo -n "$value" | copy_to_clipboard; then
-    echo "failed to copy a public value to the clipboard" >&2
+  if ! printf '%s' "$value" | copy_to_clipboard; then
+    echo "failed to copy a value to the clipboard" >&2
     return 1
   fi
 }
@@ -313,12 +313,9 @@ if [[ $name_with_owner_lower != "$origin_name_lower" ]]; then
 fi
 
 echo
-echo "Before generating a key, check both locations for an existing CI age key:"
-echo "  1. The repo-specific 1Password item for $name_with_owner"
-echo "  2. https://github.com/$name_with_owner/settings/secrets/actions"
-echo "Look for private/public CI age-key fields and the FNOX_AGE_KEY Actions secret."
-echo "Replacing either key requires re-encrypting every age-backed secret."
-read -r -p "If neither exists, press Enter to create a new key (or Ctrl-C to cancel): " _
+echo "→ Check the 1Password item \"$name_with_owner\" for \"FNOX_AGE_KEY\""
+echo "→ Check https://github.com/$name_with_owner/settings/secrets/actions for \"FNOX_AGE_KEY\""
+read -r -p "→ Continue only if neither exists (press Enter; Ctrl-C to cancel)" _
 
 select_clipboard_tool
 
@@ -341,24 +338,23 @@ if [[ ! $recipient =~ ^age1[0-9a-z]+$ ]]; then
 fi
 
 echo
-echo "Create or open a repo-specific 1Password item for $name_with_owner."
+copy_value "$name_with_owner"
+read -r -p "→ Create or open one 1Password item named \"$name_with_owner\" (copied to clipboard)" _
 copy_private_identity "$identity_path"
-read -r -p "The private AGE-SECRET-KEY line is copied. Paste it into a concealed field named 'CI age private key', then press Enter: " _
-
-copy_public_value "$recipient"
-read -r -p "The public recipient is copied. Paste it into a separate text field named 'CI age public key', save the item, then press Enter: " _
+read -r -p "→ Set concealed field \"FNOX_AGE_KEY\" to the secret key (copied to clipboard)" _
+read -r -p "→ Save the 1Password item" _
 
 echo
-echo "Create FNOX_AGE_KEY at:"
-echo "https://github.com/$name_with_owner/settings/secrets/actions/new"
-copy_public_value FNOX_AGE_KEY
-read -r -p "The secret name is copied. Paste it into the Name field, then press Enter: " _
+echo "→ Open https://github.com/$name_with_owner/settings/secrets/actions/new"
+copy_value FNOX_AGE_KEY
+read -r -p "→ Set \"Name\" to \"FNOX_AGE_KEY\" (copied to clipboard)" _
 
 copy_private_identity "$identity_path"
-read -r -p "The private AGE-SECRET-KEY line is copied. Paste it into the Secret field, click 'Add secret', then press Enter: " _
+read -r -p "→ Set \"Secret\" to the secret key (copied to clipboard)" _
+read -r -p "→ Click \"Add secret\"" _
 copy_to_clipboard </dev/null
 
-read -r -p "After both values are saved, close editors and stop processes that could write fnox.toml, then press Enter to update it (or Ctrl-C to cancel): " _
+read -r -p "→ Close fnox.toml editors and stop its writers, then continue (Ctrl-C to cancel)" _
 
 append_recipient "$fnox_toml" "$recipient" "$project_root"
-echo "Added the CI public age recipient to $fnox_toml."
+echo "✓ Added the CI age recipient to $fnox_toml"

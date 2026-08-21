@@ -16,7 +16,7 @@ assert_toml_value() {
 }
 
 validate_fnox_config() {
-  local config_json=${1:?} actual_type recipient_count invalid_recipient_indexes invalid_test_secrets
+  local config_json=${1:?} allow_pass_test_secrets=${2:?} actual_type recipient_count invalid_recipient_indexes invalid_test_secrets
 
   actual_type=$(jq --raw-output '.providers.age | type' <<<"$config_json")
   if [[ $actual_type != object ]]; then
@@ -72,33 +72,47 @@ validate_fnox_config() {
     return 1
   fi
 
-  invalid_test_secrets=$(jq --raw-output '
+  invalid_test_secrets=$(jq --raw-output --argjson allow_pass_test_secrets "$allow_pass_test_secrets" '
     (.profiles.test.secrets // {})
     | to_entries
     | map(
         select(
           .value
-          | if type == "object" then .provider != "age" else true end
+          | if type == "object" then
+              (.provider != "age" and (($allow_pass_test_secrets and .provider == "pass") | not))
+            else
+              true
+            end
         )
         | .key
       )
     | join(", ")
   ' <<<"$config_json")
   if [[ -n $invalid_test_secrets ]]; then
-    echo "test secrets must use provider = \"age\": $invalid_test_secrets" >&2
+    if [[ $allow_pass_test_secrets == true ]]; then
+      echo "test secrets must use provider = \"age\" or migration-only provider = \"pass\": $invalid_test_secrets" >&2
+    else
+      echo "test secrets must use provider = \"age\": $invalid_test_secrets" >&2
+    fi
     return 1
   fi
 }
 
 fnox_toml=
+allow_pass_test_secrets=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
   --fnox-toml)
     fnox_toml=${2:?"--fnox-toml requires a path"}
     shift 2
     ;;
+  --allow-pass-test-secrets)
+    # TODO: Remove this migration-only mode after every repository has migrated its test secrets from pass to age.
+    allow_pass_test_secrets=true
+    shift
+    ;;
   *)
-    echo "usage: $0 [--fnox-toml <path>]" >&2
+    echo "usage: $0 [--fnox-toml <path>] [--allow-pass-test-secrets]" >&2
     exit 1
     ;;
   esac
@@ -110,4 +124,4 @@ project_name=$(mise --cd "$project_root" run git:repo-name)
 assert_toml_value "$fnox_toml" "providers.keychain.service" "$project_name"
 assert_toml_value "$fnox_toml" "env" "exec"
 config_json=$(taplo get --file-path "$fnox_toml" --output-format json)
-validate_fnox_config "$config_json"
+validate_fnox_config "$config_json" "$allow_pass_test_secrets"
