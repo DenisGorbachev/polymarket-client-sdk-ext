@@ -93,11 +93,14 @@ select_clipboard_tool() {
 github_repo_from_origin() {
   local origin=${1:?} repo
   case "$origin" in
-  *github.com:*)
-    repo=${origin#*github.com:}
+  git@github.com:*)
+    repo=${origin#git@github.com:}
     ;;
-  *github.com/*)
-    repo=${origin#*github.com/}
+  https://github.com/*)
+    repo=${origin#https://github.com/}
+    ;;
+  ssh://git@github.com/*)
+    repo=${origin#ssh://git@github.com/}
     ;;
   *)
     echo "failed to extract a GitHub repository from origin: $origin" >&2
@@ -280,7 +283,7 @@ if [[ $origin_url != *github.com* ]]; then
   exit 0
 fi
 
-for command_name in awk cmp cp gh jq mktemp rage-keygen taplo tomli tr; do
+for command_name in awk cmp cp jq mktemp rage-keygen taplo tomli; do
   require_command "$command_name"
 done
 
@@ -294,28 +297,14 @@ if ! config_json=$(read_fnox_config "$fnox_toml"); then
 fi
 refuse_age_ciphertext "$config_json"
 
-if ! origin_name_with_owner=$(github_repo_from_origin "$origin_url"); then
-  exit 1
-fi
-if ! name_with_owner=$(cd "$project_root" && gh repo view "github.com/$origin_name_with_owner" --json nameWithOwner --jq .nameWithOwner); then
-  echo "failed to obtain nameWithOwner from GitHub" >&2
-  exit 1
-fi
-if [[ ! $name_with_owner =~ ^[^/[:space:]]+/[^/[:space:]]+$ ]]; then
-  echo "GitHub returned an invalid nameWithOwner: $name_with_owner" >&2
-  exit 1
-fi
-origin_name_lower=$(echo "$origin_name_with_owner" | tr '[:upper:]' '[:lower:]')
-name_with_owner_lower=$(echo "$name_with_owner" | tr '[:upper:]' '[:lower:]')
-if [[ $name_with_owner_lower != "$origin_name_lower" ]]; then
-  echo "GitHub resolved $origin_name_with_owner to a different repository: $name_with_owner" >&2
+if ! name_with_owner=$(github_repo_from_origin "$origin_url"); then
   exit 1
 fi
 
 echo
 echo "→ Check the 1Password item \"$name_with_owner\" for \"FNOX_AGE_KEY\""
 echo "→ Check https://github.com/$name_with_owner/settings/secrets/actions for \"FNOX_AGE_KEY\""
-read -r -p "→ Continue only if neither exists (press Enter; Ctrl-C to cancel)" _
+read -r -p "→ Continue only if this is the intended repository and neither exists (press Enter; Ctrl-C to cancel)" _
 
 select_clipboard_tool
 

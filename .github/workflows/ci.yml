@@ -1,12 +1,12 @@
 name: CI
-on: [ push, pull_request ]
+on: [push, pull_request]
 
 permissions:
   contents: read
   pull-requests: read
 
 env:
-  FNOX_NON_INTERACTIVE: "1"
+  FNOX_NON_INTERACTIVE: "true"
   RUSTFLAGS: >-
     -Dwarnings
     -Clink-arg=-fuse-ld=mold
