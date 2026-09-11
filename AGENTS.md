@@ -40,15 +40,16 @@ Write code that minimizes losses:
 
 #### Development workflow
 
-- After finishing the task: run `mise run agent:on:stop` (this command runs the lints and tests)
-  - `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
-  - `mise run agent:on:stop` includes `cargo fmt`, `cargo check`, `cargo clippy`, `cargo nextest` (no need to run them separately)
-- After finishing the original task, improve the code:
+- After finishing the initial implementation, improve the code:
   - Remove unnecessary code
   - Remove unnecessary allocations
   - Refactor code that converts between types into `From` / `Into` impls
-- Don't write the tests
-- Don't edit the files in the following top-level dirs: `specs`, `.agents`
+- After finishing the task, run `mise run agent:on:stop` (this command runs the lints and tests)
+  - `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
+  - `mise run agent:on:stop` includes `cargo fmt`, `cargo check`, `cargo clippy`, `cargo nextest` (no need to run them separately)
+- Don't write tests
+- Don't add comments
+- Don't edit the files in `.agents`
 - If a later instruction overrides the former instruction: follow the later instruction (last override wins)
 - If I explicitly ask to update the code in a way that deviates from the spec, update both the code and the spec
 - If you need to patch a dependency:
@@ -471,7 +472,10 @@ A function marked with `#[test]` or `#[tokio::test]`.
     - Then:
       - Run `cargo add {dependency}@{version}`
         - `{version}` patch component must be 0
-      - Run `cargo update -p {dependency} --precise {version}` to lock that exact version
+      - Try `cargo update -p {dependency} --precise {version}` to lock that exact version
+        - If dependency constraints prevent locking that version:
+          - Keep the version resolved by Cargo
+          - Add a comment in Cargo.toml explaining the constraints
     - Else:
       - Run `cargo add {dependency}` without `{version}`
 - When adding a dependency in a workspace:
