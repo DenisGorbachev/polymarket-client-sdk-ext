@@ -96,7 +96,7 @@ Write code that minimizes losses:
 ## Messages from agent to user
 
 - Use `~` in paths.
-- Format your message as a sequence of independently addressable items.
+- Write structured messages.
 - Don't mention successful verifications and checks unless asked explicitly.
 
 ## Commands
