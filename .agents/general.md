@@ -98,6 +98,7 @@ Write code that minimizes losses:
 - Use `~` in paths.
 - Write structured messages.
 - Don't mention successful verifications and checks unless asked explicitly.
+- When replying to user messages: use `>` to quote their parts.
 
 ## Commands
 
