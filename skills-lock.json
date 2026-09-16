@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "shell-scripts": {
+      "source": "DenisGorbachev/skills",
+      "sourceType": "github",
+      "skillPath": "shell-scripts/SKILL.md",
+      "computedHash": "c8fac010aaeae65ca7750bd4a3d54b4d18b50d0da1a6879951e5273dbe7a017c"
+    }
+  }
+}
