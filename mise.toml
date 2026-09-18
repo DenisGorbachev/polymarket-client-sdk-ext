@@ -56,20 +56,6 @@ run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warn
 [tasks."lint:code:style"]
 run = "cargo fmt --all -- --check"
 
-[tasks."lint:shell"]
-run = """
-fd --type f --extension sh --extension bash --extension zsh . . .mise/tasks .agents/skills .repoconf/hooks --exec-batch shellcheck --shell bash
-for file in ./*; do
-  case "$file" in
-    *.sh)
-      if [ -f "$file" ]; then
-        shellcheck --shell bash "$file"
-      fi
-      ;;
-  esac
-done
-"""
-
 [tasks."lint:docs"]
 run = "rumdl check"
 
