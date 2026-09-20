@@ -60,7 +60,7 @@ run = "cargo clippy --locked --workspace --all-targets --all-features -- -D warn
 run = "cargo fmt --all -- --check"
 
 [tasks."lint:shell"]
-run = "shuck check ."
+run = '''shuck --config "lint.source-paths = ['$HOME']" check .'''
 
 [tasks."lint:docs"]
 run = "rumdl check"
@@ -102,7 +102,7 @@ depends = ["fix:cargo", "fix:fnox"]
 depends = ["fix:name", "fix:code:style", "fix:shell"]
 
 [tasks."fix:shell"]
-run = "shuck check --fix ."
+run = '''shuck --config "lint.source-paths = ['$HOME']" check --fix .'''
 
 [tasks."fix:code:warnings"]
 depends = ["fix:cargo"]
