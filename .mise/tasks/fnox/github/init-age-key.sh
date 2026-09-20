@@ -34,7 +34,6 @@ copy_to_clipboard() {
 }
 
 # Invoked indirectly by the EXIT trap.
-# shellcheck disable=SC2329
 cleanup() {
   local status=$? cleanup_failed=false
   trap - EXIT

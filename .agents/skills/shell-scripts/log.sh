@@ -1,12 +1,14 @@
-function info() {
+#!/bin/sh
+
+info() {
   echo "[I] $*" >&2
 }
 
-function warn() {
+warn() {
   echo "[W] $*" >&2
 }
 
-function error() {
+error() {
   echo "[E] $*" >&2
   return 1
 }

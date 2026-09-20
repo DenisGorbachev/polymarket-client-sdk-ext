@@ -15,7 +15,6 @@
 set -euo pipefail
 
 # Invoked indirectly by the EXIT trap in `apply_rename`.
-# shellcheck disable=SC2329
 rollback_transaction() {
   local backup_root=${1:?} status=${2:?}
   trap - EXIT
