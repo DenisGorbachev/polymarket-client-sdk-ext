@@ -98,13 +98,6 @@ Write code that minimizes losses:
 - When editing or reviewing files that contain shell code, use and follow the `shell-scripts` skill.
 - When choosing between identically named skills, prefer the repository-local copy.
 
-## Messages from agent to user
-
-- Use `~` in paths.
-- Write structured messages.
-- Don't mention successful verifications and checks unless asked explicitly.
-- When replying to user messages: use `>` to quote their parts.
-
 ## Commands
 
 - Use `fd` and `rg` instead of `find` and `grep`

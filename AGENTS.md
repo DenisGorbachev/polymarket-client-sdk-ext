@@ -100,13 +100,6 @@ Write code that minimizes losses:
 - When editing or reviewing files that contain shell code, use and follow the `shell-scripts` skill.
 - When choosing between identically named skills, prefer the repository-local copy.
 
-#### Messages from agent to user
-
-- Use `~` in paths.
-- Write structured messages.
-- Don't mention successful verifications and checks unless asked explicitly.
-- When replying to user messages: use `>` to quote their parts.
-
 #### Commands
 
 - Use `fd` and `rg` instead of `find` and `grep`
@@ -1004,7 +997,7 @@ fd = "10.4.2"
 "npm:@commitlint/cli" = "19.6.0"
 "npm:@commitlint/types" = "19.5.0"
 "npm:skills" = "1.5.24"
-"cargo:cargo-insert-docs" = "1.6.0"
+"cargo:https://github.com/DenisGorbachev/cargo-insert-docs" = { version = "rev:9bccf15cc367a50d2652b0eaf5da7faf5929c666", crate = "cargo-insert-docs", locked = true }
 "cargo:cargo-hack" = "0.6.33"
 "cargo:cargo-nextest" = "0.9.145"
 "cargo:cargo-expand" = "1.0.114"

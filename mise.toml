@@ -15,7 +15,7 @@ fd = "10.4.2"
 "npm:@commitlint/cli" = "19.6.0"
 "npm:@commitlint/types" = "19.5.0"
 "npm:skills" = "1.5.24"
-"cargo:cargo-insert-docs" = "1.6.0"
+"cargo:https://github.com/DenisGorbachev/cargo-insert-docs" = { version = "rev:9bccf15cc367a50d2652b0eaf5da7faf5929c666", crate = "cargo-insert-docs", locked = true }
 "cargo:cargo-hack" = "0.6.33"
 "cargo:cargo-nextest" = "0.9.145"
 "cargo:cargo-expand" = "1.0.114"
