@@ -4,7 +4,7 @@
 
 You are a senior Rust software architect.
 
-- Think deeply and make detailed plans before writing the code.
+- Think deeply and make detailed plans before writing code.
 - Write high-quality, production-ready, generic, reusable code.
 
 #### Principles
@@ -13,118 +13,116 @@ Write code that minimizes losses:
 
 - [Avoid data loss](#avoid-data-loss).
 - [Minimize hardcoded data](#minimize-hardcoded-data).
-- Minimize the memory consumption.
-- Minimize the execution time.
+- Minimize memory consumption.
+- Minimize execution time.
 
 ##### Avoid data loss
 
-- Don't use panicking functions (instead, use checked functions that return a `Result`)
-- Don't delete the data unless the specification explicitly requires it
+- Don't use panicking fns (instead, use checked fns that return a `Result`).
+- Don't delete data unless spec explicitly requires it.
 
 ##### Minimize hardcoded data
 
-- Don't hardcode the values (accept arguments instead)
-- Choose carefully between accepting a parameter VS defining a constant:
-  - Definitions:
-    - Parameters are execution details (the user may want to change them)
-    - Constants are implementation details (the user would never want to change them)
+- Don't hardcode values (accept args instead).
+- Choose carefully between accepting a param and defining a const:
+  - Defs:
+    - Params are execution details (user may want to change them).
+    - Consts are impl details (user would never want to change them).
   - Examples:
-    - Parameters:
-      - Cache TTL
-      - Config path
-    - Constants:
-      - Table name
-      - Keyspace name
+    - Params:
+      - Cache TTL.
+      - Config path.
+    - Consts:
+      - Table name.
+      - Keyspace name.
   - Recommendations:
-    - When in doubt, prefer accepting a parameter instead of defining a constant
+    - When in doubt, prefer accepting a param instead of defining a const.
 
 #### Development workflow
 
-- After finishing the initial implementation, improve the code:
-  - Remove unnecessary code
-  - Remove unnecessary allocations
-  - Refactor code that converts between types into `From` / `Into` impls
-- After finishing the task, run `mise run agent:on:stop` (this command runs the lints and tests)
-  - `mise run agent:on:stop` may modify `README.md`, `AGENTS.md`, `Cargo.toml` (this is normal, don't mention it)
-  - `mise run agent:on:stop` includes `cargo fmt`, `cargo check`, `cargo clippy`, `cargo nextest` (no need to run them separately)
-- Don't write tests
-- Don't add comments
-- Don't edit the files in `.agents`
-- Don't run `git diff` or `git status` solely to review your own work at the end of a turn
-- If a later instruction overrides the former instruction: follow the later instruction (last override wins)
-- If I explicitly ask to update the code in a way that deviates from the spec, update both the code and the spec
-- If you notice unexpected edits, keep them and don't mention them
-- If you notice incorrect code, tell me
-- If you have to apply a workaround, add a comment next to the workaround that explains why it is necessary, and also mention the workaround in your final report
-- If the task can't be completed exactly as it is written (for example, due to limitations in the language or dependencies, or due to incorrect assumptions in the specification), mention it in your final message.
-- If unexpected behavior impedes your progress, but it's not a blocker (for example: domain is unavailable, program is unavailable, available memory or disk space is too low, command runs for unexpectedly long time or consumes an unexpected amount of resources), mention it in your final message.
-- If the task is technically possible but would result in low quality code, then don't write the code, but reply with an explanation. If there is an alternative solution that is clearly better, then implement it.
-  - Examples
-    - A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (would require calling `unwrap`, which is bad) - in this case you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
-    - A task to write a trait impl that only returns an error - in this case you should not write the trait impl but reply with "trait X can't be implemented for Foo because ..."
+- Run `mise run fix` before every commit.
+- Don't maintain backward compatibility.
+- Don't add comments.
+- Don't edit files in `.agents`.
+- Don't run `git diff` or `git status` solely to review your own work at end of a turn.
+- If a later instruction overrides an earlier instruction, follow later instruction.
+- If I explicitly ask to update code in a way that deviates from spec, update code, spec.
+- If you notice unexpected edits:
+  - Then:
+    - Keep them.
+    - Don't mention them.
+- If you notice incorrect code, tell me.
+- If you have to apply a workaround:
+  - Then:
+    - Add a comment next to workaround explaining why it is necessary.
+    - Mention workaround in your final report.
+- If unexpected behavior impedes progress but is not a blocker (for example: domain is unavailable, program is unavailable, available memory or disk space is too low, cmd runs for an unexpectedly long time or consumes an unexpected amount of resources), mention it in your final msg.
+- If task is technically possible but would result in low-quality code:
+  - Then:
+    - If there is a clearly better alternative, implement it; else: explain why requested code should not be written.
+  - Examples:
+    - A task to write `impl From<Foo> for Bar` where `Foo` can't actually be infallibly converted to `Bar` (conversion would require calling `unwrap`, which is bad) — in this case, you should write `impl TryFrom<Foo> for Bar` and reply with "Foo can't be infallibly converted to Bar, so I implemented a fallible conversion instead".
+    - A task to write a trait impl that only returns an error — in this case, you should not write trait impl but reply with "trait X can't be implemented for Foo because ..."
 - If a sentence starts with "Idea: ":
-  - Evaluate it thoroughly.
-  - If you agree:
-    - Then: implement it.
-    - Else: explain why you didn't implement it and brainstorm solutions.
+  - Then:
+    - Evaluate it thoroughly.
+    - If you agree, implement it; else: explain why you didn't implement it and brainstorm solutions.
 
 #### Review workflow
 
-- Output a full list of [findings](#finding) (not a shortlist)
-- If there are no findings, then start your reply with "No findings"
-- If I reply to your review with an ordered list, process each item in the following way:
-  - "+" - "Think about this finding again, then apply the best fix according to your thinking process"
-  - "+ {number}" - "Apply proposed fix at {number}"
-  - "-" - "Don't apply any fixes"
-  - other - respond normally (keep the `ctid` in your response)
-- If there are no more actionable items in the thread identified by a specific `ctid`: drop this `ctid` from your response.
+- For each new commit until explicitly marked reviewed:
+  - Print one `git show` cmd per final reply.
+- Output a full list of [findings](#finding) (not a shortlist).
+- If there are no findings, start your reply with "No findings".
+- For each item in an ordered reply to your review:
+  - If item is "+", reconsider finding, apply best fix.
+    - Else:
+      - If item matches "+ {number}", apply proposed fix {number}.
+        - Else:
+          - If item is "-", don't apply fixes; else: respond normally (keep `ctid` in your response).
+- If no actionable items remain in thread identified by a specific `ctid`, drop this `ctid` from your response.
 
 #### Debugging workflow
 
-- Improve error handling, so that the root cause is clearly visible
+- Improve error handling, so that root cause is clearly visible.
 
 #### Subagents
 
-- When spawning a code review subagent: use fresh context (not inherited).
+- When spawning a code review subagent: use fresh ctx (not inherited).
 
-#### Skills
+#### Cmds
 
-- When editing or reviewing files that contain shell code, use and follow the `shell-scripts` skill.
-- When choosing between identically named skills, prefer the repository-local copy.
-
-#### Commands
-
-- Use `fd` and `rg` instead of `find` and `grep`
-- Set the command-execution tool call’s timeout parameter and `yield_time_ms` to at least 300000 ms for the following commands: `mise run agent:on:stop`, `cargo build`, `git commit`
+- Use `fd` and `rg` instead of `find` and `grep`.
+- Set cmd-execution tool call’s timeout param and `yield_time_ms` to at least 300000 ms for cmds: `mise run fix`, `cargo build`, `git commit`.
 
 #### Recommended crates
 
-- `errgonomic` for error handling
-- `strum` for enum derives
-- `subtype` for defining newtypes
-- `tempfile` for creating temp dirs or files
+- `errgonomic` for error handling.
+- `strum` for enum derives.
+- `subtype` for newtypes.
+- `tempfile` for creating temp dirs or files.
 
 #### Files
 
-- The file name must match the name of the primary item in this file (for example: a file with `struct User` must be named `user.rs`)
-- The trait implementations must be in the same file as the target type (for example: put `impl TryFrom<...> for User` in the same file as `struct User`, which is `user.rs`)
+- File name must match name of primary item in this file (for example: a file with `struct User` must be named `user.rs`).
+- Trait impls must be in same file as target type (for example: put `impl TryFrom<...> for User` in same file as `struct User`, which is `user.rs`).
 
 #### Modules
 
-- Don't use `mod.rs`, use module files with submodules in the folder with the same name (for example: `user.rs` with submodules in `user` folder)
-- When creating a new module, attach it with a `mod` declaration followed by `pub use` glob declaration. The parent module must re-export all items from the child modules. This allows to `use` the items right from the crate root, without intermediate module path. For example:
+- Don't use `mod.rs`; use module files with submodules in folder with same name (for example: `user.rs` with submodules in `user` folder).
+- When creating a new module, attach it with a `mod` declaration followed by a `pub use` glob declaration. The parent module must re-export all items from child modules. For example:
   ```rust
   fn foo() {}
 
   mod my_module_name;
   pub use my_module_name::*;
   ```
-- Place the `mod` and `pub use` declarations at the end of the file (after the code items).
-- When importing items that are defined in the current crate, use direct import from crate root. For example:
+- Place `mod` and `pub use` declarations at end of file (after code items).
+- When importing items that are defined in current crate, import them directly from crate root. For example:
   ```rust
   use crate::foo;
   ```
-- Prefer short item paths over long item paths (use `use` statement), unless it's necessary for disambiguation. For example:
+- Prefer short item paths over long item paths (use a `use` statement), unless it's necessary for disambiguation. For example:
   - Good:
     ```rust
     use clap::ValueEnum;
@@ -154,63 +152,62 @@ Write code that minimizes losses:
         Sell,
     }
     ```
-- If you need error and result types from `std`, prefer short paths:
-  - `use std::io;` and `io::Result`, `io::Error`
-  - `use std::fmt;` and `fmt::Result`, `fmt::Error`
+- If you need error and result types from `std`, prefer short paths.
+  - Examples:
+    - `use std::io;`: `io::Result`, `io::Error`.
+    - `use std::fmt;`: `fmt::Result`, `fmt::Error`.
 
 #### Visibility
 
 - Items:
-  - Prefer `pub` instead of `pub(crate)` or private.
+  - Prefer `pub` visibility over `pub(crate)` or private visibility.
 - Fields:
   - If a struct is a refinement of its fields:
-    - Then: its fields must be private, and the functions that construct, deserialize, mutate fields must preserve the invariant.
+    - Then:
+      - Fields must be private.
+      - Fns that construct or deserialize struct or mutate its fields must preserve invariant.
     - Else: its fields must be `pub`.
 
-#### Constants
+#### Consts
 
-- Define constants only for values used in multiple places (prefer inline values)
-- Put constants in `src/constants.rs`
+- Define consts only for values used in multiple places (prefer inline values).
+- Put consts in `src/constants.rs`.
 
 #### Types
 
-- Always use the most specific types (enforce semantic difference through syntactic difference):
-  - Use types from existing crates
-    - Use types from `url` crate instead of `String` for URL-related values
-    - Use types from `time` crate instead of `String` or `u64` for datetime-related values
-    - Use types from `phonenumber` crate instead of `String` for phone-related values
-    - Use types from `email_address` crate instead of `String` for email-related values
-    - Use types from `core::num` module that are prefixed with `NonZero` for values that must be non-zero
-  - Search for other existing crates if you need specific types
-  - If you can't find existing crates, define newtypes using macros from `subtype` crate
-- Every `struct`, `enum`, `union` must be in a separate file (except for error types that implement `Error`)
-  - Error types that implement `Error` must be in the same files as the functions that return them
-- Prefer attaching the types as child modules to src/types.rs
+- Always use most specific types (enforce semantic difference through syntactic difference):
+  - Use types from existing crates.
+    - Use types from `url` crate instead of `String` for URL-related values.
+    - Use types from `time` crate instead of `String` or `u64` for datetime-related values.
+    - Use types from `phonenumber` crate instead of `String` for phone-related values.
+    - Use types from `email_address` crate instead of `String` for email-related values.
+    - Use types from `core::num` module that are prefixed with `NonZero` for values that must be non-zero.
+  - Search for other existing crates if you need specific types.
+  - If you can't find existing crates, define newtypes.
+- Every `struct`, `enum`, `union` must be in a separate file (except for error types that implement `Error`).
+  - Error types that implement `Error` must be in same files as fns that return them.
+- Prefer attaching types as child modules to `src/types.rs`.
 
-#### Functions
+#### Fns
 
-- Prefer the weakest sufficient trait bound for inputs and associated types (`FnOnce` over `FnMut` over `Fn`) (`PartialOrd` over `Ord`) (`PartialEq` over `Eq`)
-- Implement proper error handling using macros from `errgonomic` crate instead of `unwrap` or `expect` (in normal code and in tests)
-  - Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide the proof as the first argument to `expect` (the proof must start with "always succeeds because")
+- Prefer weakest sufficient trait bound for inputs and associated types (`FnOnce` over `FnMut` over `Fn`, `PartialOrd` over `Ord`, `PartialEq` over `Eq`).
+- Implement proper error handling using macros from `errgonomic` crate instead of `unwrap` or `expect` (in normal code and in tests).
+  - Use `expect` only in exceptional cases where you can prove that it always succeeds, and provide proof as first arg to `expect` (proof must start with "always succeeds because").
 - Prefer streams and iterators:
   - Guidelines for inputs:
-    - If the function uses methods that are available only for a specific collection type:
-      - Then: prefer taking a specific collection type as input.
-      - Else: prefer taking an `impl Stream` or `impl IntoIterator` as input.
+    - If fn uses methods that are available only for a specific collection type, prefer taking a specific collection type as input; else: prefer taking an `impl Stream` or `impl IntoIterator` as input.
   - Guidelines for outputs:
-    - If the function return type is naturally an iterator (for example, the function returns the output of a `map` or `filter`):
-      - Then: prefer returning an `impl Iterator` as output (there's no need to collect into `Vec`).
-      - Else: prefer returning a specific collection type as output.
+    - If fn return type is naturally an iterator (for example: fn returns output of a `map` or `filter`), prefer returning an `impl Iterator` as output (there's no need to collect into `Vec`); else: prefer returning a specific collection type as output.
   - Examples:
     - Good:
       ```rust
-      /// This is good because the function doesn't use any type-specific methods, only generic Iterator trait methods
-      /// This is good because the function naturally returns an Iterator, not a specific collection type
+      /// Good: fn uses only generic `Iterator` methods.
+      /// Good: fn naturally returns an iterator.
       pub fn filter_non_empty_strings<'a>(inputs: impl IntoIterator<Item = &'a str>) -> impl Iterator<Item = &'a str> {
           inputs.into_iter().filter(|i| i.is_empty().not())
       }
 
-      /// This is good because the function uses Vec-specific method `extend_from_slice`, so it can't take a generic `impl IntoIterator`
+      /// Good: `Vec`-specific `extend_from_slice` requires `Vec` input.
       fn extend_args(mut args: Vec<String>, extra_args: &[String]) -> Vec<String> {
           args.extend_from_slice(extra_args);
           args
@@ -218,7 +215,7 @@ Write code that minimizes losses:
       ```
     - Bad:
     - ```rust
-      /// This is bad because it needlessly converts a Vec into iter and then collects back into Vec
+      /// Bad: needlessly converts a `Vec` into an iterator, then collects into a `Vec`.
       pub fn filter_non_empty_strings(inputs: Vec<&str>) -> Vec<&str> {
           inputs
               .into_iter()
@@ -226,12 +223,12 @@ Write code that minimizes losses:
               .collect::<Vec<_>>()
       }
 
-      /// This is bad because it is not general enough and also forces the caller to collect the strings into a vec for input, which is bad for performance
+      /// Bad: forces caller to collect strings into a `Vec`, restricting input types and adding allocations.
       pub fn bar(inputs: Vec<String>) -> Vec<String> {}
       ```
-- Prefer implementing and use `From` or `TryFrom` for conversions between types (instead of converting in-place)
-- Don't use early-return fast-path guards for empty vecs, iterators, streams (i.e. don't use `if items.is_empty() { return ...; }`)
-- Use destructuring assignment for tuple arguments, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`
+- Prefer implementing and using `From` or `TryFrom` for conversions between types (instead of converting in-place).
+- Don't use early-return fast-path guards for empty vectors, iterators, streams (i.e.: don't use `if items.is_empty() { return ...; }`).
+- Use destructuring assignment for tuple args, for example: `fn try_from((name, parent_key): (&str, GroupKey)) -> ...`.
 - Use iterators instead of for loops. For example:
   - Good:
     ```rust
@@ -239,7 +236,7 @@ Write code that minimizes losses:
     use core::num::ParseIntError;
     use thiserror::Error;
 
-    // Good: iterator pipeline with fallible mapping + correct error handling
+    // Good: iterator pipeline with fallible mapping and error handling.
     pub fn parse_numbers(inputs: impl IntoIterator<Item = impl AsRef<str>>) -> Result<Vec<u64>, ParseNumbersError> {
         use ParseNumbersError::*;
         let iter = inputs.into_iter().map(|s| s.as_ref().trim().parse::<u64>());
@@ -256,7 +253,7 @@ Write code that minimizes losses:
     ```rust
     use core::num::ParseIntError;
 
-    // Bad: manual loop + mutable accumulator
+    // Bad: manual loop and mutable accumulator.
     pub fn parse_numbers(inputs: impl IntoIterator<Item = impl AsRef<str>>) -> Result<Vec<u64>, ParseIntError> {
         let mut out = Vec::new();
         for s in inputs {
@@ -266,10 +263,8 @@ Write code that minimizes losses:
         Ok(out)
     }
     ```
-- If the function has a clear receiver (`self`, `&self`, `&mut self`):
-  - Then: implement it as an associated function
-  - Else: implement it as a standalone free function
-- Add a local `use` statement for enums to minimize the code size. For example:
+- If fn has a clear receiver (`self`, `&self`, `&mut self`), implement it as an associated fn; else: implement it as a standalone free fn.
+- Add a local `use` statement for enums to minimize code size. For example:
   - Good:
     ```rust
     pub fn apply(op: GroupsOp) {
@@ -291,41 +286,38 @@ Write code that minimizes losses:
         }
     }
     ```
-- Simplify the callsite code by accepting `impl Into`. For example:
+- Simplify call-site code by accepting `impl Into`. For example:
   - Good:
     ```rust
     pub fn foo(input: impl Into<String>) {
         let input = input.into();
-        // do something
     }
     ```
   - Bad:
     ```rust
-    /// This is bad because the callsite may have to call .into() when passing the input argument
+    /// Bad: caller may have to call `.into()` when passing input arg.
     pub fn foo(input: String) {}
     ```
-- Provide additional flexibility for callsite by accepting `&impl AsRef` or `&mut impl AsMut` (e.g. both `PathBuf` and `Config` may implement `AsRef<Path>`). For example:
+- Provide additional flexibility at call sites by accepting `&impl AsRef` or `&mut impl AsMut` (e.g.: both `PathBuf` and `Config` may implement `AsRef<Path>`). For example:
   - Good:
     ```rust
     pub fn bar(input: &mut impl AsMut<String>) {
         let input = input.as_mut();
-        // do something
     }
 
     pub fn baz(input: &impl AsRef<str>) {
         let input = input.as_ref();
-        // do something
     }
     ```
   - Bad:
     ```rust
-    /// This is bad because the callsite may have to call .as_mut() when passing the input argument
+    /// Bad: caller may have to call `.as_mut()` when passing input arg.
     pub fn bar(input: &mut String) {}
 
-    /// This is bad because the callsite may have to call .as_ref() when passing the input argument
+    /// Bad: caller may have to call `.as_ref()` when passing input arg.
     pub fn baz(input: &str) {}
     ```
-- Prefer `.map()` instead of `match` when you need to modify the value in the `Option` or `Result`. For example:
+- Prefer `.map()` instead of `match` when you need to modify value in `Option` or `Result`. For example:
   - Good:
     ```rust
     use core::str::FromStr;
@@ -348,7 +340,7 @@ Write code that minimizes losses:
       type Err = ParseIntError;
 
       fn from_str(s: &str) -> Result<Self, Self::Err> {
-          // This is bad because it uses more code to express the same idea
+          // Bad: uses more code to express same idea.
           match s.parse::<u64>() {
               Ok(value) => Ok(Self::new(value)),
               Err(error) => Err(error),
@@ -356,7 +348,7 @@ Write code that minimizes losses:
       }
   }
   ```
-- Use `Self` instead of type name in the `impl` items. For example:
+- Use `Self` instead of type name in `impl` items. For example:
   - Good:
   ```rust
   use core::time::Duration;
@@ -379,193 +371,196 @@ Write code that minimizes losses:
       }
   }
   ```
-- Prefer short method syntax over long trait-path syntax (prefer `value.method(arg)` over `Trait::method(value, arg)`)
-- Generic helper functions must be in `src/functions` (one file per function)
-- If clippy reports `too_many_arguments`:
-  - Don't use tuples to silence the lint
-  - Consider refactoring the code for better separation of concerns
+- Prefer short method syntax over long trait-path syntax (prefer `value.method(arg)` over `Trait::method(value, arg)`).
+- Generic helper fns must be in `src/functions` (one file per fn).
+- If Clippy reports `too_many_arguments`:
+  - Then:
+    - Don't use tuples to silence lint.
+    - Consider refactoring code for better separation of concerns.
 
 #### Struct derives
 
-- Derive `new` from `derive_new` crate for types that need `fn new`
-- If the struct derives `Getters`, then each field whose type implements `Copy` must have a `#[getter(copy)]` annotation. For example:
-  - Good (note that `username` doesn't have `#[getter(copy)]` because its type is `String` which doesn't implement `Copy`, but `age` has `#[getter(copy)]`, because its type is `u64` which implements `Copy`):
-    ```rust
-    #[derive(Getters, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
-    pub struct User {
-      username: String,
-      #[getter(copy)]
-      age: u64,
-    }
-    ```
+- Derive `new` from `derive_new` crate for types that need `fn new`.
+- If struct derives `Getters`:
+  - Then:
+    - For each field:
+      - If its type implements `Copy`, it must have a `#[getter(copy)]` annotation.
+  - Examples:
+    - Good (`username` has no `#[getter(copy)]` because `String` doesn't implement `Copy`, but `age` has it because `u64` implements `Copy`):
+      ```rust
+      #[derive(Getters, Into, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
+      pub struct User {
+        username: String,
+        #[getter(copy)]
+        age: u64,
+      }
+      ```
 
 #### Setters
 
-- Use setters that take `&mut self` instead of setters that take `self` and return `Self` (because passing a `foo: &mut Foo` is more efficient than passing `foo: Foo` and returning `Foo` through the call stack)
+- Use setters that take `&mut self` instead of setters that take `self` and return `Self` (because passing `foo: &mut Foo` is more efficient than passing `foo: Foo` and returning `Foo` through call stack).
 
 #### Enums
 
-- When writing code related to enums, bring the variants in scope with `use Enum::*;` statement at the top of the file or function (prefer "at the top of the file" for data enums, prefer "at the top of the function" for error enums).
+- When writing code related to enums, bring variants into scope with a `use Enum::*;` statement at top of file or fn (prefer top of file for data enums and top of fn for error enums).
 
 #### Arithmetic
 
-- Don't use the impls of traits `core::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Rem, RemAssign, Neg, Shl, ShlAssign, Shr, ShrAssign}` or their operators unless they don't panic or silently overflow
-- Write and use arithmetic trait impls that don't panic or silently overflow
-- Prefer `checked` versions of arithmetic operations
-- Every call to an `overflowing`, `saturating`, `wrapping` version must have a single-line comment above it that starts with "SAFETY: " and describes why calling this version is safe in this specific case
-- Use `num` crate items if necessary (for example, to implement a function that calls arithmetic methods on a generic type)
+- Don't use impls of traits `core::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign, Rem, RemAssign, Neg, Shl, ShlAssign, Shr, ShrAssign}` or their operators unless they don't panic or silently overflow.
+- Write and use arithmetic trait impls that don't panic or silently overflow.
+- Prefer `checked` versions of arithmetic ops.
+- Every call to an `overflowing`, `saturating`, `wrapping` version must have a single-line comment above it that starts with "SAFETY: " and describes why calling this version is safe in this specific case.
+- Use items from `num` crate if necessary (for example: to implement a fn that calls arithmetic methods on a generic type).
 
 #### Index access
 
-- Never use the following operators: `[], []=`
-- Never use the following traits: `core::ops::{Index, IndexMut}`
-- If you are sure that `get` or `get_mut` will never panic, use `expect` with a proof message (as described in [Functions](#functions))
-
-Note: the index access operators and traits are banned because they may panic.
+- Never use operators: `[], []=`.
+- Never use traits: `core::ops::{Index, IndexMut}`.
+- If you are sure that `get` or `get_mut` will never panic, use `expect` with a proof msg (as described in [Fns](#fns)).
 
 #### Test fn
 
-A function marked with `#[test]` or `#[tokio::test]`.
+A fn marked with `#[test]` or `#[tokio::test]`.
 
-- Must return a `Result`
-- Must implement proper error handling via `errgonomic` crate
-- Should use macros from `assertables` crate
-  - Should use `assert_infix` instead of `assert_gt`, `assert_ge`, `assert_lt`, `assert_le`, `assert_eq`
+- Must return a `Result`.
+- Must implement proper error handling via `errgonomic` crate.
+- Should use macros from `assertables` crate.
+  - Should use `assert_infix` instead of `assert_gt`, `assert_ge`, `assert_lt`, `assert_le`, `assert_eq`.
 
 #### Macros
 
-- Write `macro_rules!` macros to reduce boilerplate
 - In `macro_rules!` expansions:
-  - Use full paths without a leading `::` for foreign types (e.g. `std::sync::Arc`), except those in the standard prelude.
-  - Use `$crate` paths for types defined in this crate (e.g. `$crate::MyType`).
-- If you see similar code in different places, write a macro and replace the similar code with a macro call
-- If the last arg of a macro arm is variadic (e.g. `$($item:ident),*`):
-  - Then: do add trailing `$(,)?`
-  - Else: don't add trailing `$(,)?`
+  - Use full paths without a leading `::` for foreign types (e.g.: `std::sync::Arc`), except those in standard prelude.
+  - Use `$crate` paths for types defined in this crate (e.g.: `$crate::MyType`).
+- If you see similar code in different places, replace similar code with a shared macro.
+- If last arg of a macro arm is variadic (e.g.: `$($item:ident),*`), add a trailing `$(,)?`; else: don't add a trailing `$(,)?`.
 
 #### Shell
 
-- Prefer short options for commands used in tool calls.
+- Prefer short options for cmds used in tool calls.
+
+#### mise.toml
+
+- Each `env` map value:
+  - If it should be overridable by the user:
+    - Then: it must be a map with `default` key (e.g. `PORT = { default = "3000" }`)
+    - Else: it must be a specific value (e.g. `SHUCK_CACHE_DIR = "{{config_root}}/.cache"`)
 
 #### Cargo.toml
 
-- Don't define package features with only a single optional dependency (such features are already defined by cargo automatically)
-- Use `cargo add` to add dependencies
-- When adding a dependency from crates.io:
-  - If the package is [publishable](#publishable-package):
+- Don't define pkg features with only a single optional dep (such features are already defined by Cargo automatically).
+- Use `cargo add` to add deps.
+- When adding a dep from crates.io:
+  - If pkg is [publishable](#publishable-pkg):
     - Then:
-      - Run `cargo add {dependency}@{version}`
-        - `{version}` patch component must be 0
-      - Try `cargo update -p {dependency} --precise {version}` to lock that exact version
-        - If dependency constraints prevent locking that version:
-          - Keep the version resolved by Cargo
-          - Add a comment in Cargo.toml explaining the constraints
+      - Run `cargo add {dependency}@{version}`.
+        - Patch component of `{version}` must be 0.
+      - Try `cargo update -p {dependency} --precise {version}` to lock that exact version.
+        - If dep constraints prevent locking that version:
+          - Then:
+            - Keep version resolved by Cargo.
+            - Add a comment in `Cargo.toml` explaining constraints.
     - Else:
-      - Run `cargo add {dependency}` without `{version}`
-- When adding a dependency in a workspace:
-  - Add it to top-level manifest first (`workspace.dependencies`)
-- When adding a dependency for a workspace member:
-  - Run `cargo add {dependency}` without `{version}` (cargo will set `workspace = true`)
-- When adding a new workspace member: add it to `packages` dir unless specified otherwise
+      - Run `cargo add {dependency}` without `{version}`.
+- When adding a dep in a workspace:
+  - Add it to top-level manifest first (`workspace.dependencies`).
+- When adding a dep for a workspace member:
+  - Run `cargo add {dependency}` without `{version}` (Cargo will set `workspace = true`).
+- When adding a new workspace member: add it to `packages` dir unless specified otherwise.
 
 #### Code style
 
-- Don't enforce a line length limit when writing code, comments or documentation
+- Don't enforce a line len limit when writing code, comments, docs.
 
 #### Chat thread id
 
-- Must be a string
-- Must contain at least 3 characters
-- Must contain only uppercase characters
+- Must be a string.
+- Must contain at least 3 characters.
+- Must contain only uppercase characters.
 
 Examples:
 
-- `RVC`
-- `AKE`
-- `LMY`
+- `RVC`.
+- `AKE`.
+- `LMY`.
 
 Notes:
 
-- Should match the thread topic
+- Should match thread topic.
 
 #### Chat thread id heading
 
-A Markdown heading level 3 that contains only [chat thread id](#chat-thread-id).
+A level-3 Markdown heading that contains only a [chat thread id](#chat-thread-id).
 
 Examples:
 
-- `### RVC`
-- `### AKE`
-- `### LMY`
+- `### RVC`.
+- `### AKE`.
+- `### LMY`.
 
 #### Finding
 
-- Must be formatted as `### {ctid}\n\n[{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}`
-  - `ctid` must be a [chat thread id](#chat-thread-id)
+- Must be formatted as `### {ctid}\n\n[{priority}] {title}. {body} ({references}). Proposed fixes: {fixes}`.
+  - `ctid` must be a [chat thread id](#chat-thread-id).
   - `priority` must be one of `P0`, `P1`, `P2`, `P3`.
-  - `references` must be a comma-separated list of `reference`
-  - `reference` must must be formatted as `{path}:{line}`
-  - `path` must be a file path relative to your working directory
-  - `line` must be the first line of the relevant code or text block
-  - `fixes` must be one of the following:
-    - If there is at least one proposed fix:
-      - Then: "\n\n" and a Markdown nested list of fixes where each fix must have a format `{number}. {description}` (the numbers should start from 1 for each list of fixes)
-      - Else: the exact text "none."
+  - `references` must be a comma-separated list of `reference` values.
+  - `reference` must be formatted as `{path}:{line}`.
+  - `path` must be a file path relative to your working dir.
+  - `line` must be first line of relevant code or text block.
+  - `fixes` must be one of:
+    - If there is at least one proposed fix, "\n\n" and a nested Markdown list of fixes where each fix must have format `{number}. {description}` (numbers should start from 1 for each list of fixes); else: exact text "none."
 
-#### Publishable package
+#### Publishable pkg
 
-A package that has a remote whose name contains `public` or `pre-public` and ends with `template`.
+A pkg that has a remote whose name contains `public` or `pre-public` and ends with `template`.
 
 ### Guidelines for `serde`
 
-#### Requirements
+#### Reqs
 
-- Every input data type must derive `Serialize` and `Deserialize`
-- Every `Option`-wrapped field must have attributes:
-  - `#[serde(skip_serializing_if = "Option::is_none")]`
-- Every `OffsetDateTime` field must have attributes:
-  - `#[serde(with = "time::serde::rfc3339")]`
-- Every `Option<OffsetDateTime>` field must have attributes:
-  - `#[serde(with = "time::serde::rfc3339::option")]`
+- Every input data type must derive `Serialize`, `Deserialize`.
+- Every `Option`-wrapped field must have attr:
+  - `#[serde(skip_serializing_if = "Option::is_none")]`.
+- Every `OffsetDateTime` field must have attr:
+  - `#[serde(with = "time::serde::rfc3339")]`.
+- Every `Option<OffsetDateTime>` field must have attr:
+  - `#[serde(with = "time::serde::rfc3339::option")]`.
 
 #### Notes
 
-- It is recommended to use `serde_with` to reduce the code size by avoiding custom `Serialize`/`Deserialize` impls
+- Prefer `serde_with` to reduce code size by avoiding custom `Serialize`/`Deserialize` impls.
 
 ### Guidelines for `subtype`
 
-- Define newtypes as ordinary structs with explicit `From` / `TryFrom` impls.
-- The macro calls that begin with `subtype` (for example, `subtype!` and `subtype_string!`) are legacy APIs that expand to newtypes.
+- Define newtypes as ordinary tuple structs with explicit `From` / `TryFrom` impls.
+- Use `SerializeTransparent` derive from `subtype` for a refined newtype that must serialize identically to its inner field while using Serde's `try_from` container attr for validated deserialization.
+- Macro calls that begin with `subtype` (for example: `subtype!` and `subtype_string!`) are legacy APIs that expand to newtypes.
   - Don't use them in new code because their checker and preprocessor concepts have been superseded by explicit conversion impls.
-- Use the `SerializeTransparent` derive for a refined newtype that must serialize identically to its inner field while using Serde's `try_from` container attribute for validated deserialization.
 
 ### Guidelines for `clap`
 
-#### Requirements
+#### Reqs
 
 - For each enum in project:
-  - If enum has only unit variants and doesn't implement `Error`
-    - Then: it must derive `ValueEnum` with `#[value(rename_all = "kebab-case")]`
+  - If enum has only unit variants and doesn't implement `Error`, it must derive `ValueEnum` with `#[value(rename_all = "kebab-case")]`.
 - For each field in a type that derives `Parser`:
-  - If this field's type is local:
-    - Then: this type must implement `FromStr`
-      - Rationale: `clap` parses types that implement `FromStr` directly without `value_parser`
+  - If this field's type is local, this type must implement `FromStr`.
 
 ### CLI guidelines
 
-#### Dependencies
+#### Deps
 
-- `clap` (features: at least "derive", "env")
-- `tokio` (features: at least "macros", "rt", "rt-multi-thread")
-- `errgonomic`
-- `thiserror`
+- `clap` (features: at least "derive", "env").
+- `tokio` (features: at least "macros", "rt", "rt-multi-thread").
+- `errgonomic`.
+- `thiserror`.
 
 #### File layout and required items
 
 ##### File `src/main.rs`
 
-- Must define a `main` entrypoint
-- Must define a `verify_cli` test for the top-level command exactly as in the example below (with `debug_assert`)
+- Must define a `main` entry point.
+- Must define a `verify_cli` test for top-level command exactly as in example below (with `debug_assert`).
 
 Example:
 
@@ -591,10 +586,10 @@ fn verify_cli() {
 
 ##### File `src/command.rs`
 
-- Must define a [command-like struct](#command-like-struct) named `Command`
-  - Must have attributes:
-    - `#[command(author, version, about, propagate_version = true, flatten_help = true, disable_help_subcommand = true)]`
-- Must define a [subcommand-like enum](#subcommand-like-enum) named `Subcommand`
+- Must define a [command-like struct](#command-like-struct) named `Command`.
+  - Must have attr:
+    - `#[command(author, version, about, propagate_version = true, flatten_help = true, disable_help_subcommand = true)]`.
+- Must define a [subcommand-like enum](#subcommand-like-enum) named `Subcommand`.
 
 Example:
 
@@ -639,50 +634,50 @@ mod print_command;
 pub use print_command::*;
 ```
 
-#### Definitions
+#### Defs
 
 ##### Command-like struct
 
-A struct that contains fields for CLI arguments.
+A struct that contains fields for CLI args.
 
-- Must have a name that is a concatenation of all command names leading up to and including this command name, and ends with `Command` (see example above)
-- Must have at least the following attributes:
-  - `derive`
+- Must have a name formed by concatenating all command names leading up to and including this command, followed by `Command` (see example above).
+- Must have at least attrs:
+  - `derive`:
     - Must contain at least:
-      - `Parser` (`use clap::Parser`)
-  - `command`
+      - `Parser` (`use clap::Parser`).
+  - `command`:
     - Must contain at least:
-      - `flatten_help = true`
-- Must be attached to a parent module: if it's a top-level command: `src/lib.rs`, else: `src/command.rs`
+      - `flatten_help = true`.
+- If it is a top-level command, must be attached to `src/lib.rs`; else: must be attached to `src/command.rs`.
 - For each field:
-  - If the field has a collection type (e.g. `Vec`), then it must have attribute `num_args = 1..`
-- May contain a `subcommand` field annotated with `#[command(subcommand)]`
-- Must have a `pub async fn run`
-  - Must return a `Result` with `ExitCode`
-  - If it contains a `subcommand` field: must match on `subcommand` and call `run` of each command
+  - If field has a collection type (e.g.: `Vec`), it must have attr `num_args = 1..`.
+- May contain a `subcommand` field annotated with `#[command(subcommand)]`.
+- Must have a `pub async fn run` method.
+  - Must return a `Result` with an `ExitCode` success value.
+  - If struct contains a `subcommand` field, this method must match on `subcommand` and call selected command's `run` method.
 
 Command example:
 
-- Name: `DbDownloadYcombinatorStartupsCommand`
-- File: `src/command/db_download_ycombinator_startups_command.rs` (attached to `src/command.rs`)
-- Shell command: `cargo run -- db download ycombinator-startups`
+- Name: `DbDownloadYcombinatorStartupsCommand`.
+- File: `src/command/db_download_ycombinator_startups_command.rs` (attached to `src/command.rs`).
+- Shell command: `cargo run -- db download ycombinator-startups`.
 
 ##### Subcommand-like enum
 
 An enum that contains variants for CLI subcommands.
 
-- Must have a name that is a concatenation of all command names leading up to and including this command name, and ends with `Subcommand` (see example above)
-- Must have at least the following attributes:
-  - `derive`
+- Must have a name formed by concatenating all command names leading up to and including this command, followed by `Subcommand` (see example above).
+- Must have at least attrs:
+  - `derive`:
     - Must contain at least:
-      - `Subcommand` (`use clap::Subcommand`)
-- Must be located in the same file as its parent command struct
-- Each variant must be a tuple variant containing exactly one command
+      - `Subcommand` (`use clap::Subcommand`).
+- Must be located in same file as its parent command struct.
+- Each variant must be a tuple variant containing exactly one command.
 
 Subcommand example:
 
-- Name: `DbDownloadSubcommand`
-- File: `src/cli/db_command/db_download_command.rs` (same file as its parent `DbDownloadCommand`)
+- Name: `DbDownloadSubcommand`.
+- File: `src/cli/db_command/db_download_command.rs` (same file as its parent `DbDownloadCommand`).
 
 ##### Proxy command-like struct
 
@@ -690,8 +685,8 @@ A [command-like struct](#command-like-struct) that has a `subcommand` field and 
 
 Proxy command example:
 
-- Name: `DbCommand`
-- File: `src/command/db_command.rs` (attached to `src/command.rs`)
+- Name: `DbCommand`.
+- File: `src/command/db_command.rs` (attached to `src/command.rs`).
 
 ### Project concepts
 
@@ -956,14 +951,862 @@ Read the extra docs from the dirs below if they are relevant to your current tas
 
 * `.agents/docs/docs.polymarket.com` contains Polymarket API docs (Gamma, CLOB, WebSocket)
 
-### Project info
+### Error handling
 
-### `git remote`
+#### Principle
 
-```shell
-origin
-repoconf-rust-pre-public-lib-template
+Every fallible function must return an error with enough data for the caller to retry the call.
+
+#### Guidelines
+
+* Use `handle!` instead of `?` try operator to unwrap `Result` types
+* Use `handle!` instead of `Result::map_err`
+* Use `handle_opt!` instead of `?` try operator to unwrap `Option` types
+* Use `handle_opt!` instead of `Option::ok_or` and `Option::ok_or_else`
+* Use `handle_bool!` instead of `if condition { return Err(...) }` to return an error if some condition is true
+* Use `handle_iter!` or `handle_iter_of_refs!` to collect and return errors from iterators
+* Use `handle_into_iter!` to handle errors in collections that implement `IntoIterator` (including `Vec` and `HashMap`)
+* Calls to macros that begin with `handle` must not contain calls to `clone` (must not contain `.clone()`)
+  * Rationale: there is no need to clone the variables because the macros consume them only in the error branch, and the error branch contains a `return` statement. The variables are not consumed in the success branch, so you can always use them in the subsequent code.
+* Don't convert a `Result` into an `Option`, always propagate the error up the call stack
+* Don't use `unwrap` or `expect`
+* Don't return strings as errors
+* Every fallible function must return a unique error type, even if it contains only one fallible expression
+* Every call to another fallible function must be wrapped in a unique error enum variant
+* Every fallible function body must begin with `use ThisFunctionError::*;`, where `ThisFunctionError` must be the name of this function's error enum (for example: `use ParseConfigError::*;`)
+* Every fallible function body must use the error enum variant names without the error enum name prefix (for example: `ReadFileFailed` instead of `ParseConfigError::ReadFileFailed`)
+* Every error type must be an enum
+* Every error type must derive `Error` via `thiserror` v2
+* Every error type must be located in the same file as the function that returns it below other non-mod items
+* Every error enum variant must be a struct variant
+* Every error enum variant must contain one field per owned variable that is relevant to the fallible expression that this variant wraps
+  * The relevant variable is a variable whose value determines whether the fallible expression returns an `Ok` or an `Err`
+* Every error enum variant must have fields only for [`data types`](#data-type), not for [`non-data types`](#non-data-type)
+* Every error enum variant must have an `#[error]` attribute
+  * The `#[error]` attribute must contain the error message displayed for the user
+  * The `#[error]` attribute must not contain the `source` field
+  * The `#[error]` attribute should contain only those fields that can be displayed on one line
+  * If the `#[error]` attribute contains fields that implement `Display`, then those fields must be output using `Display` formatting (not `Debug` formatting)
+    * Good:
+      ```rust
+      #[derive(Error, Debug)]
+      pub enum QueryFailed {
+          #[error("task not found for query '{query}'")]
+          TaskNotFound { query: String }
+      }
+      ```
+    * Bad:
+      ```rust
+      #[derive(Error, Debug)]
+      pub enum QueryFailed {
+          #[error("task not found for query '{query:?}'")]
+          TaskNotFound { query: String }
+      }
+      ```
+  * If the `#[error]` attribute contains fields whose values may be rendered as [hard-to-see string](#hard-to-see-string), then those fields must be wrapped in single quotes:
+    * `name` can be rendered as hard-to-see string, so it must be wrapped in single quotes:
+      * Good: `#[error("user '{name}' not found")]`
+      * Bad: `#[error("user {name} not found")]`
+    * `len` can't be rendered as hard-to-see string, so it must not be wrapped in single quotes:
+      * Good: `#[error("failed to parse {len} responses", len = responses.len())]`
+      * Bad: `#[error("failed to parse '{len}' responses", len = responses.len())]`
+  * If the error enum variant has a field whose type is `std::process::Command` or `tokio::process::Command`, it must be rendered in the error message in backticks via `render_command` function from `errgonomic` crate (requires `process` feature)
+* If the error enum variant has a `source` field, then this field must be the first field
+* If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
+* Every error enum variant field must have an owned type (not a reference)
+* Every error enum variant field must not have a `#[from]` attribute
+* Every variable that contains secret data (the one which must not be displayed or logged, e.g. password, API key, personally identifying information) must have a type that doesn't output the underlying data in the `Debug` and `Display` impls (e.g. `secrecy::SecretBox`)
+* The code that calls a fallible function on each element of a collection should return an `impl Iterator<Item = Result<T, E>>` instead of short-circuiting on the first error
+* If Clippy outputs a `result_large_err` warning, then the large fields of the error enum must be wrapped in a `Box`
+* If an argument of callee implements `Copy`, the callee should not include it in the list of error enum variant fields (the caller must include it because of the rule to include all relevant owned variables)
+* If you see a function that returns a `Result` whose last argument is `()` (e.g. `Result<(), ()>`, `Result<T, ()>`, `Result<u32, ()>`), then you must fix the error handling in this function according to the guidelines and replace `()` with a proper error type
+
+##### Naming
+
+* The name of the error enum must end with `Error` (for example: `ParseConfigError`)
+* The name of the error enum variant should end with `Failed` or `NotFound` or `Invalid` (for example: `ReadFileFailed`, `UserNotFound`, `PasswordInvalid`)
+* If the error variant name is associated with a child function call, the name of the error variant must be equal to the name of the function converted to CamelCase concatenated with `Failed` (for example: if the parent function calls `read_file`, then it should call it like this: `handle!(read_file(&path), ReadFileFailed, path)`
+* The name of the error enum must include the name of the function converted to CamelCase
+  * If the function is a freestanding function, the name of the error type must be exactly equal to the name of the function converted to CamelCase concatenated with `Error`
+  * If the function is an associated function, the name of the error type must be exactly equal to the name of the type without generics concatenated with the name of the function in CamelCase concatenated with `Error`
+  * If the error is specified as an associated type of a foreign trait with multiple functions that return this associated error type, then the name of the error type must be exactly equal to the name of the trait including generics concatenated with the name of the type for which this trait is implemented concatenated with `Error`
+* Every `impl TryFrom<A> for B` must use a special form of error handling that matches on multiple variables at once and returns a single error that contains fields for all available variables. For example:
+  ```rust
+  #[derive(Getters, Clone, Debug)]
+  pub struct Human {
+      name: String,
+      #[getter(copy)]
+      age: u32,
+  }
+  
+  #[derive(Getters, Clone, Debug)]
+  pub struct Adult {
+      name: NonEmptyString,
+      #[getter(copy)]
+      age: u32,
+  }
+  
+  impl TryFrom<Human> for Adult {
+      type Error = TryFromHumanForAdultError;
+  
+      fn try_from(input: Human) -> Result<Self, Self::Error> {
+          use TryFromHumanForAdultError::*;
+          let Human {
+              name,
+              age,
+          } = input;
+          let name_result = NonEmptyString::try_from(name);
+          let is_adult = age > 18;
+          match (name_result, is_adult) {
+              (Ok(name), true) => Ok(Self {
+                  name,
+                  age,
+              }),
+              (name_result, is_adult) => Err(ConversionFailed {
+                  name_result,
+                  age,
+                  is_adult,
+              }),
+          }
+      }
+  }
+  
+  #[derive(Error, Debug)]
+  pub enum TryFromHumanForAdultError {
+      #[error("failed to convert human to adult")]
+      ConversionFailed { name_result: Result<NonEmptyString, TryFromStringForNonEmptyStringError>, age: u32, is_adult: bool },
+  }
+  ```
+
+#### Definitions
+
+##### Fallible expression
+
+An expression that returns a `Result`.
+
+##### Fallible expression group
+
+A group of [fallible expressions](#fallible-expression) where each output variable does not depend on the output variables of other fallible expressions within the same group.
+
+Aliases: FEG.
+
+##### Data type
+
+A type that holds the actual data.
+
+Examples:
+
+* `bool`
+* `String`
+* `PathBuf`
+
+##### Non-data type
+
+A type that doesn't hold the actual data.
+
+Examples:
+
+* `RestClient` doesn't point to the actual data, it only allows querying it.
+* `DatabaseConnection` doesn't hold the actual data, it only allows querying it.
+
+##### Hard-to-see string
+
+A string that is empty or contains only whitespace characters.
+
+#### errgonomic/src/macros.rs
+
+```rust
+/// [`handle!`](crate::handle) is a better alternative to [`map_err`](Result::map_err) because it doesn't capture any variables from the environment if the result is [`Ok`], only when the result is [`Err`].
+/// By contrast, a closure passed to `map_err` always captures the variables from environment, regardless of whether the result is [`Ok`] or [`Err`]
+/// Use [`handle!`](crate::handle) if you need to pass owned variables to an error variant (which is returned only in case when result is [`Err`])
+/// In addition, this macro captures the original error in the `source` variable, and sets it as the `source` key of the error variant
+///
+/// Note: [`handle!`](crate::handle) assumes that your error variant is a struct variant
+#[macro_export]
+macro_rules! handle {
+    ($result:expr, $variant:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        match $result {
+            Ok(value) => value,
+            Err(source) => return Err($variant {
+                source: source.into(),
+                $($arg: $crate::_into!($arg$(: $value)?)),*
+            }),
+        }
+    };
+}
+
+/// See also: [`handle_opt_take!`](crate::handle_opt_take)
+#[macro_export]
+macro_rules! handle_opt {
+    ($option:expr, $variant:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        match $option {
+            Some(value) => value,
+            None => return Err($variant {
+                $($arg: $crate::_into!($arg$(: $value)?)),*
+            }),
+        }
+    };
+}
+
+/// This macro is an opposite of [`handle_opt!`](crate::handle_opt) - it returns an error if the option contains a `Some` variant.
+///
+/// Note that this macro calls [`Option::take`], which will leave a `None` if the option was `Some(value)`.
+/// Note that this macro has a mandatory argument `$some_value` (used in `if let Some($some_value) = $option.take()`), which will also be passed to the error enum variant.
+#[macro_export]
+macro_rules! handle_opt_take {
+    ($option:expr, $variant:ident, $some_value:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        if let Some($some_value) = $option.take() {
+            return Err($variant {
+                $some_value: $some_value.into(),
+                $($arg: $crate::_into!($arg$(: $value)?)),*
+            })
+        }
+    };
+}
+
+/// Returns an error when the condition is true.
+///
+/// This is useful for guard checks that should fail fast with a specific error variant.
+#[macro_export]
+macro_rules! handle_bool {
+    ($condition:expr, $variant:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        if $condition {
+            return Err($variant {
+                $($arg: $crate::_into!($arg$(: $value)?)),*
+            });
+        };
+    };
+}
+
+/// Collects results from an iterator, returning a variant that wraps all errors.
+///
+/// `$results` must be an `impl Iterator<Item = Result<T, E>>`.
+#[macro_export]
+macro_rules! handle_iter {
+    ($results:expr, $variant:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        {
+            match $crate::partition_result($results) {
+                Ok(oks) => oks,
+                Err(errors) => {
+                    return Err($variant {
+                        source: errors.into(),
+                        $($arg: $crate::_into!($arg$(: $value)?)),*
+                    });
+                }
+            }
+        }
+    };
+}
+
+/// Collects results while keeping the corresponding input items, returning `(outputs, items)` on success.
+///
+/// This macro returns a tuple because the iteration consumes items that may be needed later.
+/// If there are no errors, `items.len() == outputs.len()`.
+/// If the results iterator terminates early, the returned `items` may be shorter than the original input.
+#[macro_export]
+macro_rules! handle_iter_of_refs {
+    ($results:expr, $items:expr, $variant:ident $(, $arg:ident$(: $value:expr)?)*) => {
+        {
+            use alloc::vec::Vec;
+            let (outputs, items, errors) = core::iter::zip($results, $items).fold(
+                (Vec::new(), Vec::new(), Vec::new()),
+                |(mut outputs, mut items, mut errors), (result, item)| {
+                    match result {
+                        Ok(output) => {
+                            outputs.push(output);
+                            items.push(item);
+                        }
+                        Err(source) => {
+                            errors.push($crate::ItemError {
+                                item,
+                                source,
+                            });
+                        }
+                    }
+                    (outputs, items, errors)
+                },
+            );
+            if errors.is_empty() {
+                (outputs, items)
+            } else {
+                return Err($variant {
+                    source: errors.into(),
+                    $($arg: $crate::_into!($arg$(: $value)?)),*
+                });
+            }
+        }
+    };
+}
+
+/// Collects results from any `IntoIterator`, wrapping all errors into one variant.
+#[macro_export]
+macro_rules! handle_into_iter {
+    ($results:expr, $variant:ident $(, $arg:ident$(: $value:expr)?)*) => {
+        $crate::handle_iter!($results.into_iter(), $variant $(, $arg$(: $value)?),*)
+    };
+}
+
+/// [`handle_discard`](crate::handle_discard) should only be used when you want to discard the source error. This is discouraged. Prefer other handle-family macros that preserve the source error.
+#[macro_export]
+macro_rules! handle_discard {
+    ($result:expr, $variant:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        match $result {
+            Ok(value) => value,
+            Err(_) => return Err($variant {
+                $($arg: $crate::_into!($arg$(: $value)?)),*
+            }),
+        }
+    };
+}
+
+/// [`map_err`](crate::map_err) should be used only when the error variant doesn't capture any owned variables (which is very rare), or exactly at the end of the block (in the position of returned expression).
+#[macro_export]
+macro_rules! map_err {
+    ($result:expr, $variant:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        $result.map_err(|source| $variant {
+            source: source.into(),
+            $($arg: $crate::_into!($arg$(: $value)?)),*
+        })
+    };
+}
+
+/// Converts [`None`] into an error variant without returning early.
+///
+/// [`map_none`](crate::map_none) should be used only when the error variant doesn't capture any owned variables (which is very rare), or exactly at the end of the block (in the position of returned expression).
+#[macro_export]
+macro_rules! map_none {
+    ($option:expr, $variant:ident$(,)? $($arg:ident$(: $value:expr)?),*) => {
+        match $option {
+            Some(value) => Ok(value),
+            None => Err($variant {
+                $($arg: $crate::_into!($arg$(: $value)?)),*
+            })
+        }
+    };
+}
+
+/// Internal
+#[doc(hidden)]
+#[macro_export]
+macro_rules! _into {
+    ($arg:ident) => {
+        $arg.into()
+    };
+    ($arg:ident: $value:expr) => {
+        $value.into()
+    };
+}
+
+/// Internal
+#[doc(hidden)]
+#[macro_export]
+macro_rules! _index_err {
+    ($f:ident) => {
+        |(index, item)| $f(item).map_err(|err| (index, err))
+    };
+}
+
+/// Internal
+#[doc(hidden)]
+#[macro_export]
+macro_rules! _index_err_async {
+    ($f:ident) => {
+        async |(index, item)| $f(item).await.map_err(|err| (index, err))
+    };
+}
+
+#[cfg(all(test, feature = "std"))]
+mod tests {
+    use crate::{ErrVec, ItemError, PathBufDisplay};
+    use alloc::boxed::Box;
+    use alloc::string::String;
+    use alloc::vec::Vec;
+    use futures::future::join_all;
+    use serde::{Deserialize, Serialize};
+    use std::io;
+    use std::path::{Path, PathBuf};
+    use std::println;
+    use std::str::FromStr;
+    use std::sync::{Arc, RwLock};
+    use thiserror::Error;
+    use tokio::fs::read_to_string;
+    use tokio::task::JoinSet;
+
+    #[allow(dead_code)]
+    struct PrintNameCommand {
+        dir: PathBuf,
+        format: Format,
+    }
+
+    #[allow(dead_code)]
+    impl PrintNameCommand {
+        async fn run(self) -> Result<(), PrintNameCommandError> {
+            use PrintNameCommandError::*;
+            let Self {
+                dir,
+                format,
+            } = self;
+            let config = handle!(parse_config(&dir, format).await, ParseConfigFailed);
+            println!("{}", config.name);
+            Ok(())
+        }
+    }
+
+    /// This function tests the [`crate::handle!`] macro
+    #[allow(dead_code)]
+    async fn parse_config(dir: &Path, format: Format) -> Result<Config, ParseConfigError> {
+        use Format::*;
+        use ParseConfigError::*;
+        let path_buf = dir.join("config.json");
+        let contents = handle!(read_to_string(&path_buf).await, ReadFileFailed, path: path_buf);
+        match format {
+            Json => {
+                let config = handle!(serde_json::de::from_str(&contents), DeserializeFromJson, path: path_buf, contents);
+                Ok(config)
+            }
+            Toml => {
+                let config = handle!(toml::de::from_str(&contents), DeserializeFromToml, path: path_buf, contents);
+                Ok(config)
+            }
+        }
+    }
+
+    /// This function tests the [`crate::handle_opt!`] and [`crate::map_none!`] macros.
+    #[allow(dead_code)]
+    fn first_word(lines: &[String]) -> Result<&str, FirstWordError> {
+        use FirstWordError::*;
+        let line = handle_opt!(lines.first(), LineNotFound);
+        map_none!(line.split_whitespace().next(), WordNotFound)
+    }
+
+    /// This function tests the [`crate::handle_iter!`] macro
+    #[allow(dead_code)]
+    fn multiply_evens(numbers: Vec<u32>) -> Result<Vec<u32>, MultiplyEvensError> {
+        use MultiplyEvensError::*;
+        let results = numbers.into_iter().map(|number| {
+            use CheckEvenError::*;
+            if number % 2 == 0 {
+                match number.checked_mul(10) {
+                    Some(product) => Ok(product),
+                    None => Err(NumberOverflowed {
+                        number,
+                    }),
+                }
+            } else {
+                Err(NumberNotEven {
+                    number,
+                })
+            }
+        });
+        Ok(handle_iter!(results, CheckEvensFailed))
+    }
+
+    /// This function tests the [`crate::handle_into_iter!`] macro
+    #[allow(dead_code)]
+    async fn read_files(paths: Vec<PathBuf>) -> Result<Vec<String>, ReadFilesError> {
+        use ReadFilesError::*;
+        let results = paths
+            .into_iter()
+            .map(check_file)
+            .collect::<JoinSet<_>>()
+            .join_all()
+            .await;
+        Ok(handle_into_iter!(results, CheckFilesFailed))
+    }
+
+    #[allow(dead_code)]
+    async fn read_files_ref(paths: Vec<PathBuf>) -> Result<Vec<String>, ReadFilesRefError> {
+        use ReadFilesRefError::*;
+        let iter = paths.iter().map(check_file_ref);
+        let results = join_all(iter).await;
+        let items = paths.into_iter().map(PathBufDisplay::from);
+        let (outputs, _items) = handle_iter_of_refs!(results.into_iter(), items, CheckFilesRefFailed);
+        Ok(outputs)
+    }
+
+    // async fn check_file(path: &Path)
+
+    /// This function exists to test error handling in async code
+    #[allow(dead_code)]
+    async fn process(number: u32) -> Result<u32, ProcessError> {
+        Ok(number)
+    }
+
+    #[derive(Error, Debug)]
+    enum PrintNameCommandError {
+        #[error("failed to parse config")]
+        ParseConfigFailed { source: ParseConfigError },
+    }
+
+    /// Variants don't have the `format` field because every variant already corresponds to a single specific format
+    /// Some variants have the `path` field because the `contents` depends on `path`
+    /// Some `source` field types are wrapped in `Box` according to suggestion from `result_large_err` lint
+    #[derive(Error, Debug)]
+    enum ParseConfigError {
+        #[error("failed to read the file: {path}")]
+        ReadFileFailed { path: PathBuf, source: io::Error },
+        #[error("failed to deserialize the file contents from JSON: {path}")]
+        DeserializeFromJson { path: PathBuf, contents: String, source: Box<serde_json::error::Error> },
+        #[error("failed to deserialize the file contents from TOML: {path}")]
+        DeserializeFromToml { path: PathBuf, contents: String, source: Box<toml::de::Error> },
+    }
+
+    #[allow(dead_code)]
+    #[derive(Error, Debug)]
+    enum ProcessError {}
+
+    #[allow(dead_code)]
+    #[derive(Copy, Clone, Debug)]
+    enum Format {
+        Json,
+        Toml,
+    }
+
+    #[derive(Serialize, Deserialize, Clone, Debug)]
+    struct Config {
+        name: String,
+        timeout: u64,
+        parallel: bool,
+    }
+
+    #[allow(dead_code)]
+    fn parse_even_number(input: &str) -> Result<u32, ParseEvenNumberError> {
+        use ParseEvenNumberError::*;
+        let number = handle!(input.parse::<u32>(), InputParseFailed);
+        handle_bool!(number % 2 != 0, NumberNotEven, number);
+        Ok(number)
+    }
+
+    #[derive(Error, Debug)]
+    enum ParseEvenNumberError {
+        #[error("failed to parse input")]
+        InputParseFailed { source: <u32 as FromStr>::Err },
+        #[error("number is not even: {number}")]
+        NumberNotEven { number: u32 },
+    }
+
+    #[derive(Error, Debug)]
+    enum FirstWordError {
+        #[error("line not found")]
+        LineNotFound {},
+        #[error("word not found")]
+        WordNotFound {},
+    }
+
+    #[derive(Error, Debug)]
+    enum MultiplyEvensError {
+        #[error("failed to check {len} numbers", len = source.len())]
+        CheckEvensFailed { source: ErrVec<CheckEvenError> },
+    }
+
+    #[derive(Error, Debug)]
+    enum ReadFilesError {
+        #[error("failed to check {len} files", len = source.len())]
+        CheckFilesFailed { source: ErrVec<CheckFileError> },
+    }
+
+    #[derive(Error, Debug)]
+    enum ReadFilesRefError {
+        #[error("failed to check {len} files", len = source.len())]
+        CheckFilesRefFailed { source: ErrVec<ItemError<PathBufDisplay, CheckFileRefError>> },
+    }
+
+    #[derive(Error, Debug)]
+    enum CheckEvenError {
+        #[error("number is not even: {number}")]
+        NumberNotEven { number: u32 },
+        #[error("number overflowed: {number}")]
+        NumberOverflowed { number: u32 },
+    }
+
+    async fn check_file(path: PathBuf) -> Result<String, CheckFileError> {
+        use CheckFileError::*;
+        let content = handle!(read_to_string(&path).await, ReadToStringFailed, path);
+        handle_bool!(content.is_empty(), FileIsEmpty, path);
+        Ok(content)
+    }
+
+    #[derive(Error, Debug)]
+    enum CheckFileError {
+        #[error("failed to read the file to string: {path}")]
+        ReadToStringFailed { path: PathBuf, source: io::Error },
+        #[error("file is empty: {path}")]
+        FileIsEmpty { path: PathBuf },
+    }
+
+    async fn check_file_ref(path: &PathBuf) -> Result<String, CheckFileRefError> {
+        use CheckFileRefError::*;
+        let content = handle!(read_to_string(&path).await, ReadToStringFailed);
+        handle_bool!(content.is_empty(), FileIsEmpty);
+        Ok(content)
+    }
+
+    #[derive(Error, Debug)]
+    enum CheckFileRefError {
+        #[error("failed to read the file to string")]
+        ReadToStringFailed { source: io::Error },
+        #[error("file is empty")]
+        FileIsEmpty,
+    }
+
+    #[derive(Clone, Debug)]
+    struct State {
+        user: User,
+    }
+
+    #[derive(Clone, Debug)]
+    struct User {
+        username: String,
+    }
+
+    #[allow(dead_code)]
+    #[derive(Clone, Debug)]
+    struct Book {
+        user_idx: usize,
+        name: String,
+    }
+
+    #[allow(dead_code)]
+    fn get_username(state: Arc<RwLock<State>>) -> Result<String, GetUsernameError> {
+        use GetUsernameError::*;
+        // `state.read()` returns `LockResult` whose Err variant is `PoisonError<RwLockReadGuard<'_, T>>`, which contains an anonymous lifetime
+        // The error enum returned from this function must contain only owned fields, so it can't contain a `source` that has a lifetime
+        // Therefore, we have to use handle_discard!, although it is discouraged
+        let guard = handle_discard!(state.read(), AcquireReadLockFailed);
+        let username = guard.user.username.clone();
+        Ok(username)
+    }
+
+    #[derive(Error, Debug)]
+    pub enum GetUsernameError {
+        #[error("failed to acquire read lock")]
+        AcquireReadLockFailed,
+    }
+
+    #[derive(Clone, Debug)]
+    struct Db {
+        users: Vec<User>,
+        books: Vec<Book>,
+    }
+
+    impl Db {
+        /// Validates only the foreign keys
+        /// Assumes that the collection items have already been validated before they were inserted
+        #[allow(dead_code)]
+        pub fn validate(&self) -> impl Iterator<Item = DbValidateError> {
+            use DbValidateError::*;
+
+            self.books
+                .iter()
+                .enumerate()
+                .filter_map(|(book_idx, book)| {
+                    let user_idx = book.user_idx;
+                    if self.users.get(user_idx).is_none() {
+                        Some(UserNotFound {
+                            book_idx,
+                            user_idx,
+                        })
+                    } else {
+                        None
+                    }
+                })
+        }
+    }
+
+    #[derive(Error, Debug)]
+    pub enum DbValidateError {
+        #[error("book #{book_idx} has a non-existent user #{user_idx}")]
+        UserNotFound { book_idx: usize, user_idx: usize },
+    }
+
+    #[allow(dead_code)]
+    fn get_answer(prompt: String, get_response: &mut impl FnMut(String) -> Result<WeirdResponse, io::Error>) -> Result<String, GetAnswerError> {
+        use GetAnswerError::*;
+        // Since the `get_response` external API doesn't return the `prompt` in its error, we have to clone `prompt` before passing it as argument, so that we could pass it to the error enum variant
+        // Cloning may be necessary with external APIs that don't return arguments in errors, but it must not be necessary in our code
+        let mut response = handle!(get_response(prompt.clone()), GetResponseFailed, prompt);
+        handle_opt_take!(response.error, ResponseContainsError, error);
+        Ok(response.answer)
+    }
+
+    /// OpenAI Responses API returns a response with `error: Option<WeirdResponseError>` field, which is weird, but must still be handled
+    #[derive(Debug)]
+    pub struct WeirdResponse {
+        answer: String,
+        error: Option<WeirdResponseError>,
+    }
+
+    #[allow(dead_code)]
+    #[derive(Error, Debug)]
+    pub enum WeirdResponseError {
+        #[error("prompt is empty")]
+        PromptIsEmpty,
+        #[error("context limit reached")]
+        ContextLimitReached,
+    }
+
+    /// [`GetAnswerError::GetResponseFailed`] `error` attribute doesn't contain a reference to `{prompt}` because the prompt can be very long, so it would make the error message very long, which is undesirable
+    #[derive(Error, Debug)]
+    pub enum GetAnswerError {
+        #[error("failed to get response")]
+        GetResponseFailed { source: io::Error, prompt: String },
+        #[error("response contains an error")]
+        ResponseContainsError { error: WeirdResponseError },
+    }
+}
 ```
+
+## Extra docs
+
+Read the extra docs from the list below if they are relevant to your current task:
+
+* .agents/docs/docs.polymarket.com/api-reference/bridge/create-deposit-addresses.md
+* .agents/docs/docs.polymarket.com/api-reference/bridge/get-supported-assets.md
+* .agents/docs/docs.polymarket.com/api-reference/builders/get-aggregated-builder-leaderboard.md
+* .agents/docs/docs.polymarket.com/api-reference/builders/get-daily-builder-volume-time-series.md
+* .agents/docs/docs.polymarket.com/api-reference/comments/get-comments-by-comment-id.md
+* .agents/docs/docs.polymarket.com/api-reference/comments/get-comments-by-user-address.md
+* .agents/docs/docs.polymarket.com/api-reference/comments/list-comments.md
+* .agents/docs/docs.polymarket.com/api-reference/core/get-closed-positions-for-a-user.md
+* .agents/docs/docs.polymarket.com/api-reference/core/get-current-positions-for-a-user.md
+* .agents/docs/docs.polymarket.com/api-reference/core/get-top-holders-for-markets.md
+* .agents/docs/docs.polymarket.com/api-reference/core/get-total-value-of-a-users-positions.md
+* .agents/docs/docs.polymarket.com/api-reference/core/get-trader-leaderboard-rankings.md
+* .agents/docs/docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets.md
+* .agents/docs/docs.polymarket.com/api-reference/core/get-user-activity.md
+* .agents/docs/docs.polymarket.com/api-reference/data-api-status/data-api-health-check.md
+* .agents/docs/docs.polymarket.com/api-reference/events/get-event-by-id.md
+* .agents/docs/docs.polymarket.com/api-reference/events/get-event-by-slug.md
+* .agents/docs/docs.polymarket.com/api-reference/events/get-event-tags.md
+* .agents/docs/docs.polymarket.com/api-reference/events/list-events.md
+* .agents/docs/docs.polymarket.com/api-reference/gamma-status/gamma-api-health-check.md
+* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-by-id.md
+* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-by-slug.md
+* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-tags-by-id.md
+* .agents/docs/docs.polymarket.com/api-reference/markets/list-markets.md
+* .agents/docs/docs.polymarket.com/api-reference/misc/get-live-volume-for-an-event.md
+* .agents/docs/docs.polymarket.com/api-reference/misc/get-open-interest.md
+* .agents/docs/docs.polymarket.com/api-reference/misc/get-total-markets-a-user-has-traded.md
+* .agents/docs/docs.polymarket.com/api-reference/orderbook/get-multiple-order-books-summaries-by-request.md
+* .agents/docs/docs.polymarket.com/api-reference/orderbook/get-order-book-summary.md
+* .agents/docs/docs.polymarket.com/api-reference/pricing/get-market-price.md
+* .agents/docs/docs.polymarket.com/api-reference/pricing/get-midpoint-price.md
+* .agents/docs/docs.polymarket.com/api-reference/pricing/get-multiple-market-prices-by-request.md
+* .agents/docs/docs.polymarket.com/api-reference/pricing/get-multiple-market-prices.md
+* .agents/docs/docs.polymarket.com/api-reference/pricing/get-price-history-for-a-traded-token.md
+* .agents/docs/docs.polymarket.com/api-reference/profiles/get-public-profile-by-wallet-address.md
+* .agents/docs/docs.polymarket.com/api-reference/search/search-markets-events-and-profiles.md
+* .agents/docs/docs.polymarket.com/api-reference/series/get-series-by-id.md
+* .agents/docs/docs.polymarket.com/api-reference/series/list-series.md
+* .agents/docs/docs.polymarket.com/api-reference/sports/get-sports-metadata-information.md
+* .agents/docs/docs.polymarket.com/api-reference/sports/get-valid-sports-market-types.md
+* .agents/docs/docs.polymarket.com/api-reference/sports/list-teams.md
+* .agents/docs/docs.polymarket.com/api-reference/spreads/get-bid-ask-spreads.md
+* .agents/docs/docs.polymarket.com/api-reference/tags/get-related-tags-relationships-by-tag-id.md
+* .agents/docs/docs.polymarket.com/api-reference/tags/get-related-tags-relationships-by-tag-slug.md
+* .agents/docs/docs.polymarket.com/api-reference/tags/get-tag-by-id.md
+* .agents/docs/docs.polymarket.com/api-reference/tags/get-tag-by-slug.md
+* .agents/docs/docs.polymarket.com/api-reference/tags/get-tags-related-to-a-tag-id.md
+* .agents/docs/docs.polymarket.com/api-reference/tags/get-tags-related-to-a-tag-slug.md
+* .agents/docs/docs.polymarket.com/api-reference/tags/list-tags.md
+* .agents/docs/docs.polymarket.com/changelog/changelog.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/authentication.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-builder.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-l1.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-l2.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-overview.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-public.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/geoblock.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/introduction.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/orders/cancel-orders.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/orders/check-scoring.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/orders/create-order-batch.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/orders/create-order.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/orders/get-active-order.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/orders/get-order.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/orders/onchain-order-info.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/orders/orders.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/quickstart.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/status.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/timeseries.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/trades/trades-overview.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/trades/trades.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/market-channel.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/user-channel.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/wss-auth.md
+* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/wss-overview.md
+* .agents/docs/docs.polymarket.com/developers/CTF/deployment-resources.md
+* .agents/docs/docs.polymarket.com/developers/CTF/merge.md
+* .agents/docs/docs.polymarket.com/developers/CTF/overview.md
+* .agents/docs/docs.polymarket.com/developers/CTF/redeem.md
+* .agents/docs/docs.polymarket.com/developers/CTF/split.md
+* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-comments.md
+* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-crypto-prices.md
+* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-overview.md
+* .agents/docs/docs.polymarket.com/developers/builders/builder-intro.md
+* .agents/docs/docs.polymarket.com/developers/builders/builder-profile.md
+* .agents/docs/docs.polymarket.com/developers/builders/builder-tiers.md
+* .agents/docs/docs.polymarket.com/developers/builders/examples.md
+* .agents/docs/docs.polymarket.com/developers/builders/order-attribution.md
+* .agents/docs/docs.polymarket.com/developers/builders/relayer-client.md
+* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/fetch-markets-guide.md
+* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/gamma-structure.md
+* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/overview.md
+* .agents/docs/docs.polymarket.com/developers/market-makers/data-feeds.md
+* .agents/docs/docs.polymarket.com/developers/market-makers/introduction.md
+* .agents/docs/docs.polymarket.com/developers/market-makers/inventory.md
+* .agents/docs/docs.polymarket.com/developers/market-makers/liquidity-rewards.md
+* .agents/docs/docs.polymarket.com/developers/market-makers/maker-rebates-program.md
+* .agents/docs/docs.polymarket.com/developers/market-makers/setup.md
+* .agents/docs/docs.polymarket.com/developers/market-makers/trading.md
+* .agents/docs/docs.polymarket.com/developers/misc-endpoints/bridge-overview.md
+* .agents/docs/docs.polymarket.com/developers/neg-risk/overview.md
+* .agents/docs/docs.polymarket.com/developers/proxy-wallet.md
+* .agents/docs/docs.polymarket.com/developers/resolution/UMA.md
+* .agents/docs/docs.polymarket.com/developers/subgraph/overview.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/does-polymarket-have-an-api.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/embeds.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/geoblocking.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/how-to-export-private-key.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/is-my-money-safe.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/is-polymarket-the-house.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/polling.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/recover-missing-deposit.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/sell-early.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/support.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/wen-token.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/what-are-prediction-markets.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/why-do-i-need-crypto.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/coinbase.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/how-to-withdraw.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/large-cross-chain-deposits.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/moonpay.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/supported-tokens.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/usdc-on-eth.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/how-to-deposit.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/how-to-signup.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/making-your-first-trade.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/what-is-polymarket.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/markets/dispute.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-clarified.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-created.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-resolved.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/fees.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/holding-rewards.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/how-are-prices-calculated.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/limit-orders.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/liquidity-rewards.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/maker-rebates-program.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/market-orders.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/no-limits.md
+* .agents/docs/docs.polymarket.com/polymarket-learn/trading/using-the-orderbook.md
+* .agents/docs/docs.polymarket.com/quickstart/fetching-data.md
+* .agents/docs/docs.polymarket.com/quickstart/first-order.md
+* .agents/docs/docs.polymarket.com/quickstart/introduction/rate-limits.md
+* .agents/docs/docs.polymarket.com/quickstart/overview.md
+* .agents/docs/docs.polymarket.com/quickstart/reference/endpoints.md
+* .agents/docs/docs.polymarket.com/quickstart/reference/glossary.md
+* .agents/docs/docs.polymarket.com/quickstart/websocket/WSS-Quickstart.md
 
 ## Project files
 
@@ -982,6 +1825,10 @@ deno = "1.46.1"
 fnox = "1.33.1"
 fd = "10.4.2"
 "github:ewhauser/shuck" = "0.2.2"
+"aqua:nushell/nushell" = "0.116.1"
+# nu-lint's dependencies require a newer compiler than this project's toolchain.
+"cargo:nu-lint" = { version = "1.8.0", install_env = { RUSTUP_TOOLCHAIN = "1.99.1" } }
+"github:nushell/nufmt" = "0.1.6"
 "aqua:rvben/rumdl" = "0.3.0"
 "npm:@commitlint/config-conventional" = "19.6.0"
 "npm:@commitlint/cli" = "19.6.0"
@@ -1008,11 +1855,15 @@ run = "cargo build --workspace"
 depends = ["cargo:validate-config"]
 run = [{ tasks = ["lint", "test"] }]
 
+[tasks."check:ci"]
+depends = ["cargo:validate-config"]
+run = [{ tasks = ["lint", "test:ci"] }]
+
 [tasks."test"]
 depends = ["test:code", "test:docs"]
 
 [tasks."lint"]
-depends = ["lint:name", "lint:configs", "lint:code", "lint:code:style", "lint:shell", "lint:docs", "lint:reports"]
+depends = ["lint:name", "lint:configs", "lint:code", "lint:code:style", "lint:shell", "lint:nu", "lint:docs", "lint:generated", "lint:reports"]
 
 [tasks."lint:name"]
 run = [{ task = "fix:name", args = ["--check"] }]
@@ -1039,22 +1890,26 @@ run = '''shuck --config "lint.source-paths = ['$HOME']" check --extend-exclude '
 [tasks."lint:docs"]
 run = "rumdl check"
 
+[tasks."lint:generated"]
+run = ["./AGENTS.ts", "./README.ts"]
+
 [tasks."test:code"]
-run = "fnox --profile test exec --replace -- cargo nextest run --locked --workspace --all-features --no-tests warn"
+depends = ["test:code:regular", "test:code:integration"]
+
+[tasks."test:code:regular"]
+run = "fnox --profile test exec --replace -- cargo nextest run --locked --workspace --all-features --no-tests warn --cargo-quiet --show-progress none --no-input-handler --status-level fail --final-status-level flaky --no-fail-fast"
 
 [tasks."test:code:integration"]
-# see also: "agent:test:code:integration"
 # `--test-threads 1` because integration tests must be run sequentially
-run = [{ task = "test:code", args = ["--ignore-default-filter", "--max-fail", "1", "--test-threads", "1", "integration_tests::"] }]
-
-[tasks."test:code:slow"]
-# see also: "agent:test:code:slow"
-# `--test-threads` is omitted because slow tests may be run in parallel
-run = [{ task = "test:code", args = ["--ignore-default-filter", "--max-fail", "1", "slow_tests::"] }]
+run = [{ task = "test:code:regular", args = ["--ignore-default-filter", "--test-threads", "1", "integration_tests::"] }]
 
 [tasks."test:docs"]
 env = { RUSTDOCFLAGS = "-D warnings" }
 run = "cargo test --locked --workspace --doc --all-features --no-fail-fast --quiet"
+
+[tasks."test:ci"]
+env = { RUSTDOCFLAGS = "-D warnings" }
+run = "fnox --profile test exec --replace -- cargo hack test --locked --workspace --feature-powerset --keep-going --no-fail-fast --quiet -- --skip integration_tests::"
 
 [tasks."pre-commit"]
 alias = "pre-merge-commit"
@@ -1064,7 +1919,8 @@ run = [{ task = "git:validate-commit" }]
 run = 'mise run --output interleave commitlint -- --edit "$@"'
 
 [tasks."fix"]
-depends = ["fix:code", "fix:aux"]
+depends = ["cargo:validate-config"]
+run = [{ task = "fix:aux" }]
 
 [tasks."fix:aux"]
 depends = ["fix:configs", "fix:docs", "fix:agents", "fix:readme"]
@@ -1073,7 +1929,10 @@ depends = ["fix:configs", "fix:docs", "fix:agents", "fix:readme"]
 depends = ["fix:cargo", "fix:fnox"]
 
 [tasks."fix:code"]
-depends = ["fix:name", "fix:code:style", "fix:shell"]
+depends = ["fix:name", "fix:code:style", "fix:shell", "fix:nu"]
+
+[tasks."fix:nu"]
+run = [{ task = "nu", args = ["nufmt", "--shebang"] }]
 
 [tasks."fix:shell"]
 run = [{ task = "lint:shell", args = ["--fix"] }]
@@ -1103,10 +1962,10 @@ depends = ["fix:name", "fix:configs", "fix:code"]
 run = [{ task = "gen:agents" }]
 
 [tasks."gen:readme"]
-run = "./README.ts"
+run = "./README.ts --fix"
 
 [tasks."gen:agents"]
-run = "./AGENTS.ts"
+run = "./AGENTS.ts --fix"
 
 [tasks."commitlint"]
 run = "commitlint --extends \"$(mise where npm:@commitlint/config-conventional)/node_modules/@commitlint/config-conventional/lib/index.js\""
@@ -1115,28 +1974,6 @@ run = "commitlint --extends \"$(mise where npm:@commitlint/config-conventional)/
 run = "[ -d .agents/docs ] && find .agents/docs -type f -print || true"
 output = "interleave"
 quiet = true
-
-[tasks."agent:on:stop"]
-depends = ["cargo:validate-config", "fix:shell"]
-run = [{ task = "fix" }, { task = "agent:test" }]
-
-[tasks."agent:test"]
-depends = ["agent:test:code", "agent:test:code:integration", "agent:test:code:slow", "test:docs"]
-
-[tasks."agent:test:code"]
-# don't include `--fail-fast` because it's better to let the agent see all failures
-# reduce output to save tokens
-run = [{ task = "test:code", args = ["--cargo-quiet", "--show-progress", "none", "--no-input-handler", "--status-level", "fail", "--final-status-level", "flaky", "--no-fail-fast"] }]
-
-[tasks."agent:test:code:integration"]
-# see also: "test:code:integration"
-# `--test-threads 1` because integration tests must be run sequentially
-run = [{ task = "test:code", args = ["--cargo-quiet", "--show-progress", "none", "--no-input-handler", "--status-level", "fail", "--final-status-level", "flaky", "--ignore-default-filter", "--max-fail", "1", "--test-threads", "1", "integration_tests::"] }]
-
-[tasks."agent:test:code:slow"]
-# see also: "test:code:slow"
-# `--test-threads` is omitted because slow tests may be run in parallel
-run = [{ task = "test:code", args = ["--cargo-quiet", "--show-progress", "none", "--no-input-handler", "--status-level", "fail", "--final-status-level", "flaky", "--ignore-default-filter", "--max-fail", "1", "slow_tests::"] }]
 ```
 
 ### fnox.toml
@@ -1154,21 +1991,9 @@ age = { type = "age", recipients = [
     "age1sf4r4amev2svqr6llwg8hgtz9n7p5qdh7hh0mavcshzfrmgfduksnq3hql",
     "age1605gsnxpe536sprwccyumq74veg0g80u55n8ggems0t8deau6qdsfnq3m3"
 ] }
-```
 
-### ~/.cargo/config.toml
-
-```toml
-[build]
-target = "host-tuple"
-# In the sandbox, ~/workspace is mounted from macOS, while Cargo's cache home is on the container-local filesystem.
-# Concurrent Cargo commands have failed when compilation intermediates were stored on the macOS mount.
-# Give each workspace its own local build directory: one directory shared by all workspaces would serialize their builds and let `cargo clean` in one workspace remove another workspace's artifacts.
-# sccache shares reusable compiler outputs without sharing mutable Cargo state.
-build-dir = "{cargo-cache-home}/build/{workspace-path-hash}"
-
-[net]
-git-fetch-with-cli = true
+#POLYMARKET_SEED_PHRASE=$(op-read 3rqnbtgkdvcvdidrssgvpgpbsy 'full')
+#export POLYMARKET_SEED_PHRASE
 ```
 
 ### Cargo.toml
@@ -1193,6 +2018,7 @@ exclude = [
     "specs",
     "AGENTS.ts",
     "CargoMetadata.ts",
+    "GeneratedFile.ts",
     "README.ts",
     "AGENTS*.md",
     "deno.lock",
@@ -1201,6 +2027,8 @@ exclude = [
     "commitlint.config.mjs",
     "fnox.toml",
     "mise.toml",
+    "nu-lint.toml",
+    "nufmt.nuon",
     "rumdl.toml",
     "shuck.toml",
     "rustfmt.toml",
@@ -1294,7 +2122,7 @@ debug = []
 ruint = { git = "https://github.com/DenisGorbachev/uint", branch = "fix/rkyv-archived-u64" }
 ```
 
-#### src/lib.rs
+### src/lib.rs
 
 ```rust
 #![cfg_attr(not(test), deny(unused_crate_dependencies))]
@@ -1341,7 +2169,7 @@ mod properties;
 pub use properties::*;
 ```
 
-#### src/main.rs
+### src/main.rs
 
 ```rust
 use clap::Parser;
