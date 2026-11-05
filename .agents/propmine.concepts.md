@@ -14,6 +14,6 @@ An `fn(&T) -> bool`.
 
 A Rust fn with the following properties:
 
-* Inputs:
-  * `impl Iterator<Item = &T>`
-  * `Vec<>`
+- Inputs:
+  - `impl Iterator<Item = &T>`
+  - `Vec<>`

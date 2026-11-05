@@ -2,11 +2,11 @@
 
 ## Files
 
-* src/command/cache_command.rs
-* src/types/market.rs
-* src/types/orderbook.rs
-* src/command/cache_download_command.rs
-* src/command/cache_gamma_events_command/cache_gamma_events_list_date_cascades_command.rs
+- src/command/cache_command.rs
+- src/types/market.rs
+- src/types/orderbook.rs
+- src/command/cache_download_command.rs
+- src/command/cache_gamma_events_command/cache_gamma_events_list_date_cascades_command.rs
 
 ## Goal
 
@@ -14,10 +14,10 @@ Make the `fjall` database reads and writes faster when serialization / deseriali
 
 ## Tasks
 
-* Run the [timing command](#timing-command)
-* Refactor the CacheDownloadCommand and CacheGammaEventsListDateCascadesCommand to use `bitcode` instead of `serde_json`
-  * Keep the user-facing output in JSON
-* Run the [timing command](#timing-command) again (ensure that the time is lower)
+- Run the [timing command](#timing-command)
+- Refactor the CacheDownloadCommand and CacheGammaEventsListDateCascadesCommand to use `bitcode` instead of `serde_json`
+  - Keep the user-facing output in JSON
+- Run the [timing command](#timing-command) again (ensure that the time is lower)
 
 ## Definitions
 
@@ -27,6 +27,6 @@ Make the `fjall` database reads and writes faster when serialization / deseriali
 
 ## Notes
 
-* Use latest <https://crates.io/crates/bitcode>
-  * Enable the `serde` integration feature
-* In your report, mention the issues that you ran into during implementation
+- Use latest <https://crates.io/crates/bitcode>
+  - Enable the `serde` integration feature
+- In your report, mention the issues that you ran into during implementation

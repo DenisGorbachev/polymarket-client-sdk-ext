@@ -51,7 +51,7 @@ Write code that minimizes losses:
   - Then:
     - Keep them.
     - Don't mention them.
-- If you notice incorrect code, tell me.
+- If you see a code item or spec requirement that is unnecessary or incorrect, tell me.
 - If you have to apply a workaround:
   - Then:
     - Add a comment next to workaround explaining why it is necessary.
@@ -696,21 +696,21 @@ A Rust package that implements a Polymarket client with more precise types than 
 
 Notes:
 
-* Naming:
-  * `polymarket-client-sdk-ext` is a package
-  * `polymarket_client_sdk_ext` is a crate
+- Naming:
+  - `polymarket-client-sdk-ext` is a package
+  - `polymarket_client_sdk_ext` is a crate
 
 Requirements:
 
-* If the type derives both the `serde` and `rkyv` traits
-  * Then: the derive macros must be prefixed with the crate name (for example: `serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize`)
-  * Else: the derive macros must not be prefixed with the crate name (for example: `Serialize, Deserialize`)
-* Derive macros must be in the following order:
-  * `derive_new`
-  * `derive_more`
-  * `serde`
-  * `rkyv`
-  * `core`
+- If the type derives both the `serde` and `rkyv` traits
+  - Then: the derive macros must be prefixed with the crate name (for example: `serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize`)
+  - Else: the derive macros must not be prefixed with the crate name (for example: `Serialize, Deserialize`)
+- Derive macros must be in the following order:
+  - `derive_new`
+  - `derive_more`
+  - `serde`
+  - `rkyv`
+  - `core`
 
 #### Action envelope
 
@@ -718,7 +718,7 @@ An envelope enum that has one variant per active method in `polymarket_client_sd
 
 Requirements:
 
-* Every variant must be a tuple variant which must contain a single [action](#action).
+- Every variant must be a tuple variant which must contain a single [action](#action).
 
 #### Action
 
@@ -734,8 +734,8 @@ A request that mutates the Polymarket exchange state.
 
 Examples:
 
-* A request to place an order.
-* A request to cancel an order.
+- A request to place an order.
+- A request to cancel an order.
 
 #### Foundational crate
 
@@ -747,7 +747,7 @@ Data received from the API.
 
 Examples:
 
-* A list of Polymarket markets.
+- A list of Polymarket markets.
 
 #### External data test
 
@@ -755,11 +755,11 @@ A test fn that reads external data.
 
 Requirements:
 
-* Must read the external data from cache, so that the test still runs quickly.
-* Must report an error if the cache is not present and REFRESH_TEST_CACHE is unset or falsy.
-* Must refresh the cache if REFRESH_TEST_CACHE env var is set to a truthy value.
-  * Must write [progress report lines](#progress-report-line) to stderr during cache refresh.
-  * Must overwrite existing data only after the new data has been downloaded completely.
+- Must read the external data from cache, so that the test still runs quickly.
+- Must report an error if the cache is not present and REFRESH_TEST_CACHE is unset or falsy.
+- Must refresh the cache if REFRESH_TEST_CACHE env var is set to a truthy value.
+  - Must write [progress report lines](#progress-report-line) to stderr during cache refresh.
+  - Must overwrite existing data only after the new data has been downloaded completely.
 
 #### External data test cache
 
@@ -767,11 +767,11 @@ A file with cached external data.
 
 Requirements:
 
-* Must be in a [streaming data format](#streaming-data-format).
+- Must be in a [streaming data format](#streaming-data-format).
 
 Notes:
 
-* The file modification date is the latest cache write date.
+- The file modification date is the latest cache write date.
 
 #### Progress report line
 
@@ -779,8 +779,8 @@ A string with a verb in present continuous tense that contains a count of proces
 
 Examples:
 
-* "Downloading objects: 10 / 158"
-* "Downloading objects: 10 so far"
+- "Downloading objects: 10 / 158"
+- "Downloading objects: 10 so far"
 
 Implementation:
 
@@ -800,8 +800,8 @@ A data format that allows streaming the individual data objects.
 
 Examples:
 
-* JSONL
-* CSV
+- JSONL
+- CSV
 
 #### Extension type
 
@@ -809,17 +809,17 @@ A type that carries the same data as the type from [foundational crate](#foundat
 
 Requirements:
 
-* Must derive the following traits: serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug
+- Must derive the following traits: serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug
 
 Example names:
 
-* `ClobMarketResponsePrecise`
-* `GammaEventPrecise` (note: this type may not exist yet)
+- `ClobMarketResponsePrecise`
+- `GammaEventPrecise` (note: this type may not exist yet)
 
 Notes:
 
-* Extension type can be more precise than the original type.
-* As of now, the extension types have a `Precise` suffix
+- Extension type can be more precise than the original type.
+- As of now, the extension types have a `Precise` suffix
 
 #### Polymarket CLOB read method
 
@@ -829,11 +829,11 @@ A method that reads the data from a Polymarket CLOB API.
 
 A command that downloads the data from the API and stores it in a local database.
 
-* Must convert the original types to [extension types](#extension-type)
-* Must validate that the value of extension type can be losslessly converted back into original type, and the converted value is equal to original value
-* Must serialize the extension types via `rkyv` (note: the previous version of `CacheDownloadCommand` used postcard)
-* Must save the serialized data to database
-  * Must use the same keyspace name as the type name
+- Must convert the original types to [extension types](#extension-type)
+- Must validate that the value of extension type can be losslessly converted back into original type, and the converted value is equal to original value
+- Must serialize the extension types via `rkyv` (note: the previous version of `CacheDownloadCommand` used postcard)
+- Must save the serialized data to database
+  - Must use the same keyspace name as the type name
 
 #### CacheCheckCommand
 
@@ -841,9 +841,9 @@ A command that outputs statistics for a dataset.
 
 Requirements:
 
-* Must support a `--view` (`PropertyDistributionViewName`)
-* Must build an iter of `PropertyDistribution` (note: the previous version of the command used `ViolationStatsMap`)
-* Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines
+- Must support a `--view` (`PropertyDistributionViewName`)
+- Must build an iter of `PropertyDistribution` (note: the previous version of the command used `ViolationStatsMap`)
+- Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines
 
 #### ClobPlaceLimitOrderCommand
 
@@ -851,15 +851,15 @@ A command that places a CLOB limit order.
 
 Requirements:
 
-* Must be callable as `clob place-limit-order`
-* Must accept and proxy all limit-order builder inputs: `token_id`, `side`, `price`, `size`, `nonce`, `expiration`, `taker`, `order_type`, `post_only`.
-* Must accept and proxy all client-auth inputs required to sign and send the order: `host`, `chain_id`, `signature_type`, `funder`, `private_key`.
-* Must allow to supply `private_key` from environment variable.
-* Must treat generated cryptographic/order data (`salt`, `signature`) as foundational-crate outputs, not CLI inputs.
-* Must output the response serialized via `serde_json`.
-* Must have methods:
-  * `run`
-    * Must use `polymarket_client_sdk::clob::Client::limit_order`
+- Must be callable as `clob place-limit-order`
+- Must accept and proxy all limit-order builder inputs: `token_id`, `side`, `price`, `size`, `nonce`, `expiration`, `taker`, `order_type`, `post_only`.
+- Must accept and proxy all client-auth inputs required to sign and send the order: `host`, `chain_id`, `signature_type`, `funder`, `private_key`.
+- Must allow to supply `private_key` from environment variable.
+- Must treat generated cryptographic/order data (`salt`, `signature`) as foundational-crate outputs, not CLI inputs.
+- Must output the response serialized via `serde_json`.
+- Must have methods:
+  - `run`
+    - Must use `polymarket_client_sdk::clob::Client::limit_order`
 
 ### Polymarket knowledge
 
@@ -867,7 +867,7 @@ Requirements:
 
 - Polymarket has an [LLM-friendly documentation index](https://docs.polymarket.com/llms.txt).
   - All files from this index have already been downloaded to `.agents/docs/polymarket` on 2026-01-22
-  - To download again, execute [Download Polymarket Docs for Developers](../specs/download-polymarket-docs.md) (TODO: turn this file into a shell task in .mise folder)
+  - To download again, execute [Download Polymarket Docs for Developers](specs/download-polymarket-docs.md) (TODO: turn this file into a shell task in .mise folder)
 
 #### Servers
 
@@ -949,7 +949,7 @@ Requirements:
 
 Read the extra docs from the dirs below if they are relevant to your current task. Use `fd --type file . {dir}` to list all files in a dir.
 
-* `.agents/docs/docs.polymarket.com` contains Polymarket API docs (Gamma, CLOB, WebSocket)
+- `.agents/docs/docs.polymarket.com` contains Polymarket API docs (Gamma, CLOB, WebSocket)
 
 ### Error handling
 
@@ -959,35 +959,35 @@ Every fallible function must return an error with enough data for the caller to 
 
 #### Guidelines
 
-* Use `handle!` instead of `?` try operator to unwrap `Result` types
-* Use `handle!` instead of `Result::map_err`
-* Use `handle_opt!` instead of `?` try operator to unwrap `Option` types
-* Use `handle_opt!` instead of `Option::ok_or` and `Option::ok_or_else`
-* Use `handle_bool!` instead of `if condition { return Err(...) }` to return an error if some condition is true
-* Use `handle_iter!` or `handle_iter_of_refs!` to collect and return errors from iterators
-* Use `handle_into_iter!` to handle errors in collections that implement `IntoIterator` (including `Vec` and `HashMap`)
-* Calls to macros that begin with `handle` must not contain calls to `clone` (must not contain `.clone()`)
-  * Rationale: there is no need to clone the variables because the macros consume them only in the error branch, and the error branch contains a `return` statement. The variables are not consumed in the success branch, so you can always use them in the subsequent code.
-* Don't convert a `Result` into an `Option`, always propagate the error up the call stack
-* Don't use `unwrap` or `expect`
-* Don't return strings as errors
-* Every fallible function must return a unique error type, even if it contains only one fallible expression
-* Every call to another fallible function must be wrapped in a unique error enum variant
-* Every fallible function body must begin with `use ThisFunctionError::*;`, where `ThisFunctionError` must be the name of this function's error enum (for example: `use ParseConfigError::*;`)
-* Every fallible function body must use the error enum variant names without the error enum name prefix (for example: `ReadFileFailed` instead of `ParseConfigError::ReadFileFailed`)
-* Every error type must be an enum
-* Every error type must derive `Error` via `thiserror` v2
-* Every error type must be located in the same file as the function that returns it below other non-mod items
-* Every error enum variant must be a struct variant
-* Every error enum variant must contain one field per owned variable that is relevant to the fallible expression that this variant wraps
-  * The relevant variable is a variable whose value determines whether the fallible expression returns an `Ok` or an `Err`
-* Every error enum variant must have fields only for [`data types`](#data-type), not for [`non-data types`](#non-data-type)
-* Every error enum variant must have an `#[error]` attribute
-  * The `#[error]` attribute must contain the error message displayed for the user
-  * The `#[error]` attribute must not contain the `source` field
-  * The `#[error]` attribute should contain only those fields that can be displayed on one line
-  * If the `#[error]` attribute contains fields that implement `Display`, then those fields must be output using `Display` formatting (not `Debug` formatting)
-    * Good:
+- Use `handle!` instead of `?` try operator to unwrap `Result` types
+- Use `handle!` instead of `Result::map_err`
+- Use `handle_opt!` instead of `?` try operator to unwrap `Option` types
+- Use `handle_opt!` instead of `Option::ok_or` and `Option::ok_or_else`
+- Use `handle_bool!` instead of `if condition { return Err(...) }` to return an error if some condition is true
+- Use `handle_iter!` or `handle_iter_of_refs!` to collect and return errors from iterators
+- Use `handle_into_iter!` to handle errors in collections that implement `IntoIterator` (including `Vec` and `HashMap`)
+- Calls to macros that begin with `handle` must not contain calls to `clone` (must not contain `.clone()`)
+  - Rationale: there is no need to clone the variables because the macros consume them only in the error branch, and the error branch contains a `return` statement. The variables are not consumed in the success branch, so you can always use them in the subsequent code.
+- Don't convert a `Result` into an `Option`, always propagate the error up the call stack
+- Don't use `unwrap` or `expect`
+- Don't return strings as errors
+- Every fallible function must return a unique error type, even if it contains only one fallible expression
+- Every call to another fallible function must be wrapped in a unique error enum variant
+- Every fallible function body must begin with `use ThisFunctionError::*;`, where `ThisFunctionError` must be the name of this function's error enum (for example: `use ParseConfigError::*;`)
+- Every fallible function body must use the error enum variant names without the error enum name prefix (for example: `ReadFileFailed` instead of `ParseConfigError::ReadFileFailed`)
+- Every error type must be an enum
+- Every error type must derive `Error` via `thiserror` v2
+- Every error type must be located in the same file as the function that returns it below other non-mod items
+- Every error enum variant must be a struct variant
+- Every error enum variant must contain one field per owned variable that is relevant to the fallible expression that this variant wraps
+  - The relevant variable is a variable whose value determines whether the fallible expression returns an `Ok` or an `Err`
+- Every error enum variant must have fields only for [`data types`](#data-type), not for [`non-data types`](#non-data-type)
+- Every error enum variant must have an `#[error]` attribute
+  - The `#[error]` attribute must contain the error message displayed for the user
+  - The `#[error]` attribute must not contain the `source` field
+  - The `#[error]` attribute should contain only those fields that can be displayed on one line
+  - If the `#[error]` attribute contains fields that implement `Display`, then those fields must be output using `Display` formatting (not `Debug` formatting)
+    - Good:
       ```rust
       #[derive(Error, Debug)]
       pub enum QueryFailed {
@@ -995,7 +995,7 @@ Every fallible function must return an error with enough data for the caller to 
           TaskNotFound { query: String }
       }
       ```
-    * Bad:
+    - Bad:
       ```rust
       #[derive(Error, Debug)]
       pub enum QueryFailed {
@@ -1003,34 +1003,34 @@ Every fallible function must return an error with enough data for the caller to 
           TaskNotFound { query: String }
       }
       ```
-  * If the `#[error]` attribute contains fields whose values may be rendered as [hard-to-see string](#hard-to-see-string), then those fields must be wrapped in single quotes:
-    * `name` can be rendered as hard-to-see string, so it must be wrapped in single quotes:
-      * Good: `#[error("user '{name}' not found")]`
-      * Bad: `#[error("user {name} not found")]`
-    * `len` can't be rendered as hard-to-see string, so it must not be wrapped in single quotes:
-      * Good: `#[error("failed to parse {len} responses", len = responses.len())]`
-      * Bad: `#[error("failed to parse '{len}' responses", len = responses.len())]`
-  * If the error enum variant has a field whose type is `std::process::Command` or `tokio::process::Command`, it must be rendered in the error message in backticks via `render_command` function from `errgonomic` crate (requires `process` feature)
-* If the error enum variant has a `source` field, then this field must be the first field
-* If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
-* Every error enum variant field must have an owned type (not a reference)
-* Every error enum variant field must not have a `#[from]` attribute
-* Every variable that contains secret data (the one which must not be displayed or logged, e.g. password, API key, personally identifying information) must have a type that doesn't output the underlying data in the `Debug` and `Display` impls (e.g. `secrecy::SecretBox`)
-* The code that calls a fallible function on each element of a collection should return an `impl Iterator<Item = Result<T, E>>` instead of short-circuiting on the first error
-* If Clippy outputs a `result_large_err` warning, then the large fields of the error enum must be wrapped in a `Box`
-* If an argument of callee implements `Copy`, the callee should not include it in the list of error enum variant fields (the caller must include it because of the rule to include all relevant owned variables)
-* If you see a function that returns a `Result` whose last argument is `()` (e.g. `Result<(), ()>`, `Result<T, ()>`, `Result<u32, ()>`), then you must fix the error handling in this function according to the guidelines and replace `()` with a proper error type
+  - If the `#[error]` attribute contains fields whose values may be rendered as [hard-to-see string](#hard-to-see-string), then those fields must be wrapped in single quotes:
+    - `name` can be rendered as hard-to-see string, so it must be wrapped in single quotes:
+      - Good: `#[error("user '{name}' not found")]`
+      - Bad: `#[error("user {name} not found")]`
+    - `len` can't be rendered as hard-to-see string, so it must not be wrapped in single quotes:
+      - Good: `#[error("failed to parse {len} responses", len = responses.len())]`
+      - Bad: `#[error("failed to parse '{len}' responses", len = responses.len())]`
+  - If the error enum variant has a field whose type is `std::process::Command` or `tokio::process::Command`, it must be rendered in the error message in backticks via `render_command` function from `errgonomic` crate (requires `process` feature)
+- If the error enum variant has a `source` field, then this field must be the first field
+- If each field of each variant of the error enum implements `Copy`, then the error enum must implement `Copy` too
+- Every error enum variant field must have an owned type (not a reference)
+- Every error enum variant field must not have a `#[from]` attribute
+- Every variable that contains secret data (the one which must not be displayed or logged, e.g. password, API key, personally identifying information) must have a type that doesn't output the underlying data in the `Debug` and `Display` impls (e.g. `secrecy::SecretBox`)
+- The code that calls a fallible function on each element of a collection should return an `impl Iterator<Item = Result<T, E>>` instead of short-circuiting on the first error
+- If Clippy outputs a `result_large_err` warning, then the large fields of the error enum must be wrapped in a `Box`
+- If an argument of callee implements `Copy`, the callee should not include it in the list of error enum variant fields (the caller must include it because of the rule to include all relevant owned variables)
+- If you see a function that returns a `Result` whose last argument is `()` (e.g. `Result<(), ()>`, `Result<T, ()>`, `Result<u32, ()>`), then you must fix the error handling in this function according to the guidelines and replace `()` with a proper error type
 
 ##### Naming
 
-* The name of the error enum must end with `Error` (for example: `ParseConfigError`)
-* The name of the error enum variant should end with `Failed` or `NotFound` or `Invalid` (for example: `ReadFileFailed`, `UserNotFound`, `PasswordInvalid`)
-* If the error variant name is associated with a child function call, the name of the error variant must be equal to the name of the function converted to CamelCase concatenated with `Failed` (for example: if the parent function calls `read_file`, then it should call it like this: `handle!(read_file(&path), ReadFileFailed, path)`
-* The name of the error enum must include the name of the function converted to CamelCase
-  * If the function is a freestanding function, the name of the error type must be exactly equal to the name of the function converted to CamelCase concatenated with `Error`
-  * If the function is an associated function, the name of the error type must be exactly equal to the name of the type without generics concatenated with the name of the function in CamelCase concatenated with `Error`
-  * If the error is specified as an associated type of a foreign trait with multiple functions that return this associated error type, then the name of the error type must be exactly equal to the name of the trait including generics concatenated with the name of the type for which this trait is implemented concatenated with `Error`
-* Every `impl TryFrom<A> for B` must use a special form of error handling that matches on multiple variables at once and returns a single error that contains fields for all available variables. For example:
+- The name of the error enum must end with `Error` (for example: `ParseConfigError`)
+- The name of the error enum variant should end with `Failed` or `NotFound` or `Invalid` (for example: `ReadFileFailed`, `UserNotFound`, `PasswordInvalid`)
+- If the error variant name is associated with a child function call, the name of the error variant must be equal to the name of the function converted to CamelCase concatenated with `Failed` (for example: if the parent function calls `read_file`, then it should call it like this: `handle!(read_file(&path), ReadFileFailed, path)`
+- The name of the error enum must include the name of the function converted to CamelCase
+  - If the function is a freestanding function, the name of the error type must be exactly equal to the name of the function converted to CamelCase concatenated with `Error`
+  - If the function is an associated function, the name of the error type must be exactly equal to the name of the type without generics concatenated with the name of the function in CamelCase concatenated with `Error`
+  - If the error is specified as an associated type of a foreign trait with multiple functions that return this associated error type, then the name of the error type must be exactly equal to the name of the trait including generics concatenated with the name of the type for which this trait is implemented concatenated with `Error`
+- Every `impl TryFrom<A> for B` must use a special form of error handling that matches on multiple variables at once and returns a single error that contains fields for all available variables. For example:
   ```rust
   #[derive(Getters, Clone, Debug)]
   pub struct Human {
@@ -1096,9 +1096,9 @@ A type that holds the actual data.
 
 Examples:
 
-* `bool`
-* `String`
-* `PathBuf`
+- `bool`
+- `String`
+- `PathBuf`
 
 ##### Non-data type
 
@@ -1106,8 +1106,8 @@ A type that doesn't hold the actual data.
 
 Examples:
 
-* `RestClient` doesn't point to the actual data, it only allows querying it.
-* `DatabaseConnection` doesn't hold the actual data, it only allows querying it.
+- `RestClient` doesn't point to the actual data, it only allows querying it.
+- `DatabaseConnection` doesn't hold the actual data, it only allows querying it.
 
 ##### Hard-to-see string
 
@@ -1660,153 +1660,153 @@ mod tests {
 
 Read the extra docs from the list below if they are relevant to your current task:
 
-* .agents/docs/docs.polymarket.com/api-reference/bridge/create-deposit-addresses.md
-* .agents/docs/docs.polymarket.com/api-reference/bridge/get-supported-assets.md
-* .agents/docs/docs.polymarket.com/api-reference/builders/get-aggregated-builder-leaderboard.md
-* .agents/docs/docs.polymarket.com/api-reference/builders/get-daily-builder-volume-time-series.md
-* .agents/docs/docs.polymarket.com/api-reference/comments/get-comments-by-comment-id.md
-* .agents/docs/docs.polymarket.com/api-reference/comments/get-comments-by-user-address.md
-* .agents/docs/docs.polymarket.com/api-reference/comments/list-comments.md
-* .agents/docs/docs.polymarket.com/api-reference/core/get-closed-positions-for-a-user.md
-* .agents/docs/docs.polymarket.com/api-reference/core/get-current-positions-for-a-user.md
-* .agents/docs/docs.polymarket.com/api-reference/core/get-top-holders-for-markets.md
-* .agents/docs/docs.polymarket.com/api-reference/core/get-total-value-of-a-users-positions.md
-* .agents/docs/docs.polymarket.com/api-reference/core/get-trader-leaderboard-rankings.md
-* .agents/docs/docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets.md
-* .agents/docs/docs.polymarket.com/api-reference/core/get-user-activity.md
-* .agents/docs/docs.polymarket.com/api-reference/data-api-status/data-api-health-check.md
-* .agents/docs/docs.polymarket.com/api-reference/events/get-event-by-id.md
-* .agents/docs/docs.polymarket.com/api-reference/events/get-event-by-slug.md
-* .agents/docs/docs.polymarket.com/api-reference/events/get-event-tags.md
-* .agents/docs/docs.polymarket.com/api-reference/events/list-events.md
-* .agents/docs/docs.polymarket.com/api-reference/gamma-status/gamma-api-health-check.md
-* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-by-id.md
-* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-by-slug.md
-* .agents/docs/docs.polymarket.com/api-reference/markets/get-market-tags-by-id.md
-* .agents/docs/docs.polymarket.com/api-reference/markets/list-markets.md
-* .agents/docs/docs.polymarket.com/api-reference/misc/get-live-volume-for-an-event.md
-* .agents/docs/docs.polymarket.com/api-reference/misc/get-open-interest.md
-* .agents/docs/docs.polymarket.com/api-reference/misc/get-total-markets-a-user-has-traded.md
-* .agents/docs/docs.polymarket.com/api-reference/orderbook/get-multiple-order-books-summaries-by-request.md
-* .agents/docs/docs.polymarket.com/api-reference/orderbook/get-order-book-summary.md
-* .agents/docs/docs.polymarket.com/api-reference/pricing/get-market-price.md
-* .agents/docs/docs.polymarket.com/api-reference/pricing/get-midpoint-price.md
-* .agents/docs/docs.polymarket.com/api-reference/pricing/get-multiple-market-prices-by-request.md
-* .agents/docs/docs.polymarket.com/api-reference/pricing/get-multiple-market-prices.md
-* .agents/docs/docs.polymarket.com/api-reference/pricing/get-price-history-for-a-traded-token.md
-* .agents/docs/docs.polymarket.com/api-reference/profiles/get-public-profile-by-wallet-address.md
-* .agents/docs/docs.polymarket.com/api-reference/search/search-markets-events-and-profiles.md
-* .agents/docs/docs.polymarket.com/api-reference/series/get-series-by-id.md
-* .agents/docs/docs.polymarket.com/api-reference/series/list-series.md
-* .agents/docs/docs.polymarket.com/api-reference/sports/get-sports-metadata-information.md
-* .agents/docs/docs.polymarket.com/api-reference/sports/get-valid-sports-market-types.md
-* .agents/docs/docs.polymarket.com/api-reference/sports/list-teams.md
-* .agents/docs/docs.polymarket.com/api-reference/spreads/get-bid-ask-spreads.md
-* .agents/docs/docs.polymarket.com/api-reference/tags/get-related-tags-relationships-by-tag-id.md
-* .agents/docs/docs.polymarket.com/api-reference/tags/get-related-tags-relationships-by-tag-slug.md
-* .agents/docs/docs.polymarket.com/api-reference/tags/get-tag-by-id.md
-* .agents/docs/docs.polymarket.com/api-reference/tags/get-tag-by-slug.md
-* .agents/docs/docs.polymarket.com/api-reference/tags/get-tags-related-to-a-tag-id.md
-* .agents/docs/docs.polymarket.com/api-reference/tags/get-tags-related-to-a-tag-slug.md
-* .agents/docs/docs.polymarket.com/api-reference/tags/list-tags.md
-* .agents/docs/docs.polymarket.com/changelog/changelog.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/authentication.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-builder.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-l1.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-l2.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-overview.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-public.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/geoblock.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/introduction.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/orders/cancel-orders.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/orders/check-scoring.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/orders/create-order-batch.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/orders/create-order.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/orders/get-active-order.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/orders/get-order.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/orders/onchain-order-info.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/orders/orders.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/quickstart.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/status.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/timeseries.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/trades/trades-overview.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/trades/trades.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/market-channel.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/user-channel.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/wss-auth.md
-* .agents/docs/docs.polymarket.com/developers/CLOB/websocket/wss-overview.md
-* .agents/docs/docs.polymarket.com/developers/CTF/deployment-resources.md
-* .agents/docs/docs.polymarket.com/developers/CTF/merge.md
-* .agents/docs/docs.polymarket.com/developers/CTF/overview.md
-* .agents/docs/docs.polymarket.com/developers/CTF/redeem.md
-* .agents/docs/docs.polymarket.com/developers/CTF/split.md
-* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-comments.md
-* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-crypto-prices.md
-* .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-overview.md
-* .agents/docs/docs.polymarket.com/developers/builders/builder-intro.md
-* .agents/docs/docs.polymarket.com/developers/builders/builder-profile.md
-* .agents/docs/docs.polymarket.com/developers/builders/builder-tiers.md
-* .agents/docs/docs.polymarket.com/developers/builders/examples.md
-* .agents/docs/docs.polymarket.com/developers/builders/order-attribution.md
-* .agents/docs/docs.polymarket.com/developers/builders/relayer-client.md
-* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/fetch-markets-guide.md
-* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/gamma-structure.md
-* .agents/docs/docs.polymarket.com/developers/gamma-markets-api/overview.md
-* .agents/docs/docs.polymarket.com/developers/market-makers/data-feeds.md
-* .agents/docs/docs.polymarket.com/developers/market-makers/introduction.md
-* .agents/docs/docs.polymarket.com/developers/market-makers/inventory.md
-* .agents/docs/docs.polymarket.com/developers/market-makers/liquidity-rewards.md
-* .agents/docs/docs.polymarket.com/developers/market-makers/maker-rebates-program.md
-* .agents/docs/docs.polymarket.com/developers/market-makers/setup.md
-* .agents/docs/docs.polymarket.com/developers/market-makers/trading.md
-* .agents/docs/docs.polymarket.com/developers/misc-endpoints/bridge-overview.md
-* .agents/docs/docs.polymarket.com/developers/neg-risk/overview.md
-* .agents/docs/docs.polymarket.com/developers/proxy-wallet.md
-* .agents/docs/docs.polymarket.com/developers/resolution/UMA.md
-* .agents/docs/docs.polymarket.com/developers/subgraph/overview.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/does-polymarket-have-an-api.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/embeds.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/geoblocking.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/how-to-export-private-key.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/is-my-money-safe.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/is-polymarket-the-house.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/polling.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/recover-missing-deposit.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/sell-early.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/support.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/wen-token.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/what-are-prediction-markets.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/why-do-i-need-crypto.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/coinbase.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/how-to-withdraw.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/large-cross-chain-deposits.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/moonpay.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/supported-tokens.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/deposits/usdc-on-eth.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/how-to-deposit.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/how-to-signup.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/making-your-first-trade.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/get-started/what-is-polymarket.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/markets/dispute.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-clarified.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-created.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-resolved.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/fees.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/holding-rewards.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/how-are-prices-calculated.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/limit-orders.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/liquidity-rewards.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/maker-rebates-program.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/market-orders.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/no-limits.md
-* .agents/docs/docs.polymarket.com/polymarket-learn/trading/using-the-orderbook.md
-* .agents/docs/docs.polymarket.com/quickstart/fetching-data.md
-* .agents/docs/docs.polymarket.com/quickstart/first-order.md
-* .agents/docs/docs.polymarket.com/quickstart/introduction/rate-limits.md
-* .agents/docs/docs.polymarket.com/quickstart/overview.md
-* .agents/docs/docs.polymarket.com/quickstart/reference/endpoints.md
-* .agents/docs/docs.polymarket.com/quickstart/reference/glossary.md
-* .agents/docs/docs.polymarket.com/quickstart/websocket/WSS-Quickstart.md
+- .agents/docs/docs.polymarket.com/api-reference/bridge/create-deposit-addresses.md
+- .agents/docs/docs.polymarket.com/api-reference/bridge/get-supported-assets.md
+- .agents/docs/docs.polymarket.com/api-reference/builders/get-aggregated-builder-leaderboard.md
+- .agents/docs/docs.polymarket.com/api-reference/builders/get-daily-builder-volume-time-series.md
+- .agents/docs/docs.polymarket.com/api-reference/comments/get-comments-by-comment-id.md
+- .agents/docs/docs.polymarket.com/api-reference/comments/get-comments-by-user-address.md
+- .agents/docs/docs.polymarket.com/api-reference/comments/list-comments.md
+- .agents/docs/docs.polymarket.com/api-reference/core/get-closed-positions-for-a-user.md
+- .agents/docs/docs.polymarket.com/api-reference/core/get-current-positions-for-a-user.md
+- .agents/docs/docs.polymarket.com/api-reference/core/get-top-holders-for-markets.md
+- .agents/docs/docs.polymarket.com/api-reference/core/get-total-value-of-a-users-positions.md
+- .agents/docs/docs.polymarket.com/api-reference/core/get-trader-leaderboard-rankings.md
+- .agents/docs/docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets.md
+- .agents/docs/docs.polymarket.com/api-reference/core/get-user-activity.md
+- .agents/docs/docs.polymarket.com/api-reference/data-api-status/data-api-health-check.md
+- .agents/docs/docs.polymarket.com/api-reference/events/get-event-by-id.md
+- .agents/docs/docs.polymarket.com/api-reference/events/get-event-by-slug.md
+- .agents/docs/docs.polymarket.com/api-reference/events/get-event-tags.md
+- .agents/docs/docs.polymarket.com/api-reference/events/list-events.md
+- .agents/docs/docs.polymarket.com/api-reference/gamma-status/gamma-api-health-check.md
+- .agents/docs/docs.polymarket.com/api-reference/markets/get-market-by-id.md
+- .agents/docs/docs.polymarket.com/api-reference/markets/get-market-by-slug.md
+- .agents/docs/docs.polymarket.com/api-reference/markets/get-market-tags-by-id.md
+- .agents/docs/docs.polymarket.com/api-reference/markets/list-markets.md
+- .agents/docs/docs.polymarket.com/api-reference/misc/get-live-volume-for-an-event.md
+- .agents/docs/docs.polymarket.com/api-reference/misc/get-open-interest.md
+- .agents/docs/docs.polymarket.com/api-reference/misc/get-total-markets-a-user-has-traded.md
+- .agents/docs/docs.polymarket.com/api-reference/orderbook/get-multiple-order-books-summaries-by-request.md
+- .agents/docs/docs.polymarket.com/api-reference/orderbook/get-order-book-summary.md
+- .agents/docs/docs.polymarket.com/api-reference/pricing/get-market-price.md
+- .agents/docs/docs.polymarket.com/api-reference/pricing/get-midpoint-price.md
+- .agents/docs/docs.polymarket.com/api-reference/pricing/get-multiple-market-prices-by-request.md
+- .agents/docs/docs.polymarket.com/api-reference/pricing/get-multiple-market-prices.md
+- .agents/docs/docs.polymarket.com/api-reference/pricing/get-price-history-for-a-traded-token.md
+- .agents/docs/docs.polymarket.com/api-reference/profiles/get-public-profile-by-wallet-address.md
+- .agents/docs/docs.polymarket.com/api-reference/search/search-markets-events-and-profiles.md
+- .agents/docs/docs.polymarket.com/api-reference/series/get-series-by-id.md
+- .agents/docs/docs.polymarket.com/api-reference/series/list-series.md
+- .agents/docs/docs.polymarket.com/api-reference/sports/get-sports-metadata-information.md
+- .agents/docs/docs.polymarket.com/api-reference/sports/get-valid-sports-market-types.md
+- .agents/docs/docs.polymarket.com/api-reference/sports/list-teams.md
+- .agents/docs/docs.polymarket.com/api-reference/spreads/get-bid-ask-spreads.md
+- .agents/docs/docs.polymarket.com/api-reference/tags/get-related-tags-relationships-by-tag-id.md
+- .agents/docs/docs.polymarket.com/api-reference/tags/get-related-tags-relationships-by-tag-slug.md
+- .agents/docs/docs.polymarket.com/api-reference/tags/get-tag-by-id.md
+- .agents/docs/docs.polymarket.com/api-reference/tags/get-tag-by-slug.md
+- .agents/docs/docs.polymarket.com/api-reference/tags/get-tags-related-to-a-tag-id.md
+- .agents/docs/docs.polymarket.com/api-reference/tags/get-tags-related-to-a-tag-slug.md
+- .agents/docs/docs.polymarket.com/api-reference/tags/list-tags.md
+- .agents/docs/docs.polymarket.com/changelog/changelog.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/authentication.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-builder.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-l1.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-l2.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-overview.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/clients/methods-public.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/geoblock.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/introduction.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/orders/cancel-orders.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/orders/check-scoring.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/orders/create-order-batch.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/orders/create-order.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/orders/get-active-order.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/orders/get-order.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/orders/onchain-order-info.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/orders/orders.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/quickstart.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/status.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/timeseries.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/trades/trades-overview.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/trades/trades.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/websocket/market-channel.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/websocket/user-channel.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/websocket/wss-auth.md
+- .agents/docs/docs.polymarket.com/developers/CLOB/websocket/wss-overview.md
+- .agents/docs/docs.polymarket.com/developers/CTF/deployment-resources.md
+- .agents/docs/docs.polymarket.com/developers/CTF/merge.md
+- .agents/docs/docs.polymarket.com/developers/CTF/overview.md
+- .agents/docs/docs.polymarket.com/developers/CTF/redeem.md
+- .agents/docs/docs.polymarket.com/developers/CTF/split.md
+- .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-comments.md
+- .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-crypto-prices.md
+- .agents/docs/docs.polymarket.com/developers/RTDS/RTDS-overview.md
+- .agents/docs/docs.polymarket.com/developers/builders/builder-intro.md
+- .agents/docs/docs.polymarket.com/developers/builders/builder-profile.md
+- .agents/docs/docs.polymarket.com/developers/builders/builder-tiers.md
+- .agents/docs/docs.polymarket.com/developers/builders/examples.md
+- .agents/docs/docs.polymarket.com/developers/builders/order-attribution.md
+- .agents/docs/docs.polymarket.com/developers/builders/relayer-client.md
+- .agents/docs/docs.polymarket.com/developers/gamma-markets-api/fetch-markets-guide.md
+- .agents/docs/docs.polymarket.com/developers/gamma-markets-api/gamma-structure.md
+- .agents/docs/docs.polymarket.com/developers/gamma-markets-api/overview.md
+- .agents/docs/docs.polymarket.com/developers/market-makers/data-feeds.md
+- .agents/docs/docs.polymarket.com/developers/market-makers/introduction.md
+- .agents/docs/docs.polymarket.com/developers/market-makers/inventory.md
+- .agents/docs/docs.polymarket.com/developers/market-makers/liquidity-rewards.md
+- .agents/docs/docs.polymarket.com/developers/market-makers/maker-rebates-program.md
+- .agents/docs/docs.polymarket.com/developers/market-makers/setup.md
+- .agents/docs/docs.polymarket.com/developers/market-makers/trading.md
+- .agents/docs/docs.polymarket.com/developers/misc-endpoints/bridge-overview.md
+- .agents/docs/docs.polymarket.com/developers/neg-risk/overview.md
+- .agents/docs/docs.polymarket.com/developers/proxy-wallet.md
+- .agents/docs/docs.polymarket.com/developers/resolution/UMA.md
+- .agents/docs/docs.polymarket.com/developers/subgraph/overview.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/does-polymarket-have-an-api.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/embeds.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/geoblocking.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/how-to-export-private-key.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/is-my-money-safe.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/is-polymarket-the-house.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/polling.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/recover-missing-deposit.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/sell-early.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/support.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/wen-token.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/what-are-prediction-markets.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/FAQ/why-do-i-need-crypto.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/deposits/coinbase.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/deposits/how-to-withdraw.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/deposits/large-cross-chain-deposits.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/deposits/moonpay.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/deposits/supported-tokens.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/deposits/usdc-on-eth.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/get-started/how-to-deposit.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/get-started/how-to-signup.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/get-started/making-your-first-trade.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/get-started/what-is-polymarket.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/markets/dispute.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-clarified.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-created.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/markets/how-are-markets-resolved.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/fees.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/holding-rewards.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/how-are-prices-calculated.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/limit-orders.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/liquidity-rewards.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/maker-rebates-program.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/market-orders.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/no-limits.md
+- .agents/docs/docs.polymarket.com/polymarket-learn/trading/using-the-orderbook.md
+- .agents/docs/docs.polymarket.com/quickstart/fetching-data.md
+- .agents/docs/docs.polymarket.com/quickstart/first-order.md
+- .agents/docs/docs.polymarket.com/quickstart/introduction/rate-limits.md
+- .agents/docs/docs.polymarket.com/quickstart/overview.md
+- .agents/docs/docs.polymarket.com/quickstart/reference/endpoints.md
+- .agents/docs/docs.polymarket.com/quickstart/reference/glossary.md
+- .agents/docs/docs.polymarket.com/quickstart/websocket/WSS-Quickstart.md
 
 ## Project files
 
@@ -1891,7 +1891,7 @@ run = '''shuck --config "lint.source-paths = ['$HOME']" check --extend-exclude '
 run = "rumdl check"
 
 [tasks."lint:generated"]
-run = ["./AGENTS.ts", "./README.ts"]
+run = [{ task = "md:gen", args = ["AGENTS.ts"] }, { task = "md:gen", args = ["README.ts"] }]
 
 [tasks."test:code"]
 depends = ["test:code:regular", "test:code:integration"]
@@ -1954,7 +1954,7 @@ run = "cargo fmt --all"
 [tasks."fix:docs"]
 depends = ["fix:agents", "fix:readme"]
 # use `rumdl check --fix` instead of `rumdl fmt` because `rumdl check --fix` exits with 1 if errors remain (since v0.1.0)
-run = "rumdl check --fix"
+run = [{ task = "lint:docs", args = ["--fix"] }]
 
 [tasks."fix:agents"]
 # "fix:agents" depends on "fix:code" because it reads the code files
@@ -1962,10 +1962,10 @@ depends = ["fix:name", "fix:configs", "fix:code"]
 run = [{ task = "gen:agents" }]
 
 [tasks."gen:readme"]
-run = "./README.ts --fix"
+run = [{ task = "md:gen", args = ["README.ts", "--fix"] }]
 
 [tasks."gen:agents"]
-run = "./AGENTS.ts --fix"
+run = [{ task = "md:gen", args = ["AGENTS.ts", "--fix"] }]
 
 [tasks."commitlint"]
 run = "commitlint --extends \"$(mise where npm:@commitlint/config-conventional)/node_modules/@commitlint/config-conventional/lib/index.js\""
@@ -2018,7 +2018,6 @@ exclude = [
     "specs",
     "AGENTS.ts",
     "CargoMetadata.ts",
-    "GeneratedFile.ts",
     "README.ts",
     "AGENTS*.md",
     "deno.lock",

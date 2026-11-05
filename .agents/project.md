@@ -6,21 +6,21 @@ A Rust package that implements a Polymarket client with more precise types than 
 
 Notes:
 
-* Naming:
-  * `polymarket-client-sdk-ext` is a package
-  * `polymarket_client_sdk_ext` is a crate
+- Naming:
+  - `polymarket-client-sdk-ext` is a package
+  - `polymarket_client_sdk_ext` is a crate
 
 Requirements:
 
-* If the type derives both the `serde` and `rkyv` traits
-  * Then: the derive macros must be prefixed with the crate name (for example: `serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize`)
-  * Else: the derive macros must not be prefixed with the crate name (for example: `Serialize, Deserialize`)
-* Derive macros must be in the following order:
-  * `derive_new`
-  * `derive_more`
-  * `serde`
-  * `rkyv`
-  * `core`
+- If the type derives both the `serde` and `rkyv` traits
+  - Then: the derive macros must be prefixed with the crate name (for example: `serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize`)
+  - Else: the derive macros must not be prefixed with the crate name (for example: `Serialize, Deserialize`)
+- Derive macros must be in the following order:
+  - `derive_new`
+  - `derive_more`
+  - `serde`
+  - `rkyv`
+  - `core`
 
 ## Action envelope
 
@@ -28,7 +28,7 @@ An envelope enum that has one variant per active method in `polymarket_client_sd
 
 Requirements:
 
-* Every variant must be a tuple variant which must contain a single [action](#action).
+- Every variant must be a tuple variant which must contain a single [action](#action).
 
 ## Action
 
@@ -44,8 +44,8 @@ A request that mutates the Polymarket exchange state.
 
 Examples:
 
-* A request to place an order.
-* A request to cancel an order.
+- A request to place an order.
+- A request to cancel an order.
 
 ## Foundational crate
 
@@ -57,7 +57,7 @@ Data received from the API.
 
 Examples:
 
-* A list of Polymarket markets.
+- A list of Polymarket markets.
 
 ## External data test
 
@@ -65,11 +65,11 @@ A test fn that reads external data.
 
 Requirements:
 
-* Must read the external data from cache, so that the test still runs quickly.
-* Must report an error if the cache is not present and REFRESH_TEST_CACHE is unset or falsy.
-* Must refresh the cache if REFRESH_TEST_CACHE env var is set to a truthy value.
-  * Must write [progress report lines](#progress-report-line) to stderr during cache refresh.
-  * Must overwrite existing data only after the new data has been downloaded completely.
+- Must read the external data from cache, so that the test still runs quickly.
+- Must report an error if the cache is not present and REFRESH_TEST_CACHE is unset or falsy.
+- Must refresh the cache if REFRESH_TEST_CACHE env var is set to a truthy value.
+  - Must write [progress report lines](#progress-report-line) to stderr during cache refresh.
+  - Must overwrite existing data only after the new data has been downloaded completely.
 
 ## External data test cache
 
@@ -77,11 +77,11 @@ A file with cached external data.
 
 Requirements:
 
-* Must be in a [streaming data format](#streaming-data-format).
+- Must be in a [streaming data format](#streaming-data-format).
 
 Notes:
 
-* The file modification date is the latest cache write date.
+- The file modification date is the latest cache write date.
 
 ## Progress report line
 
@@ -89,8 +89,8 @@ A string with a verb in present continuous tense that contains a count of proces
 
 Examples:
 
-* "Downloading objects: 10 / 158"
-* "Downloading objects: 10 so far"
+- "Downloading objects: 10 / 158"
+- "Downloading objects: 10 so far"
 
 Implementation:
 
@@ -110,8 +110,8 @@ A data format that allows streaming the individual data objects.
 
 Examples:
 
-* JSONL
-* CSV
+- JSONL
+- CSV
 
 ## Extension type
 
@@ -119,17 +119,17 @@ A type that carries the same data as the type from [foundational crate](#foundat
 
 Requirements:
 
-* Must derive the following traits: serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug
+- Must derive the following traits: serde::Serialize, serde::Deserialize, rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, PartialEq, Clone, Debug
 
 Example names:
 
-* `ClobMarketResponsePrecise`
-* `GammaEventPrecise` (note: this type may not exist yet)
+- `ClobMarketResponsePrecise`
+- `GammaEventPrecise` (note: this type may not exist yet)
 
 Notes:
 
-* Extension type can be more precise than the original type.
-* As of now, the extension types have a `Precise` suffix
+- Extension type can be more precise than the original type.
+- As of now, the extension types have a `Precise` suffix
 
 ## Polymarket CLOB read method
 
@@ -139,11 +139,11 @@ A method that reads the data from a Polymarket CLOB API.
 
 A command that downloads the data from the API and stores it in a local database.
 
-* Must convert the original types to [extension types](#extension-type)
-* Must validate that the value of extension type can be losslessly converted back into original type, and the converted value is equal to original value
-* Must serialize the extension types via `rkyv` (note: the previous version of `CacheDownloadCommand` used postcard)
-* Must save the serialized data to database
-  * Must use the same keyspace name as the type name
+- Must convert the original types to [extension types](#extension-type)
+- Must validate that the value of extension type can be losslessly converted back into original type, and the converted value is equal to original value
+- Must serialize the extension types via `rkyv` (note: the previous version of `CacheDownloadCommand` used postcard)
+- Must save the serialized data to database
+  - Must use the same keyspace name as the type name
 
 ## CacheCheckCommand
 
@@ -151,9 +151,9 @@ A command that outputs statistics for a dataset.
 
 Requirements:
 
-* Must support a `--view` (`PropertyDistributionViewName`)
-* Must build an iter of `PropertyDistribution` (note: the previous version of the command used `ViolationStatsMap`)
-* Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines
+- Must support a `--view` (`PropertyDistributionViewName`)
+- Must build an iter of `PropertyDistribution` (note: the previous version of the command used `ViolationStatsMap`)
+- Must output an iter of `PropertyDistributionView` converted to JSON separated by newlines
 
 ## ClobPlaceLimitOrderCommand
 
@@ -161,12 +161,12 @@ A command that places a CLOB limit order.
 
 Requirements:
 
-* Must be callable as `clob place-limit-order`
-* Must accept and proxy all limit-order builder inputs: `token_id`, `side`, `price`, `size`, `nonce`, `expiration`, `taker`, `order_type`, `post_only`.
-* Must accept and proxy all client-auth inputs required to sign and send the order: `host`, `chain_id`, `signature_type`, `funder`, `private_key`.
-* Must allow to supply `private_key` from environment variable.
-* Must treat generated cryptographic/order data (`salt`, `signature`) as foundational-crate outputs, not CLI inputs.
-* Must output the response serialized via `serde_json`.
-* Must have methods:
-  * `run`
-    * Must use `polymarket_client_sdk::clob::Client::limit_order`
+- Must be callable as `clob place-limit-order`
+- Must accept and proxy all limit-order builder inputs: `token_id`, `side`, `price`, `size`, `nonce`, `expiration`, `taker`, `order_type`, `post_only`.
+- Must accept and proxy all client-auth inputs required to sign and send the order: `host`, `chain_id`, `signature_type`, `funder`, `private_key`.
+- Must allow to supply `private_key` from environment variable.
+- Must treat generated cryptographic/order data (`salt`, `signature`) as foundational-crate outputs, not CLI inputs.
+- Must output the response serialized via `serde_json`.
+- Must have methods:
+  - `run`
+    - Must use `polymarket_client_sdk::clob::Client::limit_order`
