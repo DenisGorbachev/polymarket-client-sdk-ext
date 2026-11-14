@@ -21,6 +21,7 @@ exclude = [
     "target",
     "CHANGELOG.md",
     ".agents/docs/docs.polymarket.com",
+    "*.local.*",
 ]
 
 # Markdown flavor/dialect
