@@ -39,6 +39,9 @@ name = "polymarket-client-sdk-ext"
 title = "Polymarket API client"
 readme = { }
 
+[workspace.lints.cargo]
+unused_dependencies = "deny"
+
 [workspace.lints.rust]
 redundant_imports = "deny"
 unused_import_braces = "deny"

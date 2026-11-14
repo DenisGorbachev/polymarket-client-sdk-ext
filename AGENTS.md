@@ -2037,6 +2037,9 @@ name = "polymarket-client-sdk-ext"
 title = "Polymarket API client"
 readme = { }
 
+[workspace.lints.cargo]
+unused_dependencies = "deny"
+
 [workspace.lints.rust]
 redundant_imports = "deny"
 unused_import_braces = "deny"
@@ -2121,8 +2124,6 @@ ruint = { git = "https://github.com/DenisGorbachev/uint", branch = "fix/rkyv-arc
 ### src/lib.rs
 
 ```rust
-#![cfg_attr(not(test), deny(unused_crate_dependencies))]
-
 mod types;
 
 pub use types::*;

@@ -1,5 +1,3 @@
-#![cfg_attr(not(test), deny(unused_crate_dependencies))]
-
 mod types;
 
 pub use types::*;
